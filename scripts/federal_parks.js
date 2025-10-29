@@ -1,11 +1,10 @@
-
 // SOURCES & LAYERS
 
 async function addFederalSourceAndLayer() {
 
     // Load data from file
     // Load data: Federal stamp sites -- GeoJSON data from external file
-    const responseStamp = await fetch('../../geodata/FederalStampSites_selected.geojson');
+    const responseStamp = await fetch('geodata/FederalStampSites_selected.geojson');
     const FederalStampSites_geojsonData = await responseStamp.json();
 
     // Load data: NRHP_pt -- GeoJSON data from external file            
@@ -64,8 +63,7 @@ async function addFederalSourceAndLayer() {
         paint: {
 
             'circle-color': [
-                'step',
-                ['get', 'point_count'],
+                'step', ['get', 'point_count'],
                 '#51bbd6',
                 10,
                 '#f1f075',
@@ -74,8 +72,7 @@ async function addFederalSourceAndLayer() {
             ],
 
             'circle-radius': [
-                'step',
-                ['get', 'point_count'],
+                'step', ['get', 'point_count'],
                 20,
                 10,
                 30,

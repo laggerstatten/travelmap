@@ -180,11 +180,11 @@
             // Load data from file
 
             // Load data: AZA -- GeoJSON data from external file
-            const response_AZA = await fetch('../../geodata/AZA.geojson');
+            const response_AZA = await fetch('geodata/AZA.geojson');
             const AZA_geojsonData = await response_AZA.json();
 
             // Load data: APGA -- GeoJSON data from external file
-            const response_APGA = await fetch('../../geodata/garden-map-data.json');
+            const response_APGA = await fetch('geodata/garden-map-data.json');
             const APGA_geojsonData = await response_APGA.json();
 
 

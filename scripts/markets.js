@@ -1,4 +1,3 @@
-
 // SOURCES & LAYERS
 
 async function addMarketSourceAndLayer() {
@@ -6,12 +5,12 @@ async function addMarketSourceAndLayer() {
     // Load data from file
 
     // Load data: DMA -- GeoJSON data from external file
-    const response_DMA = await fetch('../../DMA.geojson');
+    const response_DMA = await fetch('DMA.geojson');
     const DMA_geojsonData = await response_DMA.json();
 
-    const TimeZone_geojsonData = await fetch('../../geodata/timezones-now.geojson/combined-now.json').then(response => response.json());
+    const TimeZone_geojsonData = await fetch('geodata/timezones-now.geojson/combined-now.json').then(response => response.json());
 
-    const Stad_geojsonData = await fetch('../../geodata/Stadium_2405.geojson').then(response => response.json());
+    const Stad_geojsonData = await fetch('geodata/Stadium_2405.geojson').then(response => response.json());
 
     // Add data to map
 
@@ -83,5 +82,3 @@ async function addMarketSourceAndLayer() {
 
 
 }
-
-

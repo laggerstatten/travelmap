@@ -1,4 +1,3 @@
-
 // SOURCES & LAYERS
 
 async function addGeogSourceAndLayer() {
@@ -7,18 +6,18 @@ async function addGeogSourceAndLayer() {
     // TODO: compress data for UAs, Counties, CBSAs, DMAs
 
     // Load data: GeoJSON data from external file
-    //const UA_cent_geojsonData = await fetch('../../geodata/UA_cent.geojson').then(response => response.json());
-    //const County_cent_geojsonData = await fetch('../../geodata/County_cent.geojson').then(response => response.json());
+    //const UA_cent_geojsonData = await fetch('geodata/UA_cent.geojson').then(response => response.json());
+    //const County_cent_geojsonData = await fetch('geodata/County_cent.geojson').then(response => response.json());
     // Load data: CBSA_cent -- GeoJSON data from external file
-    //const DMA_cent_geojsonData = await fetch('../../geodata/DMA_cent.geojson').then(response => response.json());
-    const TimeZone_geojsonData = await fetch('../../geodata/timezones-now.geojson/combined-now.json').then(response => response.json());
+    //const DMA_cent_geojsonData = await fetch('geodata/DMA_cent.geojson').then(response => response.json());
+    const TimeZone_geojsonData = await fetch('geodata/timezones-now.geojson/combined-now.json').then(response => response.json());
     // Load data: Capitol -- GeoJSON data from external file
     const Capitol_geojsonData = "https://services1.arcgis.com/Hp6G80Pky0om7QvQ/arcgis/rest/services/StateCapitolBuildings/FeatureServer/0/query?where=1%3D1&outFields=*&returnGeometry=true&f=pgeojson";
 
     // Load data: Court -- GeoJSON data from external file
-    const Stad_geojsonData = await fetch('../../geodata/Stadium_2405.geojson').then(response => response.json());
-    const CSA_bbox_geojsonData = await fetch('../../geodata/geo_CSA_bbox_2405.geojson').then(response => response.json());
-    const CSA_geojsonData = await fetch('../../geodata/geo_CSA_2405.geojson').then(response => response.json());
+    const Stad_geojsonData = await fetch('geodata/Stadium_2405.geojson').then(response => response.json());
+    const CSA_bbox_geojsonData = await fetch('geodata/geo_CSA_bbox_2405.geojson').then(response => response.json());
+    const CSA_geojsonData = await fetch('geodata/geo_CSA_2405.geojson').then(response => response.json());
 
 
 
@@ -118,5 +117,3 @@ async function addGeogSourceAndLayer() {
 
 
 }
-
-
