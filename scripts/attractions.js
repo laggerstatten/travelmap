@@ -5,12 +5,12 @@ async function addAttractionsSourceAndLayer() {
     // TODO: find data for modal transportation
 
     // Load data: GeoJSON data from external file
-    const AZA_geojsonData = await fetch('/geodata/AZA_2405.geojson').then(response => response.json());
-    const APGA_geojsonData = await fetch('/geodata/APGA_2405.geojson').then(response => response.json());
-    const AAM_geojsonData = await fetch('/geodata/AAM_2405.geojson').then(response => response.json());
-    const Stad_geojsonData = await fetch('/geodata/Stadium_2405.geojson').then(response => response.json());
-    const PLib_geojsonData = await fetch('/geodata/PresidentialLibraries_2405.geojson').then(response => response.json());
-    const Light_geojsonData = await fetch('/geodata/Lighthouses_2405.geojson').then(response => response.json());
+    const AZA_geojsonData = await fetch('geodata/AZA_2405.geojson').then(response => response.json());
+    const APGA_geojsonData = await fetch('geodata/APGA_2405.geojson').then(response => response.json());
+    const AAM_geojsonData = await fetch('geodata/AAM_2405.geojson').then(response => response.json());
+    const Stad_geojsonData = await fetch('geodata/Stadium_2405.geojson').then(response => response.json());
+    const PLib_geojsonData = await fetch('geodata/PresidentialLibraries_2405.geojson').then(response => response.json());
+    const Light_geojsonData = await fetch('geodata/Lighthouses_2405.geojson').then(response => response.json());
 
 
     // TODO: geocode Observatory data and process
