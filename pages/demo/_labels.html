@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>Attractions</title>
+    <meta charset='utf-8'>
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet">
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
+        
+        #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 100%;
+        }
+    </style>
+</head>
+
+<body>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        #menu {
+            position: absolute;
+            background: #efefef;
+            padding: 10px;
+            font-family: 'Open Sans', sans-serif;
+        }
+    </style>
+
+    <div id="map"></div>
+
+    <div id="menu">
+        <input id="cl0o3orgw000314te6oodkezq" type="radio" name="rtoggle" value="satellite_geom" checked="checked">
+        <label for="cl0o3orgw000314te6oodkezq">Satellite Geom</label>
+
+        <input id="clvvt5o32098a01nucx668i03" type="radio" name="rtoggle" value="nav_bare">
+        <label for="clvvt5o32098a01nucx668i03">Navigation No Boundary/POI</label>
+
+        <input id="cl7pshdpb000015mwy3tpm9y2" type="radio" name="rtoggle" value="physical">
+        <label for="cl7pshdpb000015mwy3tpm9y2">Physical</label>
+
+        <input id="clvx84fcd070101ph21dfavmf" type="radio" name="rtoggle" value="satellite_rebuild">
+        <label for="clvx84fcd070101ph21dfavmf">Satellite Rebuild</label>
+    </div>
+    <script>
+        mapboxgl.accessToken = MAPBOX_TOKEN; //TOKEN
+        const map = new mapboxgl.Map({
+            container: 'map',
+            // Satellite Geom v3.3
+            style: 'mapbox://styles/ericschall/cl0o3orgw000314te6oodkezq', // imagery + geometry
+            center: [-103.59179687498357, 40.66995747013945],
+            zoom: 3
+        });
+
+        // Reload source and layer
+        async function addAdditionalSourceAndLayer() {
+
+            // Load data from file
+
+            // Load data: AZA -- GeoJSON data from external file
+            const response_AZA = await fetch('../../geodata/AZA.geojson');
+            const AZA_geojsonData = await response_AZA.json();
+
+
+
+
+            // Add data to map
+
+            // Add data: AZA -- GeoJSON source with loaded data
+            map.addSource('AZA', {
+                'type': 'geojson',
+                'data': AZA_geojsonData
+            });
+
+            map.addSource('points', {
+                'type': 'geojson',
+                'data': {
+                    'type': 'FeatureCollection',
+                    'features': [{
+                        // feature for Mapbox DC
+                        'type': 'Feature',
+                        'geometry': {
+                            'type': 'Point',
+                            'coordinates': [-77.03238901390978, 38.913188059745586]
+                        },
+                        'properties': {
+                            'title': 'Mapbox DC'
+                        }
+                    }, {
+                        // feature for Mapbox SF
+                        'type': 'Feature',
+                        'geometry': {
+                            'type': 'Point',
+                            'coordinates': [-122.414, 37.776]
+                        },
+                        'properties': {
+                            'title': 'Mapbox SF'
+                        }
+                    }]
+                }
+            });
+
+
+
+
+            // Add symbology / labeling layers
+
+            // Symbology/Labeling for AZA layer
+            map.addLayer({
+                'id': 'AZA',
+                'type': 'circle',
+                'source': 'AZA',
+                'paint': {
+                    "circle-color": "rgb(255, 0, 255)",
+                    "circle-stroke-width": 1.5,
+                    "circle-stroke-color": "white"
+                }
+            });
+
+            // Add a symbol layer
+            map.addLayer({
+                'id': 'points',
+                'type': 'symbol',
+                'source': 'points',
+                'layout': {
+                    'icon-image': 'custom-marker',
+                    // get the title name from the source's "title" property
+                    'text-field': ['get', 'title'],
+                    'text-font': [
+                        'Open Sans Semibold',
+                        'Arial Unicode MS Bold'
+                    ],
+                    'text-offset': [0, 1.25],
+                    'text-anchor': 'top'
+                }
+            });
+
+
+        }
+
+
+        // Add source and layer whenever base style is loaded
+        map.on('style.load', async() => {
+            addAdditionalSourceAndLayer();
+        });
+
+        // basemap switcher function
+        const layerList = document.getElementById('menu');
+        const inputs = layerList.getElementsByTagName('input');
+
+        for (const input of inputs) {
+            input.onclick = (layer) => {
+                const layerId = layer.target.id;
+                map.setStyle('mapbox://styles/ericschall/' + layerId);
+            };
+        }
+
+        map.on('load', () => {
+            // Add an image to use as a custom marker
+            map.loadImage(
+                'https://docs.mapbox.com/mapbox-gl-js/assets/custom_marker.png',
+                (error, image) => {
+                    if (error) throw error;
+                    map.addImage('custom-marker', image);
+                }
+            );
+        });
+    </script>
+</body>
+
+</html>

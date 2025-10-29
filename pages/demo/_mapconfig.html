@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>Attractions</title>
+    <meta charset='utf-8'>
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet">
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
+        
+        #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 100%;
+        }
+    </style>
+</head>
+
+<body>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        #menu {
+            position: absolute;
+            background: #efefef;
+            padding: 10px;
+            font-family: 'Open Sans', sans-serif;
+        }
+        
+        #layermenu {
+            background: #fff;
+            position: absolute;
+            z-index: 1;
+            top: 10px;
+            right: 10px;
+            border-radius: 3px;
+            width: 120px;
+            border: 1px solid rgba(0, 0, 0, 0.4);
+            font-family: 'Open Sans', sans-serif;
+        }
+        
+        #layermenu a {
+            font-size: 13px;
+            color: #404040;
+            display: block;
+            margin: 0;
+            padding: 0;
+            padding: 10px;
+            text-decoration: none;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.25);
+            text-align: center;
+        }
+        
+        #layermenu a:last-child {
+            border: none;
+        }
+        
+        #layermenu a:hover {
+            background-color: #f8f8f8;
+            color: #404040;
+        }
+        
+        #layermenu a.active {
+            background-color: #3887be;
+            color: #ffffff;
+        }
+        
+        #layermenu a.active:hover {
+            background: #3074a4;
+        }
+        
+        .map-overlay {
+            font: 12px/20px 'Helvetica Neue', Arial, Helvetica, sans-serif;
+            position: absolute;
+            width: 200px;
+            top: 0;
+            left: 0;
+            padding: 10px;
+        }
+        
+        .map-overlay .map-overlay-inner {
+            background-color: #fff;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+            border-radius: 3px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .map-overlay-inner fieldset {
+            display: flex;
+            justify-content: space-between;
+            border: none;
+        }
+        
+        .map-overlay-inner label {
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        
+        .map-overlay-inner .select-fieldset {
+            display: block;
+        }
+        
+        .map-overlay-inner .select-fieldset label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        
+        .map-overlay-inner .select-fieldset select {
+            width: 100%;
+        }
+    </style>
+
+    <nav id="layermenu"></nav>
+
+    <div id="map"></div>
+
+    <div id="menu">
+        <input id="cl0o3orgw000314te6oodkezq" type="radio" name="rtoggle" value="satellite_geom">
+        <label for="cl0o3orgw000314te6oodkezq">Satellite Geom</label>
+
+        <input id="clvvt5o32098a01nucx668i03" type="radio" name="rtoggle" value="nav_bare" checked="checked">
+        <label for="clvvt5o32098a01nucx668i03">Navigation No Boundary/POI</label>
+
+        <input id="cl7pshdpb000015mwy3tpm9y2" type="radio" name="rtoggle" value="physical">
+        <label for="cl7pshdpb000015mwy3tpm9y2">Physical</label>
+
+        <input id="clvx84fcd070101ph21dfavmf" type="radio" name="rtoggle" value="satellite_rebuild">
+        <label for="clvx84fcd070101ph21dfavmf">Satellite Rebuild</label>
+    </div>
+
+    <div class="map-overlay top">
+        <div class="map-overlay-inner">
+            <fieldset class="select-fieldset">
+                <label>Select light preset</label>
+                <select id="lightPreset" name="lightPreset">
+                    <!-- Each value matches a light preset -->
+                    <option value="dawn">Dawn</option>
+                    <option value="day" selected="">Day</option>
+                    <option value="dusk">Dusk</option>
+                    <option value="night">Night</option>
+                </select>
+            </fieldset>
+            <fieldset>
+                <label for="showPlaceLabels">Show place labels</label>
+                <input type="checkbox" id="showPlaceLabels" checked="">
+            </fieldset>
+            <fieldset>
+                <label for="showPointOfInterestLabels">Show POI labels</label>
+                <input type="checkbox" id="showPointOfInterestLabels" checked="">
+            </fieldset>
+            <fieldset>
+                <label for="showRoadLabels">Show road labels</label>
+                <input type="checkbox" id="showRoadLabels" checked="">
+            </fieldset>
+            <fieldset>
+                <label for="showTransitLabels">Show transit labels</label>
+                <input type="checkbox" id="showTransitLabels" checked="">
+            </fieldset>
+        </div>
+    </div>
+
+    <script>
+        mapboxgl.accessToken = MAPBOX_TOKEN; //TOKEN
+        const map = new mapboxgl.Map({
+            container: 'map',
+            // THIS ONLY WORKS WITH STANDARD STYLE
+            center: [-103.59179687498357, 40.66995747013945],
+            zoom: 3
+        });
+
+        // Reload source and layer
+        async function addAdditionalSourceAndLayer() {
+
+            // Load data from file
+
+            // Load data: AZA -- GeoJSON data from external file
+            const response_AZA = await fetch('../../geodata/AZA.geojson');
+            const AZA_geojsonData = await response_AZA.json();
+
+            // Load data: APGA -- GeoJSON data from external file
+            const response_APGA = await fetch('../../geodata/garden-map-data.json');
+            const APGA_geojsonData = await response_APGA.json();
+
+
+            // Load data: AAM -- GeoJSON data from external file
+
+
+            // Load data: Obs -- GeoJSON data from external file
+
+
+            // Load data: Stad -- GeoJSON data from external file
+
+
+            // Load data: Capitol -- GeoJSON data from external file
+            const Capitol_geojsonData = "https://services1.arcgis.com/Hp6G80Pky0om7QvQ/arcgis/rest/services/StateCapitolBuildings/FeatureServer/0/query?f=pgeojson&where=1=1";
+
+            // Load data: Court -- GeoJSON data from external file
+            //const Court_geojsonData = "https://carto.nationalmap.gov/arcgis/rest/services/structures/MapServer/40/query?where=1%3D1&geometryType=esriGeometryEnvelope&returnGeometry=true&featureEncoding=esriDefault&f=geojson";
+
+            // Load data: PLib -- GeoJSON data from external file
+
+
+            // Load data: Light -- GeoJSON data from external file
+
+
+
+            // Add data to map
+
+            // Add data: AZA -- GeoJSON source with loaded data
+            map.addSource('AZA', {
+                'type': 'geojson',
+                'data': AZA_geojsonData
+            });
+
+            // Add data: APGA -- GeoJSON source with loaded data
+            map.addSource('APGA', {
+                'type': 'geojson',
+                'data': APGA_geojsonData
+            });
+
+            // Add data: AAM -- GeoJSON source with loaded data
+
+
+            // Add data: Obs -- GeoJSON source with loaded data
+
+
+            // Add data: Stad -- GeoJSON source with loaded data
+
+
+            // Add data: Capitol -- GeoJSON source with loaded data
+            /**
+                map.addSource('Capitol', {
+                    'type': 'geojson',
+                    'data': Capitol_geojsonData
+                });
+            */
+
+            // Add data: Court -- GeoJSON source with loaded data
+            /**
+                map.addSource('Court', {
+                    'type': 'geojson',
+                    'data': Court_geojsonData
+                });
+            */
+
+            // Add data: PLib -- GeoJSON source with loaded data
+
+
+            // Add data: Light -- GeoJSON source with loaded data
+
+
+
+
+            // Add symbology / labeling layers
+
+            // Symbology/Labeling for AZA layer
+            map.addLayer({
+                'id': 'AZA',
+                'type': 'symbol',
+                'source': 'AZA',
+                'layout': {
+                    'icon-image': `zoo`,
+                    'icon-allow-overlap': true,
+                    'text-field': ['get', 'Name'],
+                    'text-font': ['Open Sans Semibold', 'Arial Unicode MS Bold'],
+                    'text-size': 11,
+                    'text-letter-spacing': 0.05,
+                    'text-offset': [0, 1.5]
+                },
+                'paint': {
+                    'text-color': '#202',
+                    'text-halo-color': '#fff',
+                    'text-halo-width': 2
+                }
+            });
+
+            // Symbology/Labeling for APGA layer
+            map.addLayer({
+                'id': 'APGA',
+                'type': 'symbol',
+                'source': 'APGA',
+                'layout': {
+                    'icon-image': `garden`,
+                    'icon-allow-overlap': true,
+                    'text-field': ['get', 'name'],
+                    'text-font': ['Open Sans Semibold', 'Arial Unicode MS Bold'],
+                    'text-size': 11,
+                    'text-letter-spacing': 0.05,
+                    'text-offset': [0, 1.5]
+                },
+                'paint': {
+                    'text-color': '#202',
+                    'text-halo-color': '#fff',
+                    'text-halo-width': 2
+                }
+            });
+
+            // Symbology/Labeling for AAM layer
+
+
+            // Symbology/Labeling for Obs layer
+
+
+            // Symbology/Labeling for Stad layer
+
+
+            // Symbology/Labeling for Capitol layer
+            /**
+                map.addLayer({
+                    'id': 'Capitol',
+                    'type': 'circle',
+                    'source': 'Capitol',
+                    'paint': {
+                        "circle-color": "rgb(255, 0, 0)",
+                        "circle-stroke-width": 1.5,
+                        "circle-stroke-color": "white"
+                    }
+                });
+            */
+
+            // Symbology/Labeling for Court layer
+            /**
+                map.addLayer({
+                    'id': 'Court',
+                    'type': 'circle',
+                    'source': 'Court',
+                    'paint': {
+                        "circle-color": "rgb(0, 0, 255)",
+                        "circle-stroke-width": 1.5,
+                        "circle-stroke-color": "white"
+                    }
+                });
+            */
+
+            // Symbology/Labeling for PLib layer
+
+
+            // Symbology/Labeling for Light layer
+
+
+        }
+
+
+        // Add source and layer whenever base style is loaded
+        map.on('style.load', async() => {
+            addAdditionalSourceAndLayer();
+        });
+
+        // basemap switcher function
+        const layerList = document.getElementById('menu');
+        const inputs = layerList.getElementsByTagName('input');
+
+        for (const input of inputs) {
+            input.onclick = (layer) => {
+                const layerId = layer.target.id;
+                map.setStyle('mapbox://styles/ericschall/' + layerId);
+            };
+        }
+
+        map.on('load', async() => {
+
+        });
+
+        // After the last frame rendered before the map enters an "idle" state.
+        map.on('idle', () => {
+            // If these two layers were not added to the map, abort
+            if (!map.getLayer('AZA') || !map.getLayer('APGA')) {
+                return;
+            }
+
+            // Enumerate ids of the layers.
+            const toggleableLayerIds = ['AZA', 'APGA'];
+
+            // Set up the corresponding toggle button for each layer.
+            for (const id of toggleableLayerIds) {
+                // Skip layers that already have a button set up.
+                if (document.getElementById(id)) {
+                    continue;
+                }
+
+                // Create a link.
+                const link = document.createElement('a');
+                link.id = id;
+                link.href = '#';
+                link.textContent = id;
+                link.className = 'active';
+
+                // Show or hide layer when the toggle is clicked.
+                link.onclick = function(e) {
+                    const clickedLayer = this.textContent;
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    const visibility = map.getLayoutProperty(
+                        clickedLayer,
+                        'visibility'
+                    );
+
+                    // Toggle layer visibility by changing the layout object's visibility property.
+                    if (visibility === 'visible') {
+                        map.setLayoutProperty(clickedLayer, 'visibility', 'none');
+                        this.className = '';
+                    } else {
+                        this.className = 'active';
+                        map.setLayoutProperty(
+                            clickedLayer,
+                            'visibility',
+                            'visible'
+                        );
+                    }
+                };
+
+                const layers = document.getElementById('layermenu');
+                layers.appendChild(link);
+            }
+        });
+
+
+        document
+            .getElementById('lightPreset')
+            .addEventListener('change', function() {
+                map.setConfigProperty('basemap', 'lightPreset', this.value);
+            });
+
+        document
+            .querySelectorAll('.map-overlay-inner input[type="checkbox"]')
+            .forEach((checkbox) => {
+                checkbox.addEventListener('change', function() {
+                    map.setConfigProperty('basemap', this.id, this.checked);
+                });
+            });
+    </script>
+
+</body>
+
+</html>

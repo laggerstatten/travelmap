@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>Attractions</title>
+    <meta charset='utf-8'>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet">
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.0.0/mapbox-gl-geocoder.min.js"></script>
+    <script src="../scripts/attractions.js"></script>
+    <script src="../scripts/mapFiltersViews.js"></script>
+    <script src="../scripts/geocoding.js"></script>
+
+    <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.0.0/mapbox-gl-geocoder.css" type="text/css">
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: row;
+        }
+        
+        #map {
+            flex: 3;
+            height: 100vh;
+        }
+        
+        .map-overlay {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: #efefef;
+            padding: 10px;
+            box-sizing: border-box;
+            overflow-y: auto;
+        }
+        
+        .map-overlay fieldset {
+            display: none;
+            background: #ddd;
+            border: none;
+            padding: 10px;
+            margin: 0;
+        }
+        
+        .map-overlay input {
+            display: block;
+            border: none;
+            width: 100%;
+            border-radius: 3px;
+            padding: 10px;
+            margin: 0;
+            box-sizing: border-box;
+        }
+        
+        .map-overlay .listing {
+            overflow: auto;
+            max-height: 100%;
+        }
+        
+        .map-overlay .listing>* {
+            display: block;
+            padding: 5px 10px;
+            margin: 0;
+        }
+        
+        .map-overlay .listing a {
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            color: #404;
+            text-decoration: none;
+        }
+        
+        .map-overlay .listing a:last-child {
+            border: none;
+        }
+        
+        .map-overlay .listing a:hover {
+            background: #f0f0f0;
+        }
+    </style>
+
+    <script>
+        function renderListings(features, layerToFilter, nameField) {
+            const empty = document.createElement('p');
+            // Clear any existing listings
+            listingEl.innerHTML = '';
+            if (features.length) {
+                for (const feature of features) {
+                    const itemLink = document.createElement('a');
+                    const label = `${feature.properties[nameField]}`;
+                    //itemLink.href = feature.properties.wikipedia;
+                    itemLink.target = '_blank';
+                    itemLink.textContent = label;
+                    itemLink.addEventListener('mouseover', () => {
+                        // Highlight corresponding feature on the map
+                        popup
+                            .setLngLat(feature.geometry.coordinates)
+                            .setText(label)
+                            .addTo(map);
+                    });
+                    listingEl.appendChild(itemLink);
+                }
+
+                // Show the filter input
+                filterEl.parentNode.style.display = 'block';
+            } else if (features.length === 0 && filterEl.value !== '') {
+                empty.textContent = 'No results found';
+                listingEl.appendChild(empty);
+            } else {
+                empty.textContent = 'Drag the map to populate results';
+                listingEl.appendChild(empty);
+
+                // Hide the filter input
+                filterEl.parentNode.style.display = 'none';
+
+                // remove features filter
+                map.setFilter(layerToFilter, ['has', nameField]);
+            }
+        }
+
+        function normalize(string) {
+            return string.trim().toLowerCase();
+        }
+
+        // Because features come from tiled vector data,
+        // feature geometries may be split
+        // or duplicated across tile boundaries.
+        // As a result, features may appear
+        // multiple times in query results.
+        function getUniqueFeatures(features, comparatorProperty) {
+            const uniqueIds = new Set();
+            const uniqueFeatures = [];
+            for (const feature of features) {
+                const id = feature.properties[comparatorProperty];
+                if (!uniqueIds.has(id)) {
+                    uniqueIds.add(id);
+                    uniqueFeatures.push(feature);
+                }
+            }
+            return uniqueFeatures;
+        }
+    </script>
+
+</head>
+
+<body>
+
+    <div id="map"></div>
+
+    <div class="map-overlay">
+        <fieldset>
+            <input id="feature-filter" type="text" placeholder="Filter results by name">
+        </fieldset>
+        <div id="feature-listing" class="listing"></div>
+    </div>
+
+    <script>
+        mapboxgl.accessToken = MAPBOX_TOKEN;
+        const map = new mapboxgl.Map({
+            container: 'map',
+            //Navigation No Boundary or POI v3.3
+            style: 'mapbox://styles/ericschall/clvvt5o32098a01nucx668i03', // navigation
+            center: [-103.59179687498357, 40.66995747013945],
+            zoom: 3
+        });
+
+        // Holds visible features for filtering
+        let attractions = [];
+
+        // Create a popup, but don't add it to the map yet.
+        const popup = new mapboxgl.Popup({
+            closeButton: false
+        });
+
+        const filterEl = document.getElementById('feature-filter');
+        const listingEl = document.getElementById('feature-listing');
+        let layerToFilter = 'AZA';
+        let nameField = 'Name';
+
+        // Add source and layer whenever base style is loaded
+        map.on('style.load', async() => {
+            // FIXME: maintain toggle state
+            // Reload source and layer
+            await addAttractionsSourceAndLayer();
+        });
+
+        map.on('load', async() => {
+
+            map.on('movestart', () => {
+                // reset features filter as the map starts moving
+                map.setFilter(layerToFilter, ['has', nameField]);
+            });
+
+            map.on('moveend', () => {
+                const features = map.querySourceFeatures(layerToFilter, {
+                    sourceLayer: 'original'
+                });
+
+                if (features) {
+                    const uniqueFeatures = getUniqueFeatures(features, nameField);
+                    // Populate features for the listing overlay.
+                    renderListings(uniqueFeatures, layerToFilter, nameField);
+
+                    // Clear the input container
+                    filterEl.value = '';
+
+                    attractions = uniqueFeatures;
+                }
+            });
+
+            map.on('mousemove', layerToFilter, (e) => {
+                // Change the cursor style as a UI indicator.
+                map.getCanvas().style.cursor = 'pointer';
+
+                // Populate the popup and set its coordinates based on the feature.
+                const feature = e.features[0];
+                popup
+                    .setLngLat(feature.geometry.coordinates)
+                    .setText(
+                        `${feature.properties[nameField]}`
+                    )
+                    .addTo(map);
+            });
+
+            map.on('mouseleave', layerToFilter, () => {
+                map.getCanvas().style.cursor = '';
+                popup.remove();
+            });
+
+            filterEl.addEventListener('keyup', (e) => {
+                const value = normalize(e.target.value);
+
+                // Filter visible features that match the input value.
+                const filtered = [];
+                for (const feature of attractions) {
+                    const name = normalize(feature.properties[nameField]);
+                    if (name.includes(value)) {
+                        filtered.push(feature);
+                    }
+                }
+
+                // Populate the sidebar with filtered results
+                renderListings(filtered, layerToFilter, nameField);
+
+                // Set the filter to populate features into the layer.
+                if (filtered.length) {
+                    map.setFilter(layerToFilter, [
+                        'match', ['get', nameField],
+                        filtered.map((feature) => {
+                            return feature.properties[nameField];
+                        }),
+                        true,
+                        false
+                    ]);
+                }
+            });
+
+            // Call this function on initialization
+            // passing an empty array to render an empty state
+            renderListings([], layerToFilter, nameField);
+
+        });
+    </script>
+
+</body>
+
+</html>

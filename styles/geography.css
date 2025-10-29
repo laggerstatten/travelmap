@@ -1,0 +1,120 @@
+body {
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: row;
+}
+
+#map {
+    flex: 3;
+    height: 100vh;
+}
+
+.map-overlay {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background-color: #efefef;
+    padding: 10px;
+    box-sizing: border-box;
+    overflow-y: auto;
+}
+
+/**
+    .map-overlay fieldset {
+        display: none;
+        background: #ddd;
+        border: none;
+        padding: 10px;
+        margin: 0;
+    }
+    
+    .map-overlay input {
+        display: block;
+        border: none;
+        width: 100%;
+        border-radius: 3px;
+        padding: 10px;
+        margin: 0;
+        box-sizing: border-box;
+    }
+    
+    .map-overlay .listing {
+        overflow: auto;
+        max-height: 100%;
+    }
+    
+    .map-overlay .listing>* {
+        display: block;
+        padding: 5px 10px;
+        margin: 0;
+    }
+    
+    .map-overlay .listing a {
+        border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        color: #404;
+        text-decoration: none;
+    }
+    
+    .map-overlay .listing a:last-child {
+        border: none;
+    }
+    
+    .map-overlay .listing a:hover {
+        background: #f0f0f0;
+    }
+    
+    #menu {
+        background: #efefef;
+        padding: 10px;
+        font-family: 'Open Sans', sans-serif;
+        position: fixed;
+        bottom: calc(5vh + 10px);
+        width: 100%;
+        box-sizing: border-box;
+        z-index: 1;
+    }
+*/
+
+#layertogglemenu {
+    background: #fff;
+    padding: 10px;
+    border-radius: 5px;
+    margin-top: 10px;
+    font-family: 'Open Sans', sans-serif;
+}
+
+#layertogglemenu a {
+    font-size: 13px;
+    color: #404040;
+    display: block;
+    margin: 0;
+    padding: 10px;
+    text-decoration: none;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.25);
+    text-align: center;
+}
+
+#layertogglemenu a:last-child {
+    border: none;
+}
+
+#layertogglemenu a:hover {
+    background-color: #f8f8f8;
+    color: #404040;
+}
+
+#layertogglemenu a.active {
+    background-color: #3887be;
+    color: #ffffff;
+}
+
+#layertogglemenu a.active:hover {
+    background: #3074a4;
+}
+
+#button-container {
+    display: flex;
+    flex-direction: column;
+    margin-top: 10px;
+}

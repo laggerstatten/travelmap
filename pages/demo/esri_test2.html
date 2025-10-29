@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset='utf-8'>
+    <title>Overlay Mapbox Basemap</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet">
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
+        
+        #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 100%;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="map"></div>
+    <script>
+        mapboxgl.accessToken = MAPBOX_TOKEN; //TOKEN
+        const map = new mapboxgl.Map({
+            container: 'map',
+            //style: 'mapbox://styles/ericschall/clvx84fcd070101ph21dfavmf',  
+            style: 'mapbox://styles/ericschall/clvx9njvt09sg01pk734lecme',
+            center: [-103.59179687498357, 40.66995747013945],
+            zoom: 3
+        });
+
+        map.on('load', () => {
+            // Add non-Mapbox basemap layer on bottom
+            map.addSource('arcgis-tiles', {
+                type: 'raster',
+                tiles: [
+                    'https://tiles.arcgis.com/tiles/P3ePLMYs2RVChkJx/arcgis/rest/services/NatGeoStyleBase/MapServer/tile/{z}/{y}/{x}'
+                ],
+                tileSize: 256
+            });
+
+            map.addLayer({
+                id: 'arcgis-tiles-layer',
+                type: 'raster',
+                slot: 'middle',
+                source: 'arcgis-tiles',
+                minzoom: 0,
+                maxzoom: 22
+            });
+
+
+
+
+        });
+    </script>
+
+</body>
+
+</html>
