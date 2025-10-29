@@ -1,43 +1,16 @@
 async function addAttractionsSourceAndLayer() {
-    // Dynamically detect base path
-    // Works locally (http://localhost...) and on GitHub Pages (/travelmap/)
-    const repoBase = window.location.pathname.includes('/travelmap/') ?
-        '/travelmap/' :
-        '/';
-
-    // Helper to load GeoJSON
-    async function loadGeoJSON(file) {
-        const url = `${repoBase}geodata/${file}`;
-        const response = await fetch(url);
-        if (!response.ok) {
-            console.error(`Failed to load ${file}:`, response.status, response.statusText);
-            return null;
-        }
-        return await response.json();
-    }
-
-    // Load all datasets
-    const [
-        AZA_geojsonData,
-        APGA_geojsonData,
-        AAM_geojsonData,
-        Stad_geojsonData,
-        PLib_geojsonData,
-        Light_geojsonData,
-    ] = await Promise.all([
-        loadGeoJSON('AZA_2405.geojson'),
-        loadGeoJSON('APGA_2405.geojson'),
-        loadGeoJSON('AAM_2405.geojson'),
-        loadGeoJSON('Stadium_2405.geojson'),
-        loadGeoJSON('PresidentialLibraries_2405.geojson'),
-        loadGeoJSON('Lighthouses_2405.geojson'),
-    ]);
-
-
 
     // Load data from file
     // TODO: find data for institutes devoted to the study of space, the ocean, or the poles
     // TODO: find data for modal transportation
+
+    // Load data: GeoJSON data from external file
+    const AZA_geojsonData = await fetch('./geodata/AZA_2405.geojson').then(response => response.json());
+    const APGA_geojsonData = await fetch('./geodata/APGA_2405.geojson').then(response => response.json());
+    const AAM_geojsonData = await fetch('./geodata/AAM_2405.geojson').then(response => response.json());
+    const Stad_geojsonData = await fetch('./geodata/Stadium_2405.geojson').then(response => response.json());
+    const PLib_geojsonData = await fetch('./geodata/PresidentialLibraries_2405.geojson').then(response => response.json());
+    const Light_geojsonData = await fetch('./geodata/Lighthouses_2405.geojson').then(response => response.json());
 
 
     // TODO: geocode Observatory data and process
@@ -50,7 +23,18 @@ async function addAttractionsSourceAndLayer() {
     //const Court_geojsonData = "https://carto.nationalmap.gov/arcgis/rest/services/structures/MapServer/40/query?where=1%3D1&geometryType=esriGeometryEnvelope&returnGeometry=true&featureEncoding=esriDefault&f=geojson";
 
 
+    // Add data to map
 
+    // Add data: GeoJSON source with loaded data
+    map.addSource('AZA', { type: 'geojson', data: AZA_geojsonData });
+    map.addSource('APGA', { type: 'geojson', data: APGA_geojsonData });
+    map.addSource('AAM', { type: 'geojson', data: AAM_geojsonData });
+    // map.addSource('Obs', { 'type': 'geojson', 'data': Obs_geojsonData });
+    map.addSource('Stad', { type: 'geojson', data: Stad_geojsonData });
+    //map.addSource('Capitol', { type: 'geojson', data: Capitol_geojsonData });
+    // map.addSource('Court', { type: 'geojson', data: Court_geojsonData });
+    map.addSource('PLib', { type: 'geojson', data: PLib_geojsonData });
+    map.addSource('Light', { type: 'geojson', data: Light_geojsonData });
 
 
     // Add symbology / labeling layers
