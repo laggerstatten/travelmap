@@ -95,7 +95,7 @@
             } = await supabase.auth.signInWithOAuth({
                 provider: "github",
                 options: {
-                    redirectTo: window.location.href
+                    redirectTo: 'https://laggerstatten.github.io/travelmap/pages/nearest_aza.html'
                 },
             });
             if (error) console.error("Login error:", error);
@@ -190,7 +190,6 @@
                 country: "us"
             };
 
-            // Run search when user picks a place
             searchBox.addEventListener("retrieve", async(e) => {
                 const detail = e.detail;
                 const feature =
