@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nearest AZA Zoos</title>
+
+    <!-- Mapbox Search JS -->
+    <script id="search-js" defer src="https://api.mapbox.com/search-js/v1.5.0/web.js"></script>
+
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            padding: 2rem;
+        }
+        
+        mapbox-search-box {
+            max-width: 400px;
+            display: block;
+            margin-bottom: 1rem;
+        }
+        
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            max-width: 700px;
+        }
+        
+        th,
+        td {
+            border: 1px solid #ccc;
+            padding: 6px 8px;
+            text-align: left;
+        }
+        
+        th {
+            background: #f0f0f0;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Find Nearest AZA Zoos</h1>
+
+    <!-- ✅ Mapbox Search Box -->
+    <mapbox-search-box access-token="pk.eyJ1IjoiZXJpY3NjaGFsbCIsImEiOiJjbWhjdG51eGYwNnRtMmlwcmkyMGVpbGtwIn0.XhVB83AFwyB1L1zykB3oig" proximity="0,0"></mapbox-search-box>
+
+    <label><input type="checkbox" id="show-unvisited"> Show only unvisited</label>
+
+    <h2>Results</h2>
+    <table id="results">
+        <thead>
+            <tr>
+                <th>Zoo</th>
+                <th>City</th>
+                <th>State</th>
+                <th>Distance (mi)</th>
+                <th>Visited</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <script>
+        // Initialize Supabase
+        const supabase = window.supabase.createClient(
+            'https://czuldnytepaujjkjpwqi.supabase.co',
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN6dWxkbnl0ZXBhdWpqa2pwd3FpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE2NzE0NTQsImV4cCI6MjA3NzI0NzQ1NH0.8OPIxFz3bHcxQEebxwt6j4USC-8AYjRjzPhuoxtrblo'
+        );
+
+        // 🔹 Query RPC to get zoos ordered by distance
+        async function findZoos(lat, lon) {
+            const {
+                data,
+                error
+            } = await supabase.rpc("get_aza_nearby", {
+                lat_input: lat,
+                lon_input: lon,
+            });
+            if (error) {
+                console.error("Error fetching zoos:", error);
+                return [];
+            }
+            return data;
+        }
+
+        // 🔹 Toggle visited status
+        async function toggleVisited(aza_id, checked) {
+            const {
+                error
+
+            } = await supabase
+                .from("visited")
+                .upsert({
+                    aza_id,
+                    visited: checked
+                }, {
+                    onConflict: "aza_id"
+                });
+            if (error) console.error("Error saving visited:", error);
+        }
+
+        // 🔹 Display results
+        async function runZooSearch(lat, lon) {
+            const showUnvisited = document.getElementById("show-unvisited").checked;
+            const results = await findZoos(lat, lon);
+            const tbody = document.querySelector("#results tbody");
+            tbody.innerHTML = "";
+
+            const filtered = showUnvisited ?
+                results.filter((r) => !r.visited) :
+                results;
+
+            filtered.forEach((r) => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+          <td>${r.name}</td>
+          <td>${r.city}</td>
+          <td>${r.state}</td>
+          <td>${r.distance_miles.toFixed(1)}</td>
+          <td><input type="checkbox" ${r.visited ? "checked" : ""}></td>
+        `;
+                tr.querySelector("input").addEventListener("change", async(e) => {
+                    await toggleVisited(r.aza_id, e.target.checked);
+                    await runZooSearch(lat, lon);
+                });
+                tbody.appendChild(tr);
+            });
+        }
+
+        // 🔹 Load Mapbox SearchBox
+        const script = document.getElementById("search-js");
+        script.onload = function() {
+            const searchBox = document.querySelector("mapbox-search-box");
+            searchBox.options = {
+                language: "en",
+                country: "us"
+            };
+
+            // Run search when user picks a place
+            searchBox.addEventListener("retrieve", async(e) => {
+                const detail = e.detail;
+                const feature =
+                    detail && detail.features && detail.features.length > 0 ?
+                    detail.features[0] :
+                    null;
+
+                if (!feature || !feature.geometry || !feature.geometry.coordinates) {
+                    console.warn("No valid location selected:", e);
+                    return;
+                }
+
+                const [lon, lat] = feature.geometry.coordinates;
+                console.log(`Selected: ${feature.properties.name} → ${lat}, ${lon}`);
+
+                await runZooSearch(lat, lon);
+            });
+
+
+
+        };
+    </script>
+</body>
+
+</html>

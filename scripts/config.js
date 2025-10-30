@@ -1,4 +1,4 @@
 // config.js
-const MAPBOX_TOKEN = 'pk.eyJ1IjoiZXJpY3NjaGFsbCIsImEiOiJjbDBsbmpvNHYwY3JhM2N0a2Ribm1rZ2k5In0.XY-ziSu8DLnv5UIstoSGRQ';
+const MAPBOX_TOKEN = 'pk.eyJ1IjoiZXJpY3NjaGFsbCIsImEiOiJjbWhjdG51eGYwNnRtMmlwcmkyMGVpbGtwIn0.XhVB83AFwyB1L1zykB3oig';
 const SUPABASE_URL = 'https://czuldnytepaujjkjpwqi.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN6dWxkbnl0ZXBhdWpqa2pwd3FpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE2NzE0NTQsImV4cCI6MjA3NzI0NzQ1NH0.8OPIxFz3bHcxQEebxwt6j4USC-8AYjRjzPhuoxtrblo';;
