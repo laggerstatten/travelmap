@@ -54,6 +54,16 @@ async function addAttractionsSourceAndLayer() {
                 'text-anchor': 'top'
             },
             paint: {
+                'icon-color': [
+                    'match', ['get', 'icon'],
+                    'zoo', '#D48000',
+                    'garden', '#2E8B57',
+                    'museum', '#5D5DE3',
+                    'stadium', '#B22222',
+                    'library', '#8A2BE2',
+                    'lighthouse', '#1E90FF',
+                    '#888' // fallback color
+                ],
                 'text-color': '#202',
                 'text-halo-color': '#fff',
                 'text-halo-width': 2
