@@ -4,7 +4,7 @@ async function addFederalSourceAndLayer() {
 
     // Load data from file
     // Load data: Federal stamp sites -- GeoJSON data from external file
-    const responseStamp = await fetch('geodata/FederalStampSites_selected.geojson');
+    const responseStamp = await fetch('https://laggerstatten.github.io/travelmap/geodata/FederalStampSites_selected.geojson');
     const FederalStampSites_geojsonData = await responseStamp.json();
 
     // Load data: NRHP_pt -- GeoJSON data from external file            
