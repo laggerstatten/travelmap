@@ -38,11 +38,11 @@ async function addAttractionsSourceAndLayer() {
 
 
     // Add symbology / labeling layers
-    function addAttractionPointLayer(id, source, icon, nameField) {
+    function addAttractionPointLayer(id, source, icon, nameField, color) {
         map.addLayer({
-            id: id,
+            id,
             type: 'symbol',
-            source: source,
+            source,
             layout: {
                 'icon-image': icon,
                 'icon-allow-overlap': true,
@@ -54,16 +54,7 @@ async function addAttractionsSourceAndLayer() {
                 'text-anchor': 'top'
             },
             paint: {
-                'icon-color': [
-                    'match', ['get', 'icon'],
-                    'zoo', '#D48000',
-                    'garden', '#2E8B57',
-                    'museum', '#5D5DE3',
-                    'stadium', '#B22222',
-                    'library', '#8A2BE2',
-                    'lighthouse', '#1E90FF',
-                    '#888' // fallback color
-                ],
+                'icon-color': color,
                 'text-color': '#202',
                 'text-halo-color': '#fff',
                 'text-halo-width': 2
@@ -72,12 +63,12 @@ async function addAttractionsSourceAndLayer() {
     }
 
     // Symbology/Labeling for layers
-    addAttractionPointLayer('AZA', 'AZA', `zoo`, 'Name');
-    addAttractionPointLayer('APGA', 'APGA', `garden`, 'name');
-    addAttractionPointLayer('AAM', 'AAM', `museum`, 'USER_Name');
-    addAttractionPointLayer('Stad', 'Stad', `stadium`, 'Venue_tab_NAME');
+    addAttractionPointLayer('AZA', 'AZA', 'zoo', 'Name', '#D48000');
+    addAttractionPointLayer('APGA', 'APGA', 'garden', 'name', '#2E8B57');
+    addAttractionPointLayer('AAM', 'AAM', 'museum', 'USER_Name', '#5D5DE3');
+    addAttractionPointLayer('Stad', 'Stad', 'stadium', 'Venue_tab_NAME', '#B22222');
     //addAttractionPointLayer('Capitol', 'Capitol', `embassy`, 'NAME');
-    addAttractionPointLayer('PLib', 'PLib', `library`, 'SiteName');
-    addAttractionPointLayer('Light', 'Light', `lighthouse`, 'SiteName');
+    addAttractionPointLayer('PLib', 'PLib', 'library', 'SiteName', '#8A2BE2');
+    addAttractionPointLayer('Light', 'Light', 'lighthouse', 'SiteName', '#1E90FF');
 
 }
