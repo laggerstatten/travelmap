@@ -21,6 +21,10 @@
             margin-bottom: 1rem;
         }
         
+        #auth {
+            margin-bottom: 1rem;
+        }
+        
         table {
             border-collapse: collapse;
             width: 100%;
@@ -42,6 +46,13 @@
 
 <body>
     <h1>Find Nearest AZA Zoos</h1>
+
+    <!-- 🔐 GitHub Login -->
+    <div id="auth">
+        <button id="login">Login with GitHub</button>
+        <button id="logout" style="display:none;">Logout</button>
+        <p id="auth-status">Not logged in</p>
+    </div>
 
     <!-- ✅ Mapbox Search Box -->
     <mapbox-search-box access-token="pk.eyJ1IjoiZXJpY3NjaGFsbCIsImEiOiJjbWhjdG51eGYwNnRtMmlwcmkyMGVpbGtwIn0.XhVB83AFwyB1L1zykB3oig" proximity="0,0"></mapbox-search-box>
@@ -72,6 +83,38 @@
             'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN6dWxkbnl0ZXBhdWpqa2pwd3FpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE2NzE0NTQsImV4cCI6MjA3NzI0NzQ1NH0.8OPIxFz3bHcxQEebxwt6j4USC-8AYjRjzPhuoxtrblo'
         );
 
+        // 🔹 GitHub Auth
+        const loginBtn = document.getElementById("login");
+        const logoutBtn = document.getElementById("logout");
+        const statusEl = document.getElementById("auth-status");
+
+        loginBtn.addEventListener("click", async() => {
+            const {
+                data,
+                error
+            } = await supabase.auth.signInWithOAuth({
+                provider: "github",
+                options: {
+                    redirectTo: window.location.href
+                },
+            });
+            if (error) console.error("Login error:", error);
+        });
+
+        logoutBtn.addEventListener("click", async() => {
+            await supabase.auth.signOut();
+            location.reload();
+        });
+
+        supabase.auth.onAuthStateChange((_event, session) => {
+            const loggedIn = !!session;
+            loginBtn.style.display = loggedIn ? "none" : "inline-block";
+            logoutBtn.style.display = loggedIn ? "inline-block" : "none";
+            statusEl.textContent = loggedIn ?
+                `Logged in as ${session.user.user_metadata.user_name}` :
+                "Not logged in";
+        });
+
         // 🔹 Query RPC to get zoos ordered by distance
         async function findZoos(lat, lon) {
             const {
@@ -92,7 +135,6 @@
         async function toggleVisited(aza_id, checked) {
             const {
                 error
-
             } = await supabase
                 .from("visited")
                 .upsert({
@@ -111,9 +153,7 @@
             const tbody = document.querySelector("#results tbody");
             tbody.innerHTML = "";
 
-            const filtered = showUnvisited ?
-                results.filter((r) => !r.visited) :
-                results;
+            const filtered = showUnvisited ? results.filter((r) => !r.visited) : results;
 
             filtered.forEach((r) => {
                 const tr = document.createElement("tr");
@@ -124,7 +164,16 @@
           <td>${r.distance_miles.toFixed(1)}</td>
           <td><input type="checkbox" ${r.visited ? "checked" : ""}></td>
         `;
-                tr.querySelector("input").addEventListener("change", async(e) => {
+                const checkbox = tr.querySelector("input");
+                checkbox.addEventListener("change", async(e) => {
+                    const {
+                        data: session
+                    } = await supabase.auth.getSession();
+                    if (!session || !session.session) {
+                        alert("You must be logged in to edit.");
+                        e.target.checked = !e.target.checked;
+                        return;
+                    }
                     await toggleVisited(r.aza_id, e.target.checked);
                     await runZooSearch(lat, lon);
                 });
@@ -159,9 +208,6 @@
 
                 await runZooSearch(lat, lon);
             });
-
-
-
         };
     </script>
 </body>
