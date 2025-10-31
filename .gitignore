@@ -1,2 +1,6 @@
 
 .env
+/.vscode
+.prettierrc
+scripts/config.js
+scripts/config.js

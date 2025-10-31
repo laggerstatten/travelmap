@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Identify Location + Local UAs</title>
+
+    <script src="scripts/config.js"></script>
+
+    <!-- Mapbox GL -->
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet" />
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+
+    <!-- Mapbox Search Box -->
+    <script src="https://api.mapbox.com/search-js/v1.0.0-beta.17/web.js"></script>
+
+    <!-- (Optional) DataTables -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Open Sans', sans-serif;
+        }
+        
+        #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 100%;
+        }
+        
+        #search-box {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 2;
+            width: 320px;
+        }
+        
+        #ua-panel {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(255, 255, 255, 0.95);
+            max-height: 35%;
+            overflow: auto;
+            z-index: 2;
+            padding: 10px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        
+        th,
+        td {
+            border-bottom: 1px solid #ccc;
+            text-align: left;
+            padding: 6px;
+        }
+        
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="search-box"></div>
+    <div id="map"></div>
+    <div id="ua-panel">
+        <h3>Local Urban Areas</h3>
+        <table id="ua-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Population</th>
+                    <th>CBSA</th>
+                    <th>CSA</th>
+                    <th>Longitude</th>
+                    <th>Latitude</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <script>
+        const SUPABASE_IDENTIFY_URL =
+            'https://czuldnytepaujjkjpwqi.functions.supabase.co/identify-location';
+        const SUPABASE_LOCALUA_URL =
+            'https://czuldnytepaujjkjpwqi.functions.supabase.co/get-local-ua';
+
+        // --- MAP SETUP ---
+        mapboxgl.accessToken = MAPBOX_TOKEN;
+        const map = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/ericschall/clvvt5o32098a01nucx668i03',
+            center: [-103.59179687498357, 40.66995747013945],
+            zoom: 3
+        });
+
+        // --- SEARCH BOX SETUP ---
+        const searchBox = new MapboxSearchBox();
+        searchBox.accessToken = mapboxgl.accessToken;
+        document.getElementById('search-box').appendChild(searchBox);
+
+        let marker = null;
+        let popup = null;
+
+        // --- HANDLE SEARCH SELECTION ---
+        searchBox.addEventListener('retrieve', async function(e) {
+            let feature = null;
+            if (
+                e &&
+                e.detail &&
+                e.detail.features &&
+                e.detail.features.length > 0
+            ) {
+                feature = e.detail.features[0];
+            }
+            if (!feature) {
+                console.warn('No valid location selected');
+                return;
+            }
+
+            const coords = feature.geometry && feature.geometry.coordinates;
+            if (!coords || coords.length < 2) {
+                console.warn('No coordinates found');
+                return;
+            }
+
+            const lng = coords[0];
+            const lat = coords[1];
+            console.log('Selected:', lng, lat);
+
+            // Center and mark the location
+            if (marker) marker.remove();
+            marker = new mapboxgl.Marker({
+                    color: '#FF5E00'
+                })
+                .setLngLat([lng, lat])
+                .addTo(map);
+            map.flyTo({
+                center: [lng, lat],
+                zoom: 8
+            });
+
+            // --- CALL SUPABASE IDENTIFY FUNCTION ---
+            let info = null;
+            try {
+                const res = await fetch(SUPABASE_IDENTIFY_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        lng: lng,
+                        lat: lat
+                    })
+                });
+                info = await res.json();
+            } catch (err) {
+                console.error('Identify call failed:', err);
+                return;
+            }
+
+            console.log('Location info:', info);
+
+            // --- BUILD POPUP HTML ---
+            var parts = [];
+            if (info && info.state && info.state.name)
+                parts.push('<b>State:</b> ' + info.state.name);
+            if (info && info.county && info.county.name)
+                parts.push('<b>County:</b> ' + info.county.name);
+            if (info && info.cbsa_metro && info.cbsa_metro.name)
+                parts.push('<b>Metro:</b> ' + info.cbsa_metro.name);
+            if (info && info.cbsa_micro && info.cbsa_micro.name)
+                parts.push('<b>Micro:</b> ' + info.cbsa_micro.name);
+            if (info && info.csa && info.csa.name)
+                parts.push('<b>CSA:</b> ' + info.csa.name);
+            if (info && info.urban_area && info.urban_area.name)
+                parts.push('<b>Urban Area:</b> ' + info.urban_area.name);
+            if (info && info.ecoregion && info.ecoregion.name)
+                parts.push('<b>Ecoregion:</b> ' + info.ecoregion.name);
+            if (parts.length === 0) parts.push('<i>No information found</i>');
+
+            if (popup) popup.remove();
+            popup = new mapboxgl.Popup({
+                    offset: 25
+                })
+                .setLngLat([lng, lat])
+                .setHTML(parts.join('<br>'))
+                .addTo(map);
+
+            // --- FETCH LOCAL UAs ---
+            if (info.cbsa_metro || info.csa) {
+                try {
+                    const res2 = await fetch(SUPABASE_LOCALUA_URL, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            id_csa: info.csa && info.csa.csa ? 'csa.' + info.csa.csa : null,
+                            id_cbsa: info.cbsa_metro && info.cbsa_metro.cbsa ?
+                                'cbsa.' + info.cbsa_metro.cbsa :
+                                null
+                        })
+                    });
+                    const uaData = await res2.json();
+                    console.log('Local UAs:', uaData);
+                    updateUATable(uaData.results || []);
+                } catch (err) {
+                    console.error('Error retrieving local UAs:', err);
+                }
+            }
+        });
+
+        // --- UPDATE UA TABLE ---
+        function updateUATable(rows) {
+            const tbody = document.querySelector('#ua-table tbody');
+            tbody.innerHTML = '';
+
+            rows.forEach((r) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+          <td>${r.text_ua || ''}</td>
+          <td>${r.val_pop_ua?.toLocaleString?.() || ''}</td>
+          <td>${r.text_cbsa || ''}</td>
+          <td>${r.text_csa || ''}</td>
+          <td>${r.longitude?.toFixed?.(3) || ''}</td>
+          <td>${r.latitude?.toFixed?.(3) || ''}</td>
+        `;
+                tbody.appendChild(tr);
+            });
+
+            // Initialize or re-draw DataTable if desired
+            if ($.fn.DataTable.isDataTable('#ua-table')) {
+                $('#ua-table').DataTable().clear().destroy();
+            }
+            $('#ua-table').DataTable({
+                paging: false,
+                searching: false,
+                info: false,
+                order: [
+                    [1, 'desc']
+                ]
+            });
+        }
+    </script>
+</body>
+
+</html>
