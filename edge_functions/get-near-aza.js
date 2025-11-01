@@ -29,14 +29,12 @@ Deno.serve(async(req) => {
         }
 
         const supabase = createClient("https://czuldnytepaujjkjpwqi.supabase.co", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN6dWxkbnl0ZXBhdWpqa2pwd3FpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE2NzE0NTQsImV4cCI6MjA3NzI0NzQ1NH0.8OPIxFz3bHcxQEebxwt6j4USC-8AYjRjzPhuoxtrblo").schema("public");
-        const table = "urbanarea_ident"
-        const fields = "id_ua,text_ua,val_pop_ua,longitude,latitude";
+        const table = "aza"
+        const fields = "aza_id,Name,City,State,CenterPointLong,CenterPointLat";
 
-        // Fetch all UAs with population > 50k
         const { data, error } = await supabase
             .from(table)
-            .select(fields)
-            .gt("val_pop_ua", 50000);
+            .select(fields);
 
         if (error) throw error;
         if (!data || data.length === 0) {
@@ -52,10 +50,10 @@ Deno.serve(async(req) => {
         const R = 3958.8; // Earth radius in miles
         const results = data
             .map((r) => {
-                const dLat = ((r.latitude - lat) * Math.PI) / 180;
-                const dLon = ((r.longitude - lng) * Math.PI) / 180;
+                const dLat = ((r.CenterPointLat - lat) * Math.PI) / 180;
+                const dLon = ((r.CenterPointLong - lng) * Math.PI) / 180;
                 const lat1 = (lat * Math.PI) / 180;
-                const lat2 = (r.latitude * Math.PI) / 180;
+                const lat2 = (r.CenterPointLat * Math.PI) / 180;
                 const a =
                     Math.sin(dLat / 2) ** 2 +
                     Math.sin(dLon / 2) ** 2 * Math.cos(lat1) * Math.cos(lat2);

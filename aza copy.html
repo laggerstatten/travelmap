@@ -7,9 +7,7 @@
     <title>Identify Location + Local UAs + Routes</title>
 
     <script src="scripts/config.js"></script>
-    <script src="scripts/drivetime_local.js"></script>
-    <script src="scripts/drivetime_major.js"></script>
-    <script src="scripts/buildUAPopup.js"></script>
+    <script src="scripts/drivetime_aza.js"></script>
 
     <!-- Mapbox -->
     <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet" />
@@ -43,7 +41,7 @@
         }
         /* Drawer styling */
         
-        #result-panel {
+        #attraction-panel {
             position: fixed;
             bottom: 0;
             left: 0;
@@ -60,11 +58,11 @@
             border-top-right-radius: 8px;
         }
         
-        #result-panel.open {
+        #attraction-panel.open {
             transform: translateY(0);
         }
         
-        #result-toggle {
+        #attraction-toggle {
             position: absolute;
             top: 5px;
             left: 50%;
@@ -110,26 +108,15 @@
     <div id="map"></div>
 
     <!-- Drawer -->
-    <div id="result-panel">
-        <div id="result-toggle">▲ Show Results</div>
-        <h3>Local Urban Areas</h3>
-        <table id="local-ua-table">
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Population</th>
-                    <th>Drive Time (min)</th>
-                    <th>Distance (mi)</th>
-                </tr>
-            </thead>
-            <tbody></tbody>
-        </table>
-        <h3>Major Urban Areas (within 500 mi)</h3>
+    <div id="attraction-panel">
+        <div id="attraction-toggle">▲ Show Results</div>
+        <h3>AZA Attractions (within 500 mi)</h3>
         <table id="major-ua-table">
             <thead>
                 <tr>
                     <th>Name</th>
-                    <th>Population</th>
+                    <th>City</th>
+                    <th>State</th>
                     <th>Drive Time (min)</th>
                     <th>Distance (mi)</th>
                 </tr>
@@ -158,33 +145,33 @@
         let originLat = null;
         const routeLayerId = 'route-line';
 
-        const resultPanel = document.getElementById('result-panel');
-        const resultToggle = document.getElementById('result-toggle');
+        const attractionPanel = document.getElementById('attraction-panel');
+        const attractionToggle = document.getElementById('attraction-toggle');
 
-        resultToggle.addEventListener('click', function() {
-            const isOpen = resultPanel.classList.contains('open');
+        attractionToggle.addEventListener('click', function() {
+            const isOpen = attractionPanel.classList.contains('open');
             if (isOpen) {
-                resultPanel.classList.remove('open');
-                resultToggle.textContent = '▲ Show Results';
+                attractionPanel.classList.remove('open');
+                attractionToggle.textContent = '▲ Show Results';
             } else {
-                resultPanel.classList.add('open');
-                resultToggle.textContent = '▼ Hide Results';
+                attractionPanel.classList.add('open');
+                attractionToggle.textContent = '▼ Hide Results';
             }
         });
 
         function openDrawer() {
-            const isOpen = resultPanel.classList.contains('open');
+            const isOpen = attractionPanel.classList.contains('open');
             if (!isOpen) {
-                resultPanel.classList.add('open');
-                resultToggle.textContent = '▼ Hide Results';
+                attractionPanel.classList.add('open');
+                attractionToggle.textContent = '▼ Hide Results';
             }
         }
 
         function closeDrawer() {
-            const isOpen = resultPanel.classList.contains('open');
+            const isOpen = attractionPanel.classList.contains('open');
             if (isOpen) {
-                resultPanel.classList.remove('open');
-                resultToggle.textContent = '▲ Show Results';
+                attractionPanel.classList.remove('open');
+                attractionToggle.textContent = '▲ Show Results';
             }
         }
 
@@ -254,14 +241,14 @@
             console.log('Location info:', info);
 
             // Clear tables at start of each search
-            updateLocalUATable([]);
-            updateMajorUATable([]);
+            updateAZATable([]);
 
             buildUAPopup(info, lng, lat);
 
-            fetchLocalUA(info, lat, lng);
-            fetchMajorUA(lat, lng);
+            fetchAZA(lat, lng);
         });
+
+        //openDrawer();
     </script>
 </body>
 

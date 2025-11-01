@@ -4,11 +4,10 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Identify Location + Local UAs + Routes</title>
+    <title>AZA Zoos + Visits</title>
 
     <script src="scripts/config.js"></script>
-    <script src="scripts/drivetime_local.js"></script>
-    <script src="scripts/drivetime_major.js"></script>
+    <script src="scripts/drivetime_aza.js"></script>
     <script src="scripts/buildUAPopup.js"></script>
 
     <!-- Mapbox -->
@@ -102,6 +101,10 @@
             background-color: #f0f8ff;
             cursor: pointer;
         }
+        
+        .visited {
+            background-color: #dff0d8 !important;
+        }
     </style>
 </head>
 
@@ -112,26 +115,16 @@
     <!-- Drawer -->
     <div id="result-panel">
         <div id="result-toggle">▲ Show Results</div>
-        <h3>Local Urban Areas</h3>
-        <table id="local-ua-table">
+        <h3>AZA Zoos (within 500 mi)</h3>
+        <table id="aza-table">
             <thead>
                 <tr>
                     <th>Name</th>
-                    <th>Population</th>
+                    <th>City</th>
+                    <th>State</th>
                     <th>Drive Time (min)</th>
                     <th>Distance (mi)</th>
-                </tr>
-            </thead>
-            <tbody></tbody>
-        </table>
-        <h3>Major Urban Areas (within 500 mi)</h3>
-        <table id="major-ua-table">
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Population</th>
-                    <th>Drive Time (min)</th>
-                    <th>Distance (mi)</th>
+                    <th>Visited</th>
                 </tr>
             </thead>
             <tbody></tbody>
@@ -157,6 +150,7 @@
         let originLng = null;
         let originLat = null;
         const routeLayerId = 'route-line';
+        let visitedAZAs = new Set();
 
         const resultPanel = document.getElementById('result-panel');
         const resultToggle = document.getElementById('result-toggle');
@@ -252,15 +246,10 @@
             }
 
             console.log('Location info:', info);
-
-            // Clear tables at start of each search
-            updateLocalUATable([]);
-            updateMajorUATable([]);
-
             buildUAPopup(info, lng, lat);
 
-            fetchLocalUA(info, lat, lng);
-            fetchMajorUA(lat, lng);
+            await loadVisited();
+            fetchAZA(lat, lng);
         });
     </script>
 </body>
