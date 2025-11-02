@@ -1,7 +1,7 @@
 async function fetchMajorUA(lat, lng) {
     // --- FETCH MAJOR UAs WITHIN 500 MILES ---
     try {
-        const res3 = await fetch(SUPABASE_MAJORUA_URL, {
+        const res = await fetch(SUPABASE_MAJORUA_URL, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -12,44 +12,69 @@ async function fetchMajorUA(lat, lng) {
                 radius_miles: 500
             })
         });
-        const majorData = await res3.json();
-        console.log('Major UAs within 500 miles:', majorData);
-        const majorList = majorData.results || [];
+        const json = await res.json();
+        console.log('Major UAs within 500 miles:', json);
+        const resultList = json.results || [];
 
-        // Take top 24 most populous for drive-time comparison
-        const topMajor = majorList
-            .sort((a, b) => (b.val_pop_ua || 0) - (a.val_pop_ua || 0))
-            .slice(0, 24);
+        fetchMajorUAMatrix(resultList, lng, lat);
 
-        if (topMajor.length > 0) {
-            const coordsStr = [lng + ',' + lat]
-                .concat(topMajor.map((r) => `${r.longitude},${r.latitude}`))
-                .join(';');
 
-            const matrixUrl = `https://api.mapbox.com/directions-matrix/v1/mapbox/driving/${coordsStr}?annotations=duration,distance&access_token=${MAPBOX_TOKEN}`;
-            const matrixRes = await fetch(matrixUrl);
-            const matrixJson = await matrixRes.json();
-
-            if (matrixJson.durations && matrixJson.durations[0]) {
-                const durations = matrixJson.durations[0].slice(1);
-                const distances = matrixJson.distances[0].slice(1);
-
-                topMajor.forEach((r, i) => {
-                    r.drive_time_min = durations[i] / 60;
-                    r.drive_distance_mi = distances[i] / 1609.34;
-                });
-
-                topMajor.sort((a, b) => a.drive_time_min - b.drive_time_min);
-            }
-
-            updateMajorUATable(topMajor);
-        }
     } catch (err) {
         console.error('Error retrieving UAs or drive times:', err);
     }
 }
 
+async function fetchMajorUAMatrix(resultList, lng, lat) {
+    // --- MATRIX API CALL ---
+    if (resultList.length > 0) {
+        // Take top 24 most populous for drive-time comparison
+        resultList = resultList
+            .sort((a, b) => (b.val_pop_ua || 0) - (a.val_pop_ua || 0))
+            .slice(0, 24);
 
+        // Define batch size (max 24 destinations per request)
+        const batchSize = 5;
+        const allResults = [];
+
+        // Split into batches
+        for (let i = 0; i < resultList.length; i += batchSize) {
+            const batch = resultList.slice(i, i + batchSize);
+            const coordsStr = [lng + ',' + lat]
+                .concat(batch.map((r) => `${r.longitude},${r.latitude}`))
+                .join(';');
+
+            const matrixUrl = `https://api.mapbox.com/directions-matrix/v1/mapbox/driving/${coordsStr}?annotations=duration,distance&access_token=${MAPBOX_TOKEN}`;
+
+            try {
+                const matrixRes = await fetch(matrixUrl);
+                const matrixJson = await matrixRes.json();
+
+                if (matrixJson.durations && matrixJson.durations[0]) {
+                    const durations = matrixJson.durations[0].slice(1);
+                    const distances = matrixJson.distances[0].slice(1);
+
+                    batch.forEach((r, i) => {
+                        r.drive_time_min = durations[i] / 60;
+                        r.drive_distance_mi = distances[i] / 1609.34;
+                    });
+                }
+
+                allResults.push(...batch);
+
+                // (optional) delay between batches to avoid rate limiting
+                await new Promise((res) => setTimeout(res, 250)); // 0.25 sec pause
+            } catch (err) {
+                console.error(`Matrix batch ${i / batchSize + 1} failed:`, err);
+            }
+        }
+
+        // Combine and sort
+        allResults.sort((a, b) => a.drive_time_min - b.drive_time_min);
+        updateMajorUATable(allResults);
+    } else {
+        updateMajorUATable([]);
+    }
+}
 
 
 function updateMajorUATable(rows) {
@@ -83,87 +108,9 @@ function updateMajorUATable(rows) {
             const destLon = parseFloat(this.dataset.lon);
             const destLat = parseFloat(this.dataset.lat);
             if (!destLon || !destLat) return;
-
-            // Remove old route and destination markers/popups
-            if (map.getLayer(routeLayerId)) map.removeLayer(routeLayerId);
-            if (map.getSource(routeLayerId)) map.removeSource(routeLayerId);
-            if (window.destMarker) {
-                window.destMarker.remove();
-                window.destMarker = null;
-            }
-            if (window.destPopup) {
-                window.destPopup.remove();
-                window.destPopup = null;
-            }
-
-            // Add destination marker
-            const destMarker = new mapboxgl.Marker({
-                color: '#006400'
-            });
-            destMarker.setLngLat([destLon, destLat]);
-            destMarker.addTo(map);
-            window.destMarker = destMarker;
-
-            // Add popup for destination
-            const destPopup = new mapboxgl.Popup({
-                offset: 25
-            });
-            const popupText = `<b>${r.text_ua || 'Urban Area'}</b><br>
-                    Pop: ${r.val_pop_ua?.toLocaleString?.() || 'N/A'}<br>
-                    Drive: ${r.drive_time_min ? r.drive_time_min.toFixed(1) : '?'
-                } min (${r.drive_distance_mi ? r.drive_distance_mi.toFixed(1) : '?'
-                } mi)`;
-            destPopup.setLngLat([destLon, destLat]);
-            destPopup.setHTML(popupText);
-            destPopup.addTo(map);
-            window.destPopup = destPopup;
-
-            // Draw route
-            const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${originLng},${originLat};${destLon},${destLat}?geometries=geojson&overview=full&access_token=${MAPBOX_TOKEN}`;
-
-            try {
-                const res = await fetch(url);
-                const json = await res.json();
-                if (!json.routes || !json.routes.length) return;
-                const route = json.routes[0].geometry;
-
-                map.addSource(routeLayerId, {
-                    type: 'geojson',
-                    data: {
-                        type: 'Feature',
-                        geometry: route
-                    }
-                });
-
-                map.addLayer({
-                    id: routeLayerId,
-                    type: 'line',
-                    source: routeLayerId,
-                    layout: {
-                        'line-join': 'round',
-                        'line-cap': 'round'
-                    },
-                    paint: {
-                        'line-color': '#228B22',
-                        'line-width': 4,
-                        'line-opacity': 0.8
-                    }
-                });
-
-                // Adjust bounds with extra southern padding
-                const bounds = new mapboxgl.LngLatBounds();
-                route.coordinates.forEach((c) => bounds.extend(c));
-                map.fitBounds(bounds, {
-                    padding: {
-                        top: 50,
-                        bottom: 180,
-                        left: 50,
-                        right: 50
-                    }
-                });
-            } catch (err) {
-                console.error('Directions API failed:', err);
-            }
+            removeOldRoute();
+            addMarkerPopup(r, destLon, destLat, '#006400');
+            drawRoute(originLng, originLat, destLon, destLat, '#228B22');
             closeDrawer();
         });
 

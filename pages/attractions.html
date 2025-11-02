@@ -29,31 +29,31 @@
         <nav id="layertogglemenu"></nav>
 
         <select id="geographyType">
-            <option value="ua">Urban Area</option>
-            <option value="county">County</option>
-            <option value="cbsa">CBSA</option>
-            <option value="csa">CSA</option>
-            <option value="dma">DMA</option>
-            <option value="tz">Time Zone</option>
-            <option value="province">State</option>
-        </select>
+        <option value="ua">Urban Area</option>
+        <option value="county">County</option>
+        <option value="cbsa">CBSA</option>
+        <option value="csa">CSA</option>
+        <option value="dma">DMA</option>
+        <option value="tz">Time Zone</option>
+        <option value="province">State</option>
+      </select>
 
         <select id="geographyValue">
-            <option value="Honolulu, HI">Honolulu, HI</option>
-            <option value="Honolulu County">Honolulu County</option>
-            <option value="Urban Honolulu, HI Metro Area">
-                Urban Honolulu, HI Metro Area
-            </option>
-            <option value="El Paso, TX--NM">El Paso, TX--NM</option>
-            <option value="El Paso County">El Paso County</option>
-            <option value="Texas">Texas</option>
-            <option value="El Paso, TX Metro Area">El Paso, TX Metro Area</option>
-            <option value="El Paso-Las Cruces, TX-NM CSA">
-                El Paso-Las Cruces, TX-NM CSA
-            </option>
-            <option value="El Paso (Las Cruces)">El Paso (Las Cruces)</option>
-            <option value="Mountain">Mountain</option>
-        </select>
+        <option value="Honolulu, HI">Honolulu, HI</option>
+        <option value="Honolulu County">Honolulu County</option>
+        <option value="Urban Honolulu, HI Metro Area">
+          Urban Honolulu, HI Metro Area
+        </option>
+        <option value="El Paso, TX--NM">El Paso, TX--NM</option>
+        <option value="El Paso County">El Paso County</option>
+        <option value="Texas">Texas</option>
+        <option value="El Paso, TX Metro Area">El Paso, TX Metro Area</option>
+        <option value="El Paso-Las Cruces, TX-NM CSA">
+          El Paso-Las Cruces, TX-NM CSA
+        </option>
+        <option value="El Paso (Las Cruces)">El Paso (Las Cruces)</option>
+        <option value="Mountain">Mountain</option>
+      </select>
 
         <div id="button-container">
             <button id="fit_L48">L48</button>
@@ -72,10 +72,16 @@
             <label for="cl0o3orgw000314te6oodkezq">Satellite Geom</label>
 
             <input id="clvvt5o32098a01nucx668i03" type="radio" name="rtoggle" value="nav_bare" checked="checked" />
-            <label for="clvvt5o32098a01nucx668i03">Navigation No Boundary/POI</label>
+            <label for="clvvt5o32098a01nucx668i03">Navigation No Boundary/POI</label
+        >
 
-            <input id="cl7pshdpb000015mwy3tpm9y2" type="radio" name="rtoggle" value="physical" />
-            <label for="cl7pshdpb000015mwy3tpm9y2">Physical</label>
+        <input
+          id="cl7pshdpb000015mwy3tpm9y2"
+          type="radio"
+          name="rtoggle"
+          value="physical"
+        />
+        <label for="cl7pshdpb000015mwy3tpm9y2">Physical</label>
 
             <input id="clvx84fcd070101ph21dfavmf" type="radio" name="rtoggle" value="satellite_rebuild" />
             <label for="clvx84fcd070101ph21dfavmf">Satellite Rebuild</label>
@@ -112,8 +118,8 @@
         basemapSwitcher();
 
         // geocoder
-        addlocalGeocoding(customData_nocontext);
-        //addlocalGeocoding(customData_context, bbox, customFilter);
+        //addlocalGeocoding(customData_nocontext);
+        addlocalGeocoding(customData_context, bbox, customFilter);
 
         // After the last frame rendered before the map enters an "idle" state.
         map.on('idle', () => {

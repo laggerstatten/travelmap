@@ -8,6 +8,8 @@
 
     <script src="scripts/config.js"></script>
     <script src="scripts/drivetime_aza.js"></script>
+    <script src="scripts/drivetime.js"></script>
+
     <script src="scripts/buildUAPopup.js"></script>
 
     <!-- Mapbox -->
@@ -16,6 +18,9 @@
 
     <!-- Mapbox Search Box -->
     <script src="https://api.mapbox.com/search-js/v1.0.0-beta.17/web.js"></script>
+
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
         body {
@@ -39,6 +44,23 @@
             left: 10px;
             z-index: 10;
             width: 320px;
+        }
+        
+        #auth {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 11;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 13px;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+        }
+        
+        #auth button {
+            margin: 0 4px;
+            padding: 4px 8px;
         }
         /* Drawer styling */
         
@@ -110,6 +132,11 @@
 
 <body>
     <div id="search-box"></div>
+    <div id="auth">
+        <button id="login">Login with GitHub</button>
+        <button id="logout" style="display: none">Logout</button>
+        <span id="auth-status">Not logged in</span>
+    </div>
     <div id="map"></div>
 
     <!-- Drawer -->
@@ -132,6 +159,73 @@
     </div>
 
     <script>
+        var currentUser = null;
+        var USER_ID = null;
+
+        // --- Supabase setup ---
+        const supabase = window.supabase.createClient(
+            SUPABASE_URL,
+            SUPABASE_ANON_KEY
+        );
+
+        // After Supabase initializes
+        supabase.auth.onAuthStateChange((event, session) => {
+            if (
+                event === 'SIGNED_IN' &&
+                window.location.hash.includes('access_token')
+            ) {
+                // remove the hash fragment entirely, regardless of URL form
+                const baseUrl = window.location.href.split('#')[0];
+                // ensure no double '#' or trailing '?' are added
+                window.history.replaceState({}, document.title, baseUrl);
+            }
+        });
+
+        const loginBtn = document.getElementById('login');
+        const logoutBtn = document.getElementById('logout');
+        const statusEl = document.getElementById('auth-status');
+
+        loginBtn.addEventListener('click', async() => {
+            const {
+                error
+            } = await supabase.auth.signInWithOAuth({
+                provider: 'github',
+                options: {
+                    redirectTo: window.location.href
+                }
+            });
+            if (error) console.error('Login error:', error);
+        });
+
+        logoutBtn.addEventListener('click', async function() {
+            await supabase.auth.signOut();
+            currentUser = null;
+            USER_ID = null;
+            visitedAZAs = new Set();
+            location.reload();
+        });
+
+        supabase.auth.onAuthStateChange(function(_event, session) {
+            if (session && session.user) {
+                currentUser = session.user;
+                USER_ID = currentUser.id;
+                console.log('Logged in as:', USER_ID);
+                loadVisited(); // fetch visits once user logs in
+            } else {
+                currentUser = null;
+                USER_ID = null;
+                visitedAZAs = new Set();
+            }
+
+            var loggedIn = currentUser !== null;
+            loginBtn.style.display = loggedIn ? 'none' : 'inline-block';
+            logoutBtn.style.display = loggedIn ? 'inline-block' : 'none';
+            statusEl.textContent = loggedIn ?
+                'Logged in as ' + currentUser.user_metadata.user_name :
+                'Not logged in';
+        });
+
+        // --- Map + search setup ---
         mapboxgl.accessToken = MAPBOX_TOKEN;
         const map = new mapboxgl.Map({
             container: 'map',
@@ -142,8 +236,16 @@
 
         const searchBox = new MapboxSearchBox();
         searchBox.accessToken = mapboxgl.accessToken;
-        const searchContainer = document.getElementById('search-box');
-        searchContainer.appendChild(searchBox);
+
+        searchBox.options = {
+            language: 'en',
+            country: 'us',
+            types: ['place', 'region'],
+            proximity: [-98.5, 39.5],
+            limit: 5
+        };
+
+        document.getElementById('search-box').appendChild(searchBox);
 
         let marker = null;
         let popup = null;

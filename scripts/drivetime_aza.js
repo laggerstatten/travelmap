@@ -28,29 +28,46 @@ async function fetchAZA(lat, lng) {
 async function fetchAZAMatrix(resultList, lng, lat) {
     // --- MATRIX API CALL ---
     if (resultList.length > 0) {
-        const sliced = resultList.slice(0, 24);
-        const coordsStr = [lng + ',' + lat]
-            .concat(sliced.map((r) => `${r.CenterPointLong},${r.CenterPointLat}`))
-            .join(';');
 
-        const matrixUrl = `https://api.mapbox.com/directions-matrix/v1/mapbox/driving/${coordsStr}?annotations=duration,distance&access_token=${MAPBOX_TOKEN}`;
-        const matrixRes = await fetch(matrixUrl);
-        const matrixJson = await matrixRes.json();
+        // Define batch size (max 24 destinations per request)
+        const batchSize = 5;
+        const allResults = [];
 
-        if (matrixJson.durations && matrixJson.durations[0]) {
-            const durations = matrixJson.durations[0].slice(1);
-            const distances = matrixJson.distances[0].slice(1);
+        // Split into batches
+        for (let i = 0; i < resultList.length; i += batchSize) {
+            const batch = resultList.slice(i, i + batchSize);
+            const coordsStr = [lng + ',' + lat]
+                .concat(batch.map((r) => `${r.CenterPointLong},${r.CenterPointLat}`))
+                .join(';');
 
-            sliced.forEach((r, i) => {
-                r.drive_time_min = durations[i] / 60;
-                r.drive_distance_mi = distances[i] / 1609.34;
-            });
+            const matrixUrl = `https://api.mapbox.com/directions-matrix/v1/mapbox/driving/${coordsStr}?annotations=duration,distance&access_token=${MAPBOX_TOKEN}`;
 
-            sliced.sort((a, b) => a.drive_time_min - b.drive_time_min);
-            updateAZATable(sliced);
-        } else {
-            updateAZATable(sliced);
+            try {
+                const matrixRes = await fetch(matrixUrl);
+                const matrixJson = await matrixRes.json();
+
+                if (matrixJson.durations && matrixJson.durations[0]) {
+                    const durations = matrixJson.durations[0].slice(1);
+                    const distances = matrixJson.distances[0].slice(1);
+
+                    batch.forEach((r, i) => {
+                        r.drive_time_min = durations[i] / 60;
+                        r.drive_distance_mi = distances[i] / 1609.34;
+                    });
+                }
+
+                allResults.push(...batch);
+
+                // (optional) delay between batches to avoid rate limiting
+                await new Promise((res) => setTimeout(res, 250)); // 0.25 sec pause
+            } catch (err) {
+                console.error(`Matrix batch ${i / batchSize + 1} failed:`, err);
+            }
         }
+
+        // Combine and sort
+        allResults.sort((a, b) => a.drive_time_min - b.drive_time_min);
+        updateAZATable(allResults);
     } else {
         updateAZATable([]);
     }
@@ -102,87 +119,9 @@ function updateAZATable(rows) {
             const destLon = parseFloat(this.dataset.lon);
             const destLat = parseFloat(this.dataset.lat);
             if (!destLon || !destLat) return;
-
-            // Remove old route and destination markers/popups
-            if (map.getLayer(routeLayerId)) map.removeLayer(routeLayerId);
-            if (map.getSource(routeLayerId)) map.removeSource(routeLayerId);
-            if (window.destMarker) {
-                window.destMarker.remove();
-                window.destMarker = null;
-            }
-            if (window.destPopup) {
-                window.destPopup.remove();
-                window.destPopup = null;
-            }
-
-            // Add destination marker
-            const destMarker = new mapboxgl.Marker({
-                color: '#006400'
-            });
-            destMarker.setLngLat([destLon, destLat]);
-            destMarker.addTo(map);
-            window.destMarker = destMarker;
-
-            // Add popup for destination
-            const destPopup = new mapboxgl.Popup({
-                offset: 25
-            });
-            const popupText = `<b>${r.Name}</b><br>
-            ${r.City}, ${r.State}<br>
-            Drive: ${r.drive_time_min ? r.drive_time_min.toFixed(1) : '?'
-                } min (${r.drive_distance_mi ? r.drive_distance_mi.toFixed(1) : '?'
-                } mi)`;
-            destPopup.setLngLat([destLon, destLat]);
-            destPopup.setHTML(popupText);
-            destPopup.addTo(map);
-            window.destPopup = destPopup;
-
-            // Draw route
-            const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${originLng},${originLat};${destLon},${destLat}?geometries=geojson&overview=full&access_token=${MAPBOX_TOKEN}`;
-
-            try {
-                const res = await fetch(url);
-                const json = await res.json();
-                if (!json.routes || !json.routes.length) return;
-                const route = json.routes[0].geometry;
-
-                map.addSource(routeLayerId, {
-                    type: 'geojson',
-                    data: {
-                        type: 'Feature',
-                        geometry: route
-                    }
-                });
-
-                map.addLayer({
-                    id: routeLayerId,
-                    type: 'line',
-                    source: routeLayerId,
-                    layout: {
-                        'line-join': 'round',
-                        'line-cap': 'round'
-                    },
-                    paint: {
-                        'line-color': '#228B22',
-                        'line-width': 4,
-                        'line-opacity': 0.8
-                    }
-                });
-
-                // Adjust bounds with extra southern padding
-                const bounds = new mapboxgl.LngLatBounds();
-                route.coordinates.forEach((c) => bounds.extend(c));
-                map.fitBounds(bounds, {
-                    padding: {
-                        top: 50,
-                        bottom: 180,
-                        left: 50,
-                        right: 50
-                    }
-                });
-            } catch (err) {
-                console.error('Directions API failed:', err);
-            }
+            removeOldRoute();
+            addMarkerPopupAZA(r, destLon, destLat, '#006400');
+            drawRoute(originLng, originLat, destLon, destLat, '#228B22');
             closeDrawer();
         });
 
@@ -190,32 +129,95 @@ function updateAZATable(rows) {
     });
 }
 
+function addMarkerPopupAZA(r, destLon, destLat, color) {
+    // Add destination marker
+    const destMarker = new mapboxgl.Marker({
+        color: color
+    });
+    destMarker.setLngLat([destLon, destLat]);
+    destMarker.addTo(map);
+    window.destMarker = destMarker;
+
+    // Add popup for destination
+    const destPopup = new mapboxgl.Popup({
+        offset: 25
+    });
+    const popupText = `<b>${r.Name}</b><br>
+                ${r.City}, ${r.State}<br>
+                Drive: ${r.drive_time_min ? r.drive_time_min.toFixed(1) : '?'
+        } min (${r.drive_distance_mi ? r.drive_distance_mi.toFixed(1) : '?'
+        } mi)`;
+    destPopup.setLngLat([destLon, destLat]);
+    destPopup.setHTML(popupText);
+    destPopup.addTo(map);
+    window.destPopup = destPopup;
+}
+
+
+/**
+    async function loadVisited() {
+        // --- Fetch visited zoos for user ---
+    
+        try {
+            const res = await fetch(GET_USER_VISITS_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    user_id: USER_ID
+                })
+            });
+            const json = await res.json();
+            if (json && json.success && Array.isArray(json.results)) {
+                visitedAZAs = new Set(json.results.map((r) => r.aza_id));
+            } else {
+                console.warn('Unexpected response from get-aza-visit:', json);
+                visitedAZAs = new Set();
+            }
+    
+            console.log('Visited zoos:', visitedAZAs);
+        } catch (err) {
+            console.error('Failed to load visited:', err);
+        }
+    }
+*/
+
 async function loadVisited() {
-    // --- Fetch visited zoos for user ---
+    if (!USER_ID) {
+        console.warn("No logged-in user — skipping loadVisited");
+        visitedAZAs = new Set();
+        return visitedAZAs;
+    }
 
     try {
-        const res = await fetch(GET_USER_VISITS_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                user_id: USER_ID
-            })
+        var res = await fetch(GET_USER_VISITS_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ user_id: USER_ID })
         });
-        const json = await res.json();
+
+        var json = await res.json();
+
         if (json && json.success && Array.isArray(json.results)) {
-            visitedAZAs = new Set(json.results.map((r) => r.aza_id));
+            visitedAZAs = new Set(
+                json.results.map(function(r) { return r.aza_id; })
+            );
         } else {
-            console.warn('Unexpected response from get-aza-visit:', json);
+            console.warn("Unexpected response from get-user-visits:", json);
             visitedAZAs = new Set();
         }
 
-        console.log('Visited zoos:', visitedAZAs);
+        console.log("Visited zoos:", visitedAZAs);
+        return visitedAZAs;
     } catch (err) {
-        console.error('Failed to load visited:', err);
+        console.error("Failed to load visited:", err);
+        visitedAZAs = new Set();
+        return visitedAZAs;
     }
 }
+
+
 
 
 async function markVisited(aza_id) {
