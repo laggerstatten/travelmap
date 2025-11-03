@@ -32,14 +32,75 @@
             'pk.eyJ1IjoiZXJpY3NjaGFsbCIsImEiOiJjbDBsbmpvNHYwY3JhM2N0a2Ribm1rZ2k5In0.XY-ziSu8DLnv5UIstoSGRQ';
         MapboxSearchBox.accessToken = mapboxgl.accessToken; // <-- this line is required
     </script>
-    <script src="scripts/core.js"></script>
-    <script src="scripts/drives.js"></script>
-    <script src="scripts/timeline.js"></script>
-    <script src="scripts/week.js"></script>
-    <script src="scripts/main.js"></script>
-    <script src="scripts/routes.js"></script>
+    <script src="scripts/good/datetime.js"></script>
+    <script src="scripts/good/externaldata.js"></script>
 
-    <script></script>
+    <script src="scripts/eventeditor.js"></script>
+    <script src="scripts/routing.js"></script>
+    <script src="scripts/timeline_ui.js"></script>
+    <script src="scripts/timeline_card.js"></script>
+    <script src="scripts/timeline_ehandling.js"></script>
+    <script src="scripts/nonpriority/week.js"></script>
+
+    <script>
+        // Public render switcher
+        function render() {
+            if (viewMode === 'timeline') renderTimeline();
+            else renderWeek();
+        }
+
+        function save(noRender = false) {
+            localStorage.setItem('tripEvents', JSON.stringify(events));
+            //if (!noRender) window.TripCal.render();
+            if (!noRender) render();
+        }
+
+        function newId() {
+            return crypto.randomUUID ?
+                crypto.randomUUID() :
+                Date.now() + Math.random().toString(36).slice(2);
+        }
+
+        function getEventById(id) {
+            return events.find((e) => String(e.id) === String(id));
+        }
+
+        /* ---------- State ---------- */
+        let events = JSON.parse(localStorage.getItem('tripEvents')) || [];
+        let viewMode = 'timeline';
+
+        // Toolbar actions
+        document.getElementById('mode-timeline').onclick = () => {
+            viewMode = 'timeline';
+            render();
+        };
+
+        document.getElementById('mode-week').onclick = () => {
+            viewMode = 'week';
+            render();
+        };
+
+        document.getElementById('add-event').onclick = () => {
+            events.push({
+                id: newId(),
+                name: '(untitled)',
+                type: 'stop',
+                start: '',
+                end: '',
+                duration: ''
+            });
+            save();
+        };
+
+        document.getElementById('sort-date').onclick = () => sortByDate();
+        document.getElementById('insert-drives').onclick = () =>
+            insertDriveSegments();
+        document.getElementById('gen-routes').onclick = () => generateRoutes();
+        document.getElementById('clear-auto').onclick = () => clearAutoDrives();
+
+        // Initial render
+        render();
+    </script>
 </body>
 
 </html>

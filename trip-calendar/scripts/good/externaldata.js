@@ -9,7 +9,7 @@ async function getRouteInfo(origin, destination) {
 
     return {
         geometry: route.geometry, // GeoJSON line
-        distance_km: route.distance / 1000,
+        distance_mi: route.distance / 1609.34,
         duration_min: route.duration / 60,
     };
 }
