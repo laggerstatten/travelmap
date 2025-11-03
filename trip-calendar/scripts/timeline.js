@@ -1,52 +1,46 @@
-(function () {
-  const S = window.TripCal;
+(function() {
+        const S = window.TripCal;
 
-  function dayStr(iso) {
-    if (!iso) return '';
-    return new Date(iso).toDateString();
-  }
+        function dayStr(iso) {
+            if (!iso) return '';
+            return new Date(iso).toDateString();
+        }
 
-  function cardBadgeClass(e) {
-    if (e.type !== 'drive') return '';
-    if (e.autoDrive && !e.manualEdit) return 'auto';
-    if (e.manualEdit) return 'edited';
-    return 'manual';
-  }
+        function cardBadgeClass(e) {
+            if (e.type !== 'drive') return '';
+            if (e.autoDrive && !e.manualEdit) return 'auto';
+            if (e.manualEdit) return 'edited';
+            return 'manual';
+        }
 
-  function buildInlineEditor(e, card) {
+        function buildInlineEditor(e, card) {
+            // Prevent duplicates
+            card.querySelector('.inline-editor') ?.remove();
 
-    // Prevent duplicates
-    card.querySelector('.inline-editor')?.remove();
+            card.classList.add('editing');
 
-    card.classList.add('editing');
-
-    const editor = document.createElement('form');
-    editor.className = 'inline-editor';
-    editor.innerHTML = `
+            const editor = document.createElement('form');
+            editor.className = 'inline-editor';
+            editor.innerHTML = `
     <label>Name
       <input name="name" value="${e.name || ''}" />
     </label>
     <label>Type
       <select name="type">
-        <option value="stop" ${
-          e.type === 'stop' ? 'selected' : ''
-        }>Stop</option>
-        <option value="drive" ${
-          e.type === 'drive' ? 'selected' : ''
-        }>Drive</option>
-        <option value="lodging" ${
-          e.type === 'lodging' ? 'selected' : ''
-        }>Lodging</option>
-        <option value="break" ${
-          e.type === 'break' ? 'selected' : ''
-        }>Break</option>
+        <option value="stop" ${e.type === 'stop' ? 'selected' : ''
+      }>Stop</option>
+        <option value="drive" ${e.type === 'drive' ? 'selected' : ''
+      }>Drive</option>
+        <option value="lodging" ${e.type === 'lodging' ? 'selected' : ''
+      }>Lodging</option>
+        <option value="break" ${e.type === 'break' ? 'selected' : ''
+      }>Break</option>
       </select>
     </label>
 
     <label>Location
-      <mapbox-search-box id="searchbox-${e.id}" value="${
-      e.location_name || ''
-    }"></mapbox-search-box>
+      <mapbox-search-box id="searchbox-${e.id}" value="${e.location_name || ''
+      }"></mapbox-search-box>
     </label>
 
     <label>Start
@@ -56,8 +50,7 @@
       <input type="datetime-local" name="end" value="${e.end || ''}" />
     </label>
     <label>Duration (hours)
-      <input type="number" step="0.25" name="duration" value="${
-        e.duration || ''
+      <input type="number" step="0.25" name="duration" value="${e.duration || ''
       }" />
     </label>
     <div class="hint">Enter duration to auto-calc end; otherwise set end explicitly.</div>
@@ -67,108 +60,119 @@
     </div>
   `;
 
-    card.appendChild(editor);
+            card.appendChild(editor);
 
-    // --- Mapbox SearchBox (custom element) ---
-    // Works with v2.x web.js. Avoids 401 "missing access_token".
-    const searchEl = editor.querySelector(`#searchbox-${e.id}`);
-    if (searchEl) {
-      // global backup already set in index.html; set per-element to be safe:
-      try {
-        searchEl.accessToken = mapboxgl.accessToken;
-      } catch {}
-      searchEl.addEventListener('retrieve', (ev) => {
-        const f = ev.detail?.features?.[0];
-        if (f?.geometry) {
-          e.lat = f.geometry.coordinates[1];
-          e.lon = f.geometry.coordinates[0];
-          e.location_name =
-            f.properties?.name ||
-            f.properties?.place_formatted ||
-            f.place_name ||
-            '';
+            // --- Mapbox SearchBox (custom element) ---
+            // Works with v2.x web.js. Avoids 401 "missing access_token".
+            const searchEl = editor.querySelector(`#searchbox-${e.id}`);
+            if (searchEl) {
+                // global backup already set in index.html; set per-element to be safe:
+                try {
+                    searchEl.accessToken = mapboxgl.accessToken;
+                } catch {}
+                searchEl.addEventListener('retrieve', (ev) => {
+                    const f = ev.detail ?.features ?.[0];
+                    if (f ?.geometry) {
+                        e.lat = f.geometry.coordinates[1];
+                        e.lon = f.geometry.coordinates[0];
+                        e.location_name =
+                            f.properties ?.name ||
+                            f.properties ?.place_formatted ||
+                            f.place_name ||
+                            '';
+
+                        // if untitled, use the searched name
+                        if (!e.name || e.name.trim() === '' || e.name === '(untitled)') {
+                            e.name = e.location_name;
+                            const nameInput = editor.querySelector('input[name="name"]');
+                            if (nameInput) nameInput.value = e.name;
+                        }
+                    }
+                });
+            }
+
+            // Submit
+            editor.addEventListener('submit', (ev) => {
+                ev.preventDefault();
+                const data = Object.fromEntries(new FormData(editor).entries());
+
+                if (data.duration && data.start) {
+                    data.end = S.endFromDuration(data.start, data.duration);
+                }
+
+                // Flip drive badge if an auto drive gets edited
+                if (e.type === 'drive' && e.autoDrive) {
+                    e.manualEdit = true;
+                    e.autoDrive = false;
+                }
+                Object.assign(e, data);
+                card.removeAttribute('draggable');
+                card.classList.remove('editing');
+                editor.remove();
+                S.save();
+            });
+
+            // Cancel
+            editor.querySelector('.cancel').onclick = () => {
+                card.classList.remove('editing');
+                editor.remove();
+            };
         }
-      });
-    }
 
-    // Submit
-    editor.addEventListener('submit', (ev) => {
-      ev.preventDefault();
-      const data = Object.fromEntries(new FormData(editor).entries());
+        S.renderTimeline = function() {
+                const cal = document.getElementById('calendar');
+                cal.className = 'timeline';
+                cal.innerHTML = '';
+                S.sortByDateInPlace(S.events);
 
-      if (data.duration && data.start) {
-        data.end = S.endFromDuration(data.start, data.duration);
-      }
+                let lastDay = '';
+                S.events.forEach((e) => {
+                            const dStr = e.start ? dayStr(e.start) : '';
+                            if (dStr && dStr !== lastDay) {
+                                const div = document.createElement('div');
+                                div.className = 'day-divider';
+                                div.textContent = dStr;
+                                cal.appendChild(div);
+                                lastDay = dStr;
+                            }
 
-      // Flip drive badge if an auto drive gets edited
-      if (e.type === 'drive' && e.autoDrive) {
-        e.manualEdit = true;
-        e.autoDrive = false;
-      }
-      Object.assign(e, data);
-      card.removeAttribute('draggable');
-      card.classList.remove('editing');
-      editor.remove();
-      S.save();
-    });
+                            // rails + card container
+                            const wrapper = document.createElement('div');
+                            wrapper.className = 'rail-pair';
 
-    // Cancel
-    editor.querySelector('.cancel').onclick = () => {
-      card.classList.remove('editing');
-      editor.remove();
-    };
-  }
-
-  S.renderTimeline = function () {
-    const cal = document.getElementById('calendar');
-    cal.className = 'timeline';
-    cal.innerHTML = '';
-    S.sortByDateInPlace(S.events);
-
-    let lastDay = '';
-    S.events.forEach((e) => {
-      const dStr = e.start ? dayStr(e.start) : '';
-      if (dStr && dStr !== lastDay) {
-        const div = document.createElement('div');
-        div.className = 'day-divider';
-        div.textContent = dStr;
-        cal.appendChild(div);
-        lastDay = dStr;
-      }
-
-      // rails + card container
-      const wrapper = document.createElement('div');
-      wrapper.className = 'rail-pair';
-
-      const rails = document.createElement('div');
-      rails.className = 'rails';
-      rails.innerHTML = `
+                            const rails = document.createElement('div');
+                            rails.className = 'rails';
+                            rails.innerHTML = `
         <div class="insolation-rail"></div>
         <div class="weather-rail"></div>
       `;
-      wrapper.appendChild(rails);
+                            wrapper.appendChild(rails);
 
-      const card = document.createElement('div');
-      card.className = `event timeline-card ${
-        e.type || 'stop'
-      } ${cardBadgeClass(e)}`;
-      card.dataset.id = e.id;
-      card.innerHTML = `
+                            const card = document.createElement('div');
+                            card.className = `event timeline-card ${e.type || 'stop'
+        } ${cardBadgeClass(e)}`;
+                            card.dataset.id = e.id;
+                            card.innerHTML = `
   <div class="title">${e.name || '(untitled)'}</div>
   <div class="subtitle">
     ${e.type || 'stop'}
     ${e.location_name ? ' • ' + e.location_name : ''}
     ${e.lat && e.lon ? `<span class="coord-pill">📍</span>` : ''}
-    ${e.nextDistanceKm ? `<div class="drive-info">🚗 ${e.nextDistanceKm} km • ${e.nextDurationMin} min</div>` : ""}
-    ${e.type === "drive" && e.distanceKm ? `<div class="drive-info">🚗 ${e.distanceKm} km • ${e.durationMin} min</div>` : ""}
+    ${e.nextDistanceKm
+          ? `<div class="drive-info">🚗 ${e.nextDistanceKm} km • ${e.nextDurationMin} min</div>`
+          : ''
+        }
+    ${e.type === 'drive' && e.distanceKm
+          ? `<div class="drive-info">🚗 ${e.distanceKm} km • ${e.durationMin} min</div>`
+          : ''
+        }
 
 
   </div>
-  <div class="meta">${
-    e.start || e.end
-      ? `${S.fmtDate(e.start)}${e.end ? ' → ' + S.fmtDate(e.end) : ''}`
-      : 'No date set'
-  }</div>
+  <div class="meta">${e.start || e.end
+          ? `${S.fmtDate(e.start)}${e.end ? ' → ' + S.fmtDate(e.end) : ''}`
+          : 'No date set'
+        }</div>
   <div class="card-footer">
     <button class="edit-btn">Edit</button>
     <button class="del-btn">Delete</button>
