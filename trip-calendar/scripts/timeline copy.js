@@ -14,109 +14,77 @@
   }
 
   function buildInlineEditor(e, card) {
-
-    // Prevent duplicates
-    card.querySelector('.inline-editor')?.remove();
-
-    card.classList.add('editing');
-
-    const editor = document.createElement('form');
+    const editor = document.createElement('div');
     editor.className = 'inline-editor';
     editor.innerHTML = `
-    <label>Name
-      <input name="name" value="${e.name || ''}" />
-    </label>
-    <label>Type
-      <select name="type">
-        <option value="stop" ${
-          e.type === 'stop' ? 'selected' : ''
-        }>Stop</option>
-        <option value="drive" ${
-          e.type === 'drive' ? 'selected' : ''
-        }>Drive</option>
-        <option value="lodging" ${
-          e.type === 'lodging' ? 'selected' : ''
-        }>Lodging</option>
-        <option value="break" ${
-          e.type === 'break' ? 'selected' : ''
-        }>Break</option>
-      </select>
-    </label>
+      <label>Name
+        <input name="name" value="${e.name || ''}" />
+      </label>
+      <label>Type
+        <select name="type">
+          <option value="stop" ${
+            e.type === 'stop' ? 'selected' : ''
+          }>Stop</option>
+          <option value="drive" ${
+            e.type === 'drive' ? 'selected' : ''
+          }>Drive</option>
+          <option value="lodging" ${
+            e.type === 'lodging' ? 'selected' : ''
+          }>Lodging</option>
+          <option value="break" ${
+            e.type === 'break' ? 'selected' : ''
+          }>Break</option>
+        </select>
+      </label>
+      <label>Start
+        <input type="datetime-local" name="start" value="${e.start || ''}" />
+      </label>
+      <label>End
+        <input type="datetime-local" name="end" value="${e.end || ''}" />
+      </label>
+      <label>Duration (hours)
+        <input type="number" step="0.25" name="duration" value="${
+          e.duration || ''
+        }" />
+      </label>
+      <div class="hint">Enter duration to auto-calc end; otherwise set end explicitly.</div>
+      <div class="actions">
+        <button class="small save">Save</button>
+        <button class="small cancel">Cancel</button>
+      </div>
+    `;
 
-    <label>Location
-      <mapbox-search-box id="searchbox-${e.id}" value="${
-      e.location_name || ''
-    }"></mapbox-search-box>
-    </label>
+    // disable drag while editing
+    card.setAttribute('draggable', 'false');
 
-    <label>Start
-      <input type="datetime-local" name="start" value="${e.start || ''}" />
-    </label>
-    <label>End
-      <input type="datetime-local" name="end" value="${e.end || ''}" />
-    </label>
-    <label>Duration (hours)
-      <input type="number" step="0.25" name="duration" value="${
-        e.duration || ''
-      }" />
-    </label>
-    <div class="hint">Enter duration to auto-calc end; otherwise set end explicitly.</div>
-    <div class="actions">
-      <button type="submit" class="small save">Save</button>
-      <button type="button" class="small cancel">Cancel</button>
-    </div>
-  `;
-
-    card.appendChild(editor);
-
-    // --- Mapbox SearchBox (custom element) ---
-    // Works with v2.x web.js. Avoids 401 "missing access_token".
-    const searchEl = editor.querySelector(`#searchbox-${e.id}`);
-    if (searchEl) {
-      // global backup already set in index.html; set per-element to be safe:
-      try {
-        searchEl.accessToken = mapboxgl.accessToken;
-      } catch {}
-      searchEl.addEventListener('retrieve', (ev) => {
-        const f = ev.detail?.features?.[0];
-        if (f?.geometry) {
-          e.lat = f.geometry.coordinates[1];
-          e.lon = f.geometry.coordinates[0];
-          e.location_name =
-            f.properties?.name ||
-            f.properties?.place_formatted ||
-            f.place_name ||
-            '';
-        }
-      });
-    }
-
-    // Submit
-    editor.addEventListener('submit', (ev) => {
-      ev.preventDefault();
-      const data = Object.fromEntries(new FormData(editor).entries());
-
+    editor.querySelector('.save').onclick = () => {
+      const data = {
+        name: editor.querySelector('[name="name"]').value.trim(),
+        type: editor.querySelector('[name="type"]').value,
+        start: editor.querySelector('[name="start"]').value,
+        end: editor.querySelector('[name="end"]').value,
+        duration: editor.querySelector('[name="duration"]').value
+      };
       if (data.duration && data.start) {
         data.end = S.endFromDuration(data.start, data.duration);
       }
-
-      // Flip drive badge if an auto drive gets edited
       if (e.type === 'drive' && e.autoDrive) {
         e.manualEdit = true;
         e.autoDrive = false;
       }
       Object.assign(e, data);
       card.removeAttribute('draggable');
-      card.classList.remove('editing');
-      editor.remove();
       S.save();
-    });
-
+    };
+    
     // Cancel
     editor.querySelector('.cancel').onclick = () => {
       card.classList.remove('editing');
+      card.removeAttribute('draggable');
       editor.remove();
     };
+
+    return editor;
   }
 
   S.renderTimeline = function () {
@@ -175,7 +143,7 @@
         if (card.classList.contains('editing')) return;
         card.classList.add('editing');
         const editor = buildInlineEditor(e, card);
-        //card.appendChild(editor);
+        card.appendChild(editor);
       };
 
       card.querySelector('.del-btn').onclick = (ev) => {

@@ -7,6 +7,11 @@
     <link rel="stylesheet" href="styles/base.css" />
     <link rel="stylesheet" href="styles/timeline.css" />
     <link rel="stylesheet" href="styles/week.css" />
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet" />
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+
+    <!-- Mapbox Search Box -->
+    <script src="https://api.mapbox.com/search-js/v1.0.0-beta.17/web.js"></script>
 </head>
 
 <body>
@@ -21,6 +26,11 @@
 
     <div id="calendar" class="timeline"></div>
 
+    <script>
+        mapboxgl.accessToken =
+            'pk.eyJ1IjoiZXJpY3NjaGFsbCIsImEiOiJjbDBsbmpvNHYwY3JhM2N0a2Ribm1rZ2k5In0.XY-ziSu8DLnv5UIstoSGRQ';
+        MapboxSearchBox.accessToken = mapboxgl.accessToken; // <-- this line is required
+    </script>
     <script src="scripts/core.js"></script>
     <script src="scripts/drives.js"></script>
     <script src="scripts/timeline.js"></script>

@@ -173,3 +173,29 @@
 .event.editing[draggable='true'] {
     pointer-events: none;
 }
+
+
+/* Prevent parent cards from blocking input clicks */
+
+.event.editing {
+    position: relative;
+    z-index: 20;
+    pointer-events: auto;
+}
+
+.event.editing .details,
+.event.editing .card-footer {
+    pointer-events: none;
+    /* stop drag/click capture */
+}
+
+.event.editing .inline-editor {
+    pointer-events: auto;
+    position: relative;
+    z-index: 21;
+    background: #fff;
+    border: 1px solid #ccc;
+    padding: 8px;
+    border-radius: 6px;
+    margin-top: 6px;
+}
