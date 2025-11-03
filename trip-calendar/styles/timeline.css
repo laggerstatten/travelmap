@@ -1,86 +1,175 @@
-/* timeline layout: [insolation | cards | weather] fixed width centered */
+/* --- Base Timeline Layout --- */
 
 #calendar.timeline {
-    display: grid;
-    grid-template-columns: 36px minmax(0, var(--card-width)) 36px;
-    justify-content: center;
-    gap: var(--timeline-gap);
-    padding: 16px 12px 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 16px 0 40px;
+    gap: 14px;
+    background: #fafafa;
 }
 
+
+/* Day separator */
+
 .day-divider {
-    grid-column: 1 / -1;
-    margin: 16px 0 8px;
-    padding-top: 8px;
+    width: var(--card-width);
     border-top: 1px dashed #d1d5db;
     color: #374151;
     font-weight: 600;
+    padding-top: 8px;
+    margin-top: 20px;
 }
 
-.timeline-row {
-    display: contents;
-    /* allows three columns per row */
+
+/* --- Rails container (side-by-side) --- */
+
+.rail-pair {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    width: var(--card-width);
+    position: relative;
 }
 
-.insolation-rail,
-.weather-rail {
-    height: 64px;
-    margin: 4px 0;
-    border-radius: 4px;
+.rails {
+    position: absolute;
+    left: -48px;
+    top: 16px;
+    height: 48px;
+    display: flex;
+    flex-direction: row;
+    gap: 4px;
+    width: 32px;
 }
 
-.insolation-rail {
+.rails .insolation-rail,
+.rails .weather-rail {
+    flex: 1;
+    height: 100%;
+    border-radius: 3px;
+}
+
+.rails .insolation-rail {
     background: linear-gradient(to top, #ffe9a6, #ffe17a);
 }
 
-.weather-rail {
+.rails .weather-rail {
     background: linear-gradient(to top, #bfe2ff, #ffffff);
 }
 
+
+/* --- Card --- */
+
 .event.timeline-card {
-    padding: 10px 12px;
-    min-height: 64px;
+    position: relative;
+    width: var(--card-width);
+    min-height: 80px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    padding: 12px 14px 10px;
     display: flex;
     flex-direction: column;
+    justify-content: space-between;
+    gap: 6px;
+    border-left: 5px solid #e5e7eb;
+    z-index: 1;
+}
+
+.event.timeline-card.editing {
+    background: #fff8e1;
+    z-index: 10;
+}
+
+
+/* Text inside card */
+
+.event .title {
+    font-weight: 600;
+}
+
+.event .subtitle {
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.event .meta {
+    font-size: 12px;
+    color: #6b7280;
+    margin-top: auto;
+}
+
+
+/* Buttons inside card footer */
+
+.card-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.card-footer button {
+    background: #f3f4f6;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    font-size: 12px;
+    padding: 3px 6px;
+    cursor: pointer;
+}
+
+.card-footer button:hover {
+    background: #e5e7eb;
+}
+
+
+/* --- Inline editor --- */
+
+.inline-editor {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    margin-top: 8px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    position: relative;
+    z-index: 20;
+}
+
+.inline-editor label {
+    font-size: 12px;
+    color: #374151;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.inline-editor input,
+.inline-editor select {
+    font: inherit;
+    padding: 5px 6px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: #fff;
+}
+
+.inline-editor .actions {
+    display: flex;
+    justify-content: flex-end;
     gap: 6px;
 }
 
-.event .header .context-btn {
-    border: none;
-    background: transparent;
-    cursor: pointer;
-    font-size: 18px;
-    line-height: 1;
+.inline-editor .hint {
+    font-size: 11px;
+    color: #6b7280;
 }
 
-.card-menu {
-    position: absolute;
-    top: 8px;
-    right: 28px;
-    display: none;
-    flex-direction: column;
-    background: #fff;
-    border: 1px solid #e5e7eb;
-    border-radius: 6px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-}
 
-.card-menu button {
-    background: none;
-    border: none;
-    text-align: left;
-    padding: 6px 10px;
-    cursor: pointer;
-}
+/* Disable drag while editing */
 
-.card-menu button:hover {
-    background: #f3f4f6;
-}
-
-.event:hover .card-menu {
-    display: flex;
-}
-
-.event.dragging {
-    opacity: 0.65;
+.event.editing[draggable='true'] {
+    pointer-events: none;
 }

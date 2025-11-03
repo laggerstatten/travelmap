@@ -44,12 +44,15 @@
     };
 
     /* ---------- Utility: compute end from duration (hours, local) ---------- */
-    S.endFromDuration = function(startISO, hoursStr) {
+    S.endFromDuration = function(startLocal, hoursStr) {
         const hrs = parseFloat(hoursStr);
-        if (!startISO || !isFinite(hrs)) return "";
-        const start = new Date(startISO);
+        if (!startLocal || !isFinite(hrs)) return "";
+        const start = new Date(startLocal);
         const end = new Date(start.getTime() + hrs * 3600000);
-        // keep minute precision for input[type=datetime-local]
-        return end.toISOString().slice(0, 16);
+        // return value in local time for input[type=datetime-local]
+        const tzOffset = end.getTimezoneOffset() * 60000;
+        const localISO = new Date(end - tzOffset).toISOString().slice(0, 16);
+        return localISO;
     };
+
 })();

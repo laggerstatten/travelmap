@@ -191,3 +191,29 @@ button.small {
     padding: 0.3rem 0.5rem;
     font-size: 12px;
 }
+
+.event.editing {
+    z-index: 10;
+    position: relative;
+}
+
+.inline-editor {
+    margin-top: 10px;
+    padding: 10px;
+    border-radius: 6px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    z-index: 10;
+    position: relative;
+}
+
+.inline-editor input,
+.inline-editor select {
+    background: #fff;
+}
+
+.event.editing {
+    background: #fff8e1;
+    z-index: 11;
+    position: relative;
+}

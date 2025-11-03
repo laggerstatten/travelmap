@@ -56,16 +56,30 @@
     border-radius: 8px;
     background: #e6f3ff;
     border: 1px solid #cfe8ff;
-    padding: 6px;
+    padding: 8px 10px;
     overflow: hidden;
 }
 
 .week-event .title {
+    font-size: 13px;
     font-weight: 600;
-    font-size: 12px;
+    margin-bottom: 2px;
 }
 
 .week-event .time {
     font-size: 11px;
     color: #4b5563;
+}
+
+#calendar.week {
+    display: grid;
+    grid-template-rows: auto 1fr;
+    overflow: hidden;
+}
+
+.week-body {
+    display: grid;
+    grid-template-columns: 60px repeat(7, 1fr);
+    grid-auto-rows: var(--hour-row);
+    overflow-y: auto;
 }
