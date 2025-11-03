@@ -199,3 +199,12 @@
     border-radius: 6px;
     margin-top: 6px;
 }
+
+.coord-pill {
+    background: #e6f3ff;
+    border: 1px solid #a8d0ff;
+    border-radius: 6px;
+    padding: 1px 6px;
+    font-size: 11px;
+    margin-left: 4px;
+}

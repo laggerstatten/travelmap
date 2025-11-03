@@ -3,11 +3,11 @@
     window.TripCal = S;
 
     /* ---------- State ---------- */
-    S.events = JSON.parse(localStorage.getItem("tripEvents")) || [];
-    S.viewMode = "timeline";
+    S.events = JSON.parse(localStorage.getItem('tripEvents')) || [];
+    S.viewMode = 'timeline';
 
     S.save = function(noRender = false) {
-        localStorage.setItem("tripEvents", JSON.stringify(S.events));
+        localStorage.setItem('tripEvents', JSON.stringify(S.events));
         if (!noRender) window.TripCal.render();
     };
 
@@ -15,9 +15,11 @@
 
     /* ---------- Dates ---------- */
     S.fmtDate = function(dtString) {
-        if (!dtString) return "";
+        if (!dtString) return '';
         const d = new Date(dtString);
-        return isNaN(d) ? "" : d.toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
+        return isNaN(d) ?
+            '' :
+            d.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
     };
     S.parseDate = function(v) {
         const d = new Date(v);
@@ -26,7 +28,7 @@
 
     /* ---------- Sorting (keep undated in place) ---------- */
     S.sortByDateInPlace = function(list) {
-        const dated = list.filter(e => S.parseDate(e.start));
+        const dated = list.filter((e) => S.parseDate(e.start));
         dated.sort((a, b) => S.parseDate(a.start) - S.parseDate(b.start));
 
         const merged = [];
@@ -46,7 +48,7 @@
     /* ---------- Utility: compute end from duration (hours, local) ---------- */
     S.endFromDuration = function(startLocal, hoursStr) {
         const hrs = parseFloat(hoursStr);
-        if (!startLocal || !isFinite(hrs)) return "";
+        if (!startLocal || !isFinite(hrs)) return '';
         const start = new Date(startLocal);
         const end = new Date(start.getTime() + hrs * 3600000);
         // return value in local time for input[type=datetime-local]
@@ -54,5 +56,6 @@
         const localISO = new Date(end - tzOffset).toISOString().slice(0, 16);
         return localISO;
     };
+
 
 })();

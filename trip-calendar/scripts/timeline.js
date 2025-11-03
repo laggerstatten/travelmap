@@ -154,18 +154,27 @@
       } ${cardBadgeClass(e)}`;
       card.dataset.id = e.id;
       card.innerHTML = `
-        <div class="title">${e.name || '(untitled)'}</div>
-        <div class="subtitle">${e.type || 'stop'}</div>
-        <div class="meta">${
-          e.start || e.end
-            ? `${S.fmtDate(e.start)}${e.end ? ' → ' + S.fmtDate(e.end) : ''}`
-            : 'No date set'
-        }</div>
-        <div class="card-footer">
-          <button class="edit-btn">Edit</button>
-          <button class="del-btn">Delete</button>
-        </div>
-      `;
+  <div class="title">${e.name || '(untitled)'}</div>
+  <div class="subtitle">
+    ${e.type || 'stop'}
+    ${e.location_name ? ' • ' + e.location_name : ''}
+    ${e.lat && e.lon ? `<span class="coord-pill">📍</span>` : ''}
+    ${e.nextDistanceKm ? `<div class="drive-info">🚗 ${e.nextDistanceKm} km • ${e.nextDurationMin} min</div>` : ""}
+    ${e.type === "drive" && e.distanceKm ? `<div class="drive-info">🚗 ${e.distanceKm} km • ${e.durationMin} min</div>` : ""}
+
+
+  </div>
+  <div class="meta">${
+    e.start || e.end
+      ? `${S.fmtDate(e.start)}${e.end ? ' → ' + S.fmtDate(e.end) : ''}`
+      : 'No date set'
+  }</div>
+  <div class="card-footer">
+    <button class="edit-btn">Edit</button>
+    <button class="del-btn">Delete</button>
+  </div>
+`;
+
       wrapper.appendChild(card);
       cal.appendChild(wrapper);
 
