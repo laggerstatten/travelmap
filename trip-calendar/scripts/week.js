@@ -44,8 +44,11 @@
     body.className = "week-body";
     cal.appendChild(body);
 
-    // create 24 rows; for each hour add 1 time cell + 7 day cells
-    for (let h = 0; h < 24; h++) {
+    // Show only 6 AM → 10 PM
+    const startHour = 6;
+    const endHour = 22;
+
+    for (let h = startHour; h <= endHour; h++) {
       const t = document.createElement("div");
       t.className = "time-cell";
       t.textContent =
@@ -78,18 +81,13 @@
       const end = S.parseDate(e.end) || new Date(start.getTime() + 3600000);
       if (start < weekStart || start >= weekEnd) return;
 
-      const dayIdx = start.getDay(); // 0–6
-      const top = minsSinceMidnight(start) * pxPerMin;
+      const dayIdx = start.getDay();
+      const top = (minsSinceMidnight(start) - startHour * 60) * pxPerMin;
       const height = Math.max(
         30,
         (minsSinceMidnight(end) - minsSinceMidnight(start)) * pxPerMin
       );
 
-      const dayCells = body.querySelectorAll(`.day-col[data-day="${dayIdx}"]`);
-      if (!dayCells.length) return;
-
-      // place event in the first cell for that day
-      const container = dayCells[0].parentElement;
       const eventEl = document.createElement("div");
       eventEl.className = `week-event ${e.type || "stop"}`;
       eventEl.style.position = "absolute";
@@ -104,5 +102,23 @@
       `;
       cal.appendChild(eventEl);
     });
+
+    /* ---------- Auto-scroll to relevant hours ---------- */
+    const container = document.querySelector(".week-body");
+    if (container) {
+      const firstEvent = S.events
+        .map((e) => S.parseDate(e.start))
+        .filter(Boolean)
+        .sort((a, b) => a - b)[0];
+
+      const targetHour = firstEvent ? firstEvent.getHours() : 8;
+      const rowHeight =
+        parseFloat(
+          getComputedStyle(document.documentElement).getPropertyValue("--hour-row")
+        ) || 56;
+
+      // Scroll so the first event (or 8 AM) is near top
+      container.scrollTop = Math.max(0, (targetHour - startHour - 1) * rowHeight);
+    }
   };
 })();
