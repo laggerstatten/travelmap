@@ -19,7 +19,6 @@ async function fetchAZA(lat, lng) {
         fetchAZAMatrix(resultList, lng, lat);
 
         //updateAZATable(resultList || []);
-
     } catch (err) {
         console.error('Error retrieving AZA or drive times:', err);
     }
@@ -28,7 +27,6 @@ async function fetchAZA(lat, lng) {
 async function fetchAZAMatrix(resultList, lng, lat) {
     // --- MATRIX API CALL ---
     if (resultList.length > 0) {
-
         // Define batch size (max 24 destinations per request)
         const batchSize = 5;
         const allResults = [];
@@ -73,7 +71,6 @@ async function fetchAZAMatrix(resultList, lng, lat) {
     }
 }
 
-
 function updateAZATable(rows) {
     // --- UPDATE TABLE ---
     const tbody = document.querySelector('#aza-table tbody');
@@ -90,20 +87,24 @@ function updateAZATable(rows) {
     rows.forEach((r) => {
         const tr = document.createElement('tr');
         if (visitedAZAs.has(r.aza_id)) tr.classList.add('visited');
+        const hours = Math.floor(r.drive_time_min / 60);
+        const mins = Math.round(r.drive_time_min % 60);
+        const timeLabel = r.drive_time_min != null ? `${hours}h ${mins}m` : '';
 
         tr.innerHTML = `
-            <td>${r.Name}</td>
-            <td>${r.City}</td>
-            <td>${r.State}</td>
-            <td>${r.drive_time_min ? r.drive_time_min.toFixed(1) : ''}</td>
-            <td>${r.drive_distance_mi ? r.drive_distance_mi.toFixed(1) : ''}</td>
-            <td><button>${visitedAZAs.has(r.aza_id) ? '✓' : 'Mark Visited'
+    <td><button class="set-origin-btn">Set Origin</button></td>
+    <td>${r.Name}</td>
+    <td>${r.City}</td>
+    <td>${r.State}</td>
+    <td>${timeLabel}</td>
+    <td>${r.drive_distance_mi ? r.drive_distance_mi.toFixed(1) : ''}</td>
+    <td><button class="visit-btn">${visitedAZAs.has(r.aza_id) ? '✓' : 'Mark Visited'
             }</button></td>
-    `;
+  `;
 
-        // handle visit attractionToggle
-        const btn = tr.querySelector('button');
-        btn.addEventListener('click', async(e) => {
+        // --- Mark Visited ---
+        const visitBtn = tr.querySelector('.visit-btn');
+        visitBtn.addEventListener('click', async(e) => {
             e.stopPropagation();
             await markVisited(r.aza_id);
             await loadVisited();
@@ -122,6 +123,32 @@ function updateAZATable(rows) {
             removeOldRoute();
             addMarkerPopupAZA(r, destLon, destLat, '#006400');
             drawRoute(originLng, originLat, destLon, destLat, '#228B22');
+            closeDrawer();
+
+            // Remember this destination (for swap feature)
+            lastDestination = { lat: destLat, lng: destLon };
+        });
+
+        // --- click to set new origin ---
+        const originBtn = tr.querySelector('.set-origin-btn');
+        originBtn.addEventListener('click', async(e) => {
+            e.stopPropagation();
+            const destLon = parseFloat(tr.dataset.lon);
+            const destLat = parseFloat(tr.dataset.lat);
+            if (!destLon || !destLat) return;
+
+            originLng = destLon;
+            originLat = destLat;
+
+            if (marker) marker.remove();
+            marker = new mapboxgl.Marker({ color: '#FF5E00' })
+                .setLngLat([destLon, destLat])
+                .addTo(map);
+
+            map.flyTo({ center: [destLon, destLat], zoom: 8 });
+
+            await loadVisited();
+            await fetchAZA(destLat, destLon);
             closeDrawer();
         });
 
@@ -152,7 +179,6 @@ function addMarkerPopupAZA(r, destLon, destLat, color) {
     destPopup.addTo(map);
     window.destPopup = destPopup;
 }
-
 
 /**
     async function loadVisited() {
@@ -185,15 +211,15 @@ function addMarkerPopupAZA(r, destLon, destLat, color) {
 
 async function loadVisited() {
     if (!USER_ID) {
-        console.warn("No logged-in user — skipping loadVisited");
+        console.warn('No logged-in user — skipping loadVisited');
         visitedAZAs = new Set();
         return visitedAZAs;
     }
 
     try {
         var res = await fetch(GET_USER_VISITS_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ user_id: USER_ID })
         });
 
@@ -201,24 +227,23 @@ async function loadVisited() {
 
         if (json && json.success && Array.isArray(json.results)) {
             visitedAZAs = new Set(
-                json.results.map(function(r) { return r.aza_id; })
+                json.results.map(function(r) {
+                    return r.aza_id;
+                })
             );
         } else {
-            console.warn("Unexpected response from get-user-visits:", json);
+            console.warn('Unexpected response from get-user-visits:', json);
             visitedAZAs = new Set();
         }
 
-        console.log("Visited zoos:", visitedAZAs);
+        console.log('Visited zoos:', visitedAZAs);
         return visitedAZAs;
     } catch (err) {
-        console.error("Failed to load visited:", err);
+        console.error('Failed to load visited:', err);
         visitedAZAs = new Set();
         return visitedAZAs;
     }
 }
-
-
-
 
 async function markVisited(aza_id) {
     // --- Mark zoo as visited ---

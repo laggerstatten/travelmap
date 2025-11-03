@@ -1,0 +1,86 @@
+/* timeline layout: [insolation | cards | weather] fixed width centered */
+
+#calendar.timeline {
+    display: grid;
+    grid-template-columns: 36px minmax(0, var(--card-width)) 36px;
+    justify-content: center;
+    gap: var(--timeline-gap);
+    padding: 16px 12px 40px;
+}
+
+.day-divider {
+    grid-column: 1 / -1;
+    margin: 16px 0 8px;
+    padding-top: 8px;
+    border-top: 1px dashed #d1d5db;
+    color: #374151;
+    font-weight: 600;
+}
+
+.timeline-row {
+    display: contents;
+    /* allows three columns per row */
+}
+
+.insolation-rail,
+.weather-rail {
+    height: 64px;
+    margin: 4px 0;
+    border-radius: 4px;
+}
+
+.insolation-rail {
+    background: linear-gradient(to top, #ffe9a6, #ffe17a);
+}
+
+.weather-rail {
+    background: linear-gradient(to top, #bfe2ff, #ffffff);
+}
+
+.event.timeline-card {
+    padding: 10px 12px;
+    min-height: 64px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.event .header .context-btn {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 1;
+}
+
+.card-menu {
+    position: absolute;
+    top: 8px;
+    right: 28px;
+    display: none;
+    flex-direction: column;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.card-menu button {
+    background: none;
+    border: none;
+    text-align: left;
+    padding: 6px 10px;
+    cursor: pointer;
+}
+
+.card-menu button:hover {
+    background: #f3f4f6;
+}
+
+.event:hover .card-menu {
+    display: flex;
+}
+
+.event.dragging {
+    opacity: 0.65;
+}

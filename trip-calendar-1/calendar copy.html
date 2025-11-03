@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Trip Calendar Prototype</title>
+    <link rel="stylesheet" href="calendar.css" />
+</head>
+
+<body>
+    <div id="toolbar">
+        <button id="mode-timeline">Timeline</button>
+        <button id="mode-week">Week View</button>
+        <button id="add-event">Add Event</button>
+        <button id="sort-date">Sort by Date</button>
+        <button id="insert-drives">Insert Drives</button>
+        <button id="clear-auto">Clear Auto Drives</button>
+    </div>
+
+    <div id="calendar" class="timeline"></div>
+
+    <dialog id="event-modal">
+        <form method="dialog" id="event-form">
+            <label>Name <input name="name" required /></label>
+            <label>Type
+          <select name="type">
+            <option value="stop">Stop</option>
+            <option value="drive">Drive</option>
+            <option value="lodging">Lodging</option>
+            <option value="break">Break</option>
+          </select>
+        </label>
+            <label>Start <input type="datetime-local" name="start" /></label>
+            <label>End <input type="datetime-local" name="end" /></label>
+            <label>
+          Duration (hours)
+          <input
+            type="number"
+            name="duration"
+            step="0.25"
+            placeholder="e.g. 1.5"
+          />
+        </label>
+            <p class="hint">
+                Leave duration blank to enter an explicit end time instead.
+            </p>
+
+            <menu>
+                <button value="cancel">Cancel</button>
+                <button id="save-event" value="save">Save</button>
+            </menu>
+        </form>
+    </dialog>
+
+    <script type="module" src="calendar.js"></script>
+</body>
+
+</html>

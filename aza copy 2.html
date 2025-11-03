@@ -169,6 +169,15 @@
             SUPABASE_ANON_KEY
         );
 
+        supabase.auth.onAuthStateChange((event, session) => {
+            if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
+                if (window.location.hash.includes('access_token')) {
+                    const baseUrl = window.location.href.split('#')[0];
+                    window.history.replaceState({}, document.title, baseUrl);
+                }
+            }
+        });
+
         const loginBtn = document.getElementById('login');
         const logoutBtn = document.getElementById('logout');
         const statusEl = document.getElementById('auth-status');
@@ -192,31 +201,19 @@
             await supabase.auth.signOut();
         });
 
-        supabase.auth.onAuthStateChange(function(event, session) {
-            if (
-                (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') &&
-                window.location.hash.includes('access_token')
-            ) {
-                const baseUrl = window.location.href.split('#')[0];
-                window.history.replaceState({}, document.title, baseUrl);
-            }
-
+        supabase.auth.onAuthStateChange(function(_event, session) {
             if (session && session.user) {
                 currentUser = session.user;
                 USER_ID = currentUser.id;
                 console.log('Logged in as:', USER_ID);
-                if (typeof loadVisited === 'function') {
-                    loadVisited();
-                }
+                loadVisited();
             } else {
                 currentUser = null;
                 USER_ID = null;
-                if (typeof visitedAZAs !== 'undefined') {
-                    visitedAZAs = new Set();
-                }
+                visitedAZAs = new Set();
             }
 
-            const loggedIn = currentUser !== null;
+            var loggedIn = currentUser !== null;
             loginBtn.style.display = loggedIn ? 'none' : 'inline-block';
             logoutBtn.style.display = loggedIn ? 'inline-block' : 'none';
             statusEl.textContent = loggedIn ?

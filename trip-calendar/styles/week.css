@@ -1,0 +1,71 @@
+#calendar.week {
+    display: grid;
+    grid-template-rows: auto 1fr;
+    height: 100%;
+}
+
+.week-header {
+    display: grid;
+    grid-template-columns: 60px repeat(7, 1fr);
+    background: #fafafa;
+    border-bottom: 1px solid #e5e7eb;
+    position: sticky;
+    top: 0;
+    z-index: 40;
+}
+
+.week-header div {
+    padding: 0.5rem;
+    text-align: center;
+    font-weight: 600;
+}
+
+.week-body {
+    display: grid;
+    grid-template-columns: 60px repeat(7, 1fr);
+    grid-auto-rows: var(--hour-row);
+}
+
+.time-cell {
+    padding-right: 6px;
+    text-align: right;
+    color: #9ca3af;
+    font-size: 11px;
+    border-right: 1px solid #e5e7eb;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.day-col {
+    position: relative;
+    border-right: 1px solid #f3f4f6;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.day-col .hour-guideline {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: #eef2f7;
+}
+
+.week-event {
+    position: absolute;
+    left: 6px;
+    right: 6px;
+    border-radius: 8px;
+    background: #e6f3ff;
+    border: 1px solid #cfe8ff;
+    padding: 6px;
+    overflow: hidden;
+}
+
+.week-event .title {
+    font-weight: 600;
+    font-size: 12px;
+}
+
+.week-event .time {
+    font-size: 11px;
+    color: #4b5563;
+}
