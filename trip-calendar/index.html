@@ -18,6 +18,7 @@
     <div id="toolbar">
         <button id="mode-timeline">Timeline</button>
         <button id="mode-week">Week View</button>
+        <button id="init-trip">Start Trip</button>
         <button id="add-event">Add Event</button>
         <button id="sort-date">Sort by Date</button>
         <button id="insert-drives">Insert Drives</button>
@@ -34,6 +35,8 @@
     </script>
     <script src="scripts/good/datetime.js"></script>
     <script src="scripts/good/externaldata.js"></script>
+    <script src="scripts/tripInit.js"></script>
+
     <script src="scripts/eventcreator.js"></script>
     <script src="scripts/eventeditor.js"></script>
     <script src="scripts/routing.js"></script>
@@ -78,6 +81,10 @@
         document.getElementById('mode-week').onclick = () => {
             viewMode = 'week';
             render();
+        };
+
+        document.getElementById('init-trip').onclick = () => {
+            initTrip(events, save, getRouteInfo, newId);
         };
 
         document.getElementById('add-event').onclick = () => {
