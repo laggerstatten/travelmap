@@ -15,7 +15,7 @@ function buildInlineEditor(event, card) {
 
     <label>Type
       <select name="type">
-        ${['stop', 'drive', 'lodging', 'break']
+        ${['trip_start','stop', 'drive', 'lodging', 'break','trip_end']
       .map(t => `<option value="${t}" ${event.type === t ? 'selected' : ''}>${t[0].toUpperCase() + t.slice(1)}</option>`)
       .join('')}
       </select>

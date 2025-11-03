@@ -34,7 +34,7 @@
     </script>
     <script src="scripts/good/datetime.js"></script>
     <script src="scripts/good/externaldata.js"></script>
-
+    <script src="scripts/eventcreator.js"></script>
     <script src="scripts/eventeditor.js"></script>
     <script src="scripts/routing.js"></script>
     <script src="scripts/timeline_ui.js"></script>
@@ -81,15 +81,7 @@
         };
 
         document.getElementById('add-event').onclick = () => {
-            events.push({
-                id: newId(),
-                name: '(untitled)',
-                type: 'stop',
-                start: '',
-                end: '',
-                duration: ''
-            });
-            save();
+            ensureAnchorsAndAddStop(events, save);
         };
 
         document.getElementById('sort-date').onclick = () => sortByDate();
