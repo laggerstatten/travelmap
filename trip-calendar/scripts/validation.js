@@ -259,3 +259,33 @@ function clearAllTimesAndFlags() {
     save();
     renderTimeline();
 }
+
+
+function detectOverlaps(events) {
+    console.log("Checking for overlaps...");
+    const overlaps = [];
+
+    for (let i = 0; i < events.length - 1; i++) {
+        const a = events[i],
+            b = events[i + 1];
+        if (!a.end || !b.start) continue;
+
+        const aEnd = new Date(a.end);
+        const bStart = new Date(b.start);
+
+        if (aEnd > bStart) {
+            overlaps.push({
+                a: a.name,
+                b: b.name,
+                overlapMinutes: (aEnd - bStart) / 60000
+            });
+        }
+    }
+
+    if (overlaps.length) {
+        console.warn("⚠ Overlaps detected:", overlaps);
+        alert(`${overlaps.length} overlapping events detected. Check console.`);
+    } else {
+        console.log("✅ No overlaps found.");
+    }
+}

@@ -24,8 +24,9 @@
         <button id="insert-drives">Insert Drives</button>
         <button id="gen-routes">Generate Routes</button>
         <button id="clear-auto">Clear Auto Drives</button>
-        <button id="clear-times">🧹 Clear Times</button>
+        <button id="clear-times">Clear Times</button>
         <button id="validate-btn">Validate & Repair</button>
+        <button id="detect-overlaps">Detect Overlaps</button>
     </div>
 
     <div id="calendar" class="timeline"></div>
@@ -108,6 +109,11 @@
         };
 
         document.getElementById('clear-times').onclick = clearAllTimesAndFlags;
+
+        document.getElementById('detect-overlaps').onclick = () => {
+            console.log('🔍 Running overlap detection manually...');
+            detectOverlaps(events); // your existing function
+        };
 
         // Initial render
         render();

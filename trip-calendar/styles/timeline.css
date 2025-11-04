@@ -208,3 +208,29 @@
     font-size: 11px;
     margin-left: 4px;
 }
+
+.inline-editor mapbox-search-box input {
+    padding-left: 2.2em !important;
+    /* space for the icon */
+    text-indent: 0 !important;
+    /* ensure text starts at padding edge */
+    box-sizing: border-box;
+}
+
+.inline-editor mapbox-search-box {
+    width: 100%;
+    min-width: 200px;
+}
+
+.timeline-card.overlap {
+    border: 2px solid #e74c3c;
+    /* red outline */
+    background-color: rgba(231, 76, 60, 0.1);
+}
+
+.overlap-connector {
+    height: 8px;
+    margin: -4px 0 8px 0;
+    background: repeating-linear-gradient( 45deg, #e74c3c, #e74c3c 4px, transparent 4px, transparent 8px);
+    border-radius: 4px;
+}
