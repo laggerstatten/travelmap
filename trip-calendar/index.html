@@ -24,6 +24,8 @@
         <button id="insert-drives">Insert Drives</button>
         <button id="gen-routes">Generate Routes</button>
         <button id="clear-auto">Clear Auto Drives</button>
+        <button id="clear-times">🧹 Clear Times</button>
+        <button id="validate-btn">Validate & Repair</button>
     </div>
 
     <div id="calendar" class="timeline"></div>
@@ -43,6 +45,8 @@
     <script src="scripts/timeline_ui.js"></script>
     <script src="scripts/timeline_card.js"></script>
     <script src="scripts/timeline_ehandling.js"></script>
+    <script src="scripts/validation.js"></script>
+
     <script src="scripts/nonpriority/week.js"></script>
 
     <script>
@@ -96,6 +100,14 @@
             insertDriveSegments();
         document.getElementById('gen-routes').onclick = () => generateRoutes();
         document.getElementById('clear-auto').onclick = () => clearAutoDrives();
+
+        document.getElementById('validate-btn').onclick = async() => {
+            console.log('🔍 Running validateAndRepair...');
+            await validateAndRepair();
+            console.log('✅ Validation complete');
+        };
+
+        document.getElementById('clear-times').onclick = clearAllTimesAndFlags;
 
         // Initial render
         render();

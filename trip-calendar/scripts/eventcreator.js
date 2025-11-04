@@ -1,95 +1,101 @@
 async function ensureAnchorsAndAddStop(events, saveFn, renderFn) {
-    // 1️⃣ Ensure trip anchors exist
-    const hasStart = events.some(e => e.type === 'trip_start');
-    const hasEnd = events.some(e => e.type === 'trip_end');
+  console.group('🆕 ensureAnchorsAndAddStop');
 
-    if (!hasStart) {
-        events.unshift({
-            id: newId(),
-            name: 'Trip Start',
-            type: 'trip_start',
-            isAnchorStart: true
-        });
-    }
+  // 1️⃣ Ensure trip anchors exist
+  const hasStart = events.some((e) => e.type === 'trip_start');
+  const hasEnd = events.some((e) => e.type === 'trip_end');
 
-    if (!hasEnd) {
-        events.push({
-            id: newId(),
-            name: 'Trip End',
-            type: 'trip_end',
-            isAnchorEnd: true
-        });
-    }
+  if (!hasStart) {
+    events.unshift({
+      id: newId(),
+      name: 'Trip Start',
+      type: 'trip_start',
+      isAnchorStart: true
+    });
+  }
 
-    // 2️⃣ Create the temporary stop and put it at the top of the timeline
-    const newStop = {
-        id: newId(),
-        name: '(untitled)',
-        type: 'stop',
-        isTemporary: true
-    };
-    events.unshift(newStop);
+  if (!hasEnd) {
+    events.push({
+      id: newId(),
+      name: 'Trip End',
+      type: 'trip_end',
+      isAnchorEnd: true
+    });
+  }
 
-    if (typeof saveFn === 'function') saveFn(false); // save without rerender
-    if (typeof renderFn === 'function') renderFn();
+  // 2️⃣ Create temporary stop at top of timeline
+  const newStop = {
+    id: newId(),
+    name: '(untitled)',
+    type: 'stop',
+    isTemporary: true
+  };
+  events.unshift(newStop);
 
-    // 3️⃣ Wait for DOM update, then open the inline editor for this stop
+  if (typeof saveFn === 'function') saveFn(false);
+  if (typeof renderFn === 'function') renderFn();
+
+  // 3️⃣ After render, open inline editor and attach single retrieve handler
+  setTimeout(() => {
+    const card = document.querySelector(`.event[data-id="${newStop.id}"]`);
+    if (!card) return;
+    if (typeof window.buildInlineEditor === 'function')
+      buildInlineEditor(newStop, card);
+
     setTimeout(() => {
-        const card = document.querySelector(`.event[data-id="${newStop.id}"]`);
-        if (card && typeof window.buildInlineEditor === 'function') {
-            buildInlineEditor(newStop, card);
+      const editor = card.querySelector('.inline-editor');
+      if (!editor) return;
 
-            // Wait a bit for the searchbox to be rendered inside the editor
-            setTimeout(() => {
-                const searchEl = card.querySelector("mapbox-search-box");
-                if (searchEl) {
-                    searchEl.addEventListener("retrieve", async(ev) => {
-                        const f = ev.detail ?.features ?.[0];
-                        if (!f ?.geometry) return;
+      // intercept Save submit from inline editor
+      editor.addEventListener('submit', async (ev) => {
+        ev.preventDefault();
+        const data = Object.fromEntries(new FormData(editor).entries());
+        Object.assign(newStop, data);
 
-                        newStop.lat = f.geometry.coordinates[1];
-                        newStop.lon = f.geometry.coordinates[0];
-                        newStop.location_name = f.properties ?.place_formatted || f.place_name;
-                        if (!newStop.name || newStop.name === "(untitled)") newStop.name = newStop.location_name;
-
-                        delete newStop.isTemporary;
-                        await insertStopInNearestRoute(newStop, events, saveFn, getRouteInfo, renderFn);
-                    });
-                }
-            }, 100);
+        // derive duration-based end time if needed
+        if (data.duration && data.start) {
+          newStop.end = window.TripCal.endFromDuration(
+            data.start,
+            data.duration
+          );
         }
-    }, 100);
 
-
-    // 4️⃣ Hook into the Mapbox searchbox "retrieve" event for auto-placement
-    document.addEventListener('retrieve', async(ev) => {
-        const f = ev.detail ?.features ?.[0];
-        if (!f ?.geometry) return;
-
-        // Apply geocode results
-        newStop.lat = f.geometry.coordinates[1];
-        newStop.lon = f.geometry.coordinates[0];
-        newStop.location_name = f.properties ?.place_formatted || f.place_name;
-        if (!newStop.name || newStop.name === '(untitled)') newStop.name = newStop.location_name;
+        // confirm lat/lon exist before proceeding
+        if (!newStop.lat || !newStop.lon) {
+          console.warn('Stop missing coordinates – skipping placement');
+          window.TripCal.save();
+          window.TripCal.renderTimeline();
+          return;
+        }
 
         delete newStop.isTemporary;
+        console.log('💾 Saving and inserting new stop:', newStop);
         await insertStopInNearestRoute(newStop, events, saveFn, renderFn);
-    }, { once: true }); // only listen for the first retrieve
+      });
+    }, 100);
+  }, 100);
 }
 
 async function insertStopInNearestRoute(stop, events, saveFn, renderFn) {
-  console.log("insertStopInNearestRoute");
+  console.group('🧭 insertStopInNearestRoute');
+  console.log('stop:', stop);
 
-  // 1️⃣ Find drives with geometry
-  const drives = events.filter(ev => ev.type === "drive" && ev.routeGeometry);
-  if (!drives.length) return;
+  const drives = events.filter((ev) => ev.type === 'drive' && ev.routeGeometry);
+  console.log('candidate drives:', drives.length);
+  if (!drives.length) {
+    console.warn('No drives with geometry');
+    console.groupEnd();
+    return;
+  }
 
-  // 2️⃣ Find the nearest drive midpoint
   let bestDrive = null;
   let bestDist = Infinity;
   for (const d of drives) {
-    const coords = d.routeGeometry.coordinates;
-    if (!coords?.length) continue;
+    const coords = d.routeGeometry?.coordinates;
+    if (!coords?.length) {
+      console.warn('drive has no coordinates:', d);
+      continue;
+    }
     const mid = coords[Math.floor(coords.length / 2)];
     const dx = stop.lon - mid[0];
     const dy = stop.lat - mid[1];
@@ -99,25 +105,52 @@ async function insertStopInNearestRoute(stop, events, saveFn, renderFn) {
       bestDrive = d;
     }
   }
-  if (!bestDrive) return;
-
-  // 3️⃣ Use explicit IDs to find origin/destination
-  const origin = events.find(e => e.id === bestDrive.originId);
-  const destination = events.find(e => e.id === bestDrive.destinationId);
-  if (!origin || !destination) {
-    console.warn("Missing origin or destination IDs for bestDrive");
+  console.log('bestDrive:', bestDrive);
+  if (!bestDrive) {
+    console.warn('No bestDrive found');
+    console.groupEnd();
     return;
   }
 
-  // 4️⃣ Compute new routes
-  const r1 = await getRouteInfo(origin, stop);
-  const r2 = await getRouteInfo(stop, destination);
-  if (!r1 || !r2) return;
+  const origin = events.find((e) => e.id === bestDrive.originId);
+  const destination = events.find((e) => e.id === bestDrive.destinationId);
+  console.log('origin:', origin);
+  console.log('destination:', destination);
 
-  // 5️⃣ Create new drive objects
+  if (!origin || !destination) {
+    console.warn('Missing origin or destination object for drive:', bestDrive);
+    console.groupEnd();
+    return;
+  }
+
+  if (!origin.lat || !origin.lon || !destination.lat || !destination.lon) {
+    console.error('Origin/destination missing lat/lon', {
+      originLat: origin.lat,
+      originLon: origin.lon,
+      destLat: destination.lat,
+      destLon: destination.lon
+    });
+    console.groupEnd();
+    return;
+  }
+
+  console.log('Calling getRouteInfo(origin, stop)');
+  const r1 = await getRouteInfo(origin, stop);
+  console.log('r1:', r1);
+
+  console.log('Calling getRouteInfo(stop, destination)');
+  const r2 = await getRouteInfo(stop, destination);
+  console.log('r2:', r2);
+
+  if (!r1 || !r2) {
+    console.warn('One or both route results missing');
+    console.groupEnd();
+    return;
+  }
+
   const newDrive1 = {
     id: newId(),
-    type: "drive",
+    type: 'drive',
     autoDrive: true,
     routeGeometry: r1.geometry,
     distanceMi: r1.distance_mi.toFixed(1),
@@ -129,7 +162,7 @@ async function insertStopInNearestRoute(stop, events, saveFn, renderFn) {
 
   const newDrive2 = {
     id: newId(),
-    type: "drive",
+    type: 'drive',
     autoDrive: true,
     routeGeometry: r2.geometry,
     distanceMi: r2.distance_mi.toFixed(1),
@@ -139,18 +172,21 @@ async function insertStopInNearestRoute(stop, events, saveFn, renderFn) {
     destinationId: destination.id
   };
 
-  // 6️⃣ Remove the old drive and any existing temp copy of this stop
-  const tempIndex = events.findIndex(e => e.id === stop.id);
+  // remove temp and replace old drive
+  const tempIndex = events.findIndex((e) => e.id === stop.id);
   if (tempIndex !== -1) events.splice(tempIndex, 1);
 
-  const driveIndex = events.findIndex(e => e.id === bestDrive.id);
-  if (driveIndex === -1) return;
+  const driveIndex = events.findIndex((e) => e.id === bestDrive.id);
+  if (driveIndex === -1) {
+    console.warn('Could not find bestDrive index for replacement');
+    console.groupEnd();
+    return;
+  }
 
-  // 7️⃣ Replace that drive with [newDrive1, stop, newDrive2]
   events.splice(driveIndex, 1, newDrive1, stop, newDrive2);
 
-  // 8️⃣ Save and refresh
-  if (typeof saveFn === "function") saveFn();
-  if (typeof renderFn === "function") renderFn();
-}
+  if (typeof saveFn === 'function') saveFn();
+  if (typeof renderFn === 'function') renderFn();
 
+  console.groupEnd();
+}

@@ -5,12 +5,22 @@
 
 // --- Build a card ---
 function renderCard(e) {
-    const card = document.createElement('div');
-    card.className = `event timeline-card ${e.type || 'stop'} ${cardBadgeClass(e)}`;
-    card.dataset.id = e.id;
+  const card = document.createElement('div');
+  card.className = `event timeline-card ${e.type || 'stop'} ${cardBadgeClass(e)}`;
+  card.dataset.id = e.id;
 
-    card.innerHTML = `
-    <div class="title">${e.name || '(untitled)'}</div>
+  // title logic
+  let title = e.name || '(untitled)';
+  if (e.type === 'drive') {
+    const origin = events.find(ev => ev.id === e.originId);
+    const dest = events.find(ev => ev.id === e.destinationId);
+    const originName = origin?.name || origin?.location_name || 'Unknown';
+    const destName = dest?.name || dest?.location_name || 'Unknown';
+    title = `Drive: ${originName} → ${destName}`;
+  }
+
+  card.innerHTML = `
+    <div class="title">${title}</div>
     <div class="subtitle">
       ${e.type || 'stop'}
       ${e.location_name ? ' • ' + e.location_name : ''}
@@ -19,16 +29,23 @@ function renderCard(e) {
     </div>
     <div class="meta">
       ${e.start || e.end
-            ? `${fmtDate(e.start)}${e.end ? ' → ' + fmtDate(e.end) : ''}`
-            : 'No date set'}
+        ? `${fmtDate(e.start)}${e.end ? ' → ' + fmtDate(e.end) : ''}`
+        : 'No date set'}
     </div>
     <div class="card-footer">
+      <button class="fill-forward-btn">⏩ Fill Forward</button>
+      <button class="fill-backward-btn">⏪ Fill Backward</button>
       <button class="edit-btn">Edit</button>
       <button class="del-btn">Delete</button>
     </div>`;
 
-    attachCardHandlers(card);
-    return card;
+  attachCardHandlers(card);
+
+  // safely bind the fill buttons
+  card.querySelector('.fill-forward-btn').onclick = () => fillForward(e);
+  card.querySelector('.fill-backward-btn').onclick = () => fillBackward(e);
+
+  return card;
 }
 
 // --- Generate drive info snippet ---

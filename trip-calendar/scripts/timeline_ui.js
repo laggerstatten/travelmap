@@ -7,7 +7,8 @@ function renderTimeline() {
     const cal = document.getElementById('calendar');
     cal.className = 'timeline';
     cal.innerHTML = '';
-    sortByDateInPlace(events);
+    //console.log("sortByDateInPlace");
+    //sortByDateInPlace(events); //FIXME
 
     let lastDay = '';
 

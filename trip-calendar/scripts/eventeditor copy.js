@@ -76,45 +76,31 @@ function buildInlineEditor(event, card) {
     });
   }
 
-/* ---------- Submit ---------- */
-editor.addEventListener('submit', submitEv => {
-  submitEv.preventDefault();
+  /* ---------- Submit ---------- */
+  editor.addEventListener('submit', ev => {
+    ev.preventDefault();
+    const formData = Object.fromEntries(new FormData(editor).entries());
 
-  const targetEvent = event; // capture the trip event safely
-  const formData = Object.fromEntries(new FormData(editor).entries());
+    if (formData.duration && formData.start) {
+      formData.end = endFromDuration(formData.start, formData.duration);
+    }
 
-  // Detect manual edits
-  const prev = { ...targetEvent };
-  const dur = formData.duration?.trim() ? Number(formData.duration) : null;
+    const e = events.find(x => String(x.id) === String(id));
+    if (!e) return;
 
-  if (formData.start && formData.start !== prev.start) targetEvent.manualStart = true;
-  if (formData.end && formData.end !== prev.end) targetEvent.manualEnd = true;
-  if (dur !== null && dur !== Number(prev.duration || 0)) targetEvent.manualDuration = true;
+    // Convert numeric fields
+    if (formData.duration) formData.duration = parseFloat(formData.duration);
 
-  // Update fields
-  targetEvent.name = formData.name || '';
-  targetEvent.type = formData.type || 'stop';
-  targetEvent.start = formData.start || '';
-  targetEvent.end = formData.end || '';
-  targetEvent.duration = dur ?? '';
+    // Flip drive badge if an auto-drive gets edited
+    if (e.type === 'drive' && e.autoDrive) {
+      e.manualEdit = true;
+      e.autoDrive = false;
+    }
 
-  // Derive missing end if duration is set
-  if (!targetEvent.end && targetEvent.start && dur !== null) {
-    targetEvent.end = endFromDuration(targetEvent.start, dur);
-  }
-
-  // Mark edited drives properly
-  if (targetEvent.type === 'drive' && targetEvent.autoDrive) {
-    targetEvent.manualEdit = true;
-    targetEvent.autoDrive = false;
-  }
-
-  card.classList.remove('editing');
-  editor.remove();
-  save();
-  renderTimeline();
-});
-
+    Object.assign(e, formData);
+    save();
+    renderTimeline();
+  });
 
   /* ---------- Cancel ---------- */
   editor.querySelector('.cancel').onclick = () => {

@@ -47,21 +47,34 @@ function attachCardHandlers(card) {
 function handleDragOver(e) {
     e.preventDefault();
     const cal = e.currentTarget;
-    const dragging = cal.querySelector('.event.dragging');
+    const dragging = cal.querySelector('.timeline-card.dragging');
     if (!dragging) return;
+
+    // find card immediately after the cursor
     const after = getDragAfterElement(cal, e.clientY);
-    if (!after) cal.appendChild(dragging);
-    else cal.insertBefore(dragging, after);
+    const rails = dragging.closest('.rail-pair');
+    if (!rails) return;
+
+    const draggingWrapper = rails; // move the whole pair, not just card
+
+    if (after) {
+        cal.insertBefore(draggingWrapper, after.closest('.rail-pair'));
+    } else {
+        cal.appendChild(draggingWrapper);
+    }
 }
 
 function getDragAfterElement(container, y) {
-    const cards = [...container.querySelectorAll('.timeline-card:not(.dragging)')];
-    return cards.reduce(
+    // include entire rail-pair for position math
+    const pairs = [...container.querySelectorAll('.rail-pair:not(.dragging)')];
+    return pairs.reduce(
         (closest, el) => {
             const box = el.getBoundingClientRect();
-            const offset = y - box.top - box.height / 2;
-            return offset < 0 && offset > closest.offset ? { offset, element: el } :
-                closest;
-        }, { offset: Number.NEGATIVE_INFINITY, element: null }
+            const offset = y - (box.top + box.height / 2);
+            return offset < 0 && offset > closest.offset
+                ? { offset, element: el.querySelector('.timeline-card') }
+                : closest;
+        },
+        { offset: Number.NEGATIVE_INFINITY, element: null }
     ).element;
 }
