@@ -13,3 +13,12 @@ async function getRouteInfo(origin, destination) {
         duration_min: route.duration / 60,
     };
 }
+
+async function getTimeZone(lat, lon) {
+    const url = `https://api.timezonedb.com/v2.1/get-time-zone?key=${TIMEZONE_TOKEN}&format=json&by=position&lat=${lat}&lng=${lon}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("Timezone API failed");
+    const data = await res.json();
+    if (data.status !== "OK") throw new Error("Invalid response: " + data.message);
+    return data.zoneName; // e.g. "America/New_York"
+}

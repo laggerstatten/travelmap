@@ -1,94 +1,90 @@
+function clearAutoDrives() {
+    segments = segments.filter(
+        (seg) => !(seg.type === 'drive' && seg.autoDrive && !seg.manualEdit)
+    );
+    save();
+};
+
+function parseDate(v) {
+    const d = new Date(v);
+    return isNaN(d) ? null : d;
+};
+
 /* ---------- Sorting (keep undated in place) ---------- */
 function sortByDateInPlace(list) {
-    const dated = list.filter((e) => parseDate(e.start));
+    const dated = list.filter((seg) => parseDate(seg.start));
     dated.sort((a, b) => parseDate(a.start) - parseDate(b.start));
 
     const merged = [];
     let di = 0;
-    for (const e of list) {
-        if (!parseDate(e.start)) merged.push(e);
+    for (const seg of list) {
+        if (!parseDate(seg.start)) merged.push(seg);
         else merged.push(dated[di++]);
     }
     list.splice(0, list.length, ...merged);
 };
 
-
 function insertDriveSegments() {
-    sortByDateInPlace(events);
+    sortByDateInPlace(segments);
     const out = [];
-    for (let i = 0; i < events.length; i++) {
-        const cur = events[i];
+    for (let i = 0; i < segments.length; i++) {
+        const cur = segments[i];
         out.push(cur);
-        const next = events[i + 1];
+        const next = segments[i + 1];
         if (!next) break;
         if (cur.type !== 'drive' && next.type !== 'drive') {
             out.push({
                 id: newId(),
-                name: `Drive to ${next.name || 'next stop'}`,
+                name: `Drive from ${cur.name || 'current stop'} to ${next.name || 'next stop'}`,
                 type: 'drive',
                 autoDrive: true,
                 manualEdit: false,
-                originId: cur.id, // 🔹 track endpoints
+                originId: cur.id,
                 destinationId: next.id,
-                start: cur.end || '',
-                end: ''
+                //start: cur.end || '',
+                //end: ''
             });
         }
     }
-    events = out;
+    segments = out;
     save();
 };
-
-
-function clearAutoDrives() {
-    events = events.filter(
-        (e) => !(e.type === 'drive' && e.autoDrive && !e.manualEdit)
-    );
-    save();
-};
-
 
 async function generateRoutes() {
-    console.log('Generate Routes clicked');
-
-    for (const e of events) {
-        if (e.type !== 'drive') continue;
+    for (const seg of segments) {
+        if (seg.type !== 'drive') continue;
 
         // Use explicit IDs first
-        const origin = events.find((ev) => ev.id === e.originId);
-        const destination = events.find((ev) => ev.id === e.destinationId);
+        const origin = segments.find((ev) => ev.id === seg.originId);
+        const destination = segments.find((ev) => ev.id === seg.destinationId);
 
         // Fallback: nearest non-drive neighbors
         const originAlt =
-            origin || [...events.slice(0, events.indexOf(e))]
+            origin || [...segments.slice(0, segments.indexOf(seg))]
             .reverse()
             .find((ev) => ev.lat && ev.lon);
         const destAlt =
-            destination ||
-            events.slice(events.indexOf(e) + 1).find((ev) => ev.lat && ev.lon);
+            destination || segments.slice(segments.indexOf(seg) + 1)
+            .find((ev) => ev.lat && ev.lon);
         const from = originAlt;
         const to = destAlt;
 
         if (!from || !to) {
-            console.warn('Skipping drive', e.name, '— missing origin or destination');
             continue;
         }
 
         try {
             const route = await getRouteInfo(from, to);
             if (route) {
-                e.autoDrive = true;
-                e.routeGeometry = route.geometry;
-                e.distanceMi = route.distance_mi.toFixed(1);
-                e.durationMin = route.duration_min.toFixed(0);
-                e.duration = (route.duration_min / 60).toFixed(2);
-                e.originId = from.id; // 🔹 ensure kept
-                e.destinationId = to.id;
-
-                console.log(`Route ${from.name} → ${to.name}: ${e.distanceMi} mi`);
+                seg.autoDrive = true;
+                seg.routeGeometry = route.geometry;
+                seg.distanceMi = route.distance_mi.toFixed(1);
+                seg.durationMin = route.duration_min.toFixed(0);
+                seg.duration = (route.duration_min / 60).toFixed(2);
+                seg.originId = from.id;
+                seg.destinationId = to.id;
             }
         } catch (err) {
-            console.error('Route failed', from.name, '→', to.name, err);
         }
     }
 

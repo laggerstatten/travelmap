@@ -2,43 +2,56 @@
    Timeline Rendering & Interaction
    =============================== */
 
-
+   
 // --- Build a card ---
-function renderCard(e) {
-    const card = document.createElement('div');
-    card.className = `event timeline-card ${e.type || 'stop'} ${cardBadgeClass(e)}`;
-    card.dataset.id = e.id;
+function renderCard(seg) {
+  const card = document.createElement('div');
+  card.className = `segment timeline-card ${seg.type || 'stop'
+    } ${cardBadgeClass(seg)}`;
+  card.dataset.id = seg.id;
 
-    // title logic
-    let title = e.name || '(untitled)';
-    if (e.type === 'drive') {
-        const origin = events.find(ev => ev.id === e.originId);
-        const dest = events.find(ev => ev.id === e.destinationId);
-        const originName = origin ?.name || origin ?.location_name || 'Unknown';
-        const destName = dest ?.name || dest ?.location_name || 'Unknown';
-        title = `Drive: ${originName} → ${destName}`;
+  // --- Title logic ---
+  let title = seg.name || '(untitled)';
+  let origin, dest;
+  if (seg.type === 'drive') {
+    origin = segments.find((ev) => ev.id === seg.originId);
+    dest = segments.find((ev) => ev.id === seg.destinationId);
+    const originName = origin?.name || origin?.location_name || 'Unknown';
+    const destName = dest?.name || dest?.location_name || 'Unknown';
+    title = `Drive: ${originName} → ${destName}`;
+  }
+
+  // --- Time display logic ---
+  let metaHTML = 'No date set';
+  if (seg.start || seg.end) {
+    if (seg.type === 'drive') {
+      const startStr =
+        seg.start && origin
+          ? fmtDate(seg.start, origin.timeZone)
+          : fmtDate(seg.start, seg.timeZone);
+      const endStr =
+        seg.end && dest
+          ? fmtDate(seg.end, dest.timeZone)
+          : fmtDate(seg.end, seg.timeZone);
+      metaHTML = `${startStr || ''}${endStr ? ' → ' + endStr : ''}`;
+    } else {
+      metaHTML = `${fmtDate(seg.start, seg.timeZone)}${seg.end ? ' → ' + fmtDate(seg.end, seg.timeZone) : ''
+        }`;
     }
+  }
 
-    card.innerHTML = `
+  card.innerHTML = `
     <div class="title">${title}</div>
     <div class="subtitle">
-      ${e.type || 'stop'}
-      ${e.location_name ? ' • ' + e.location_name : ''}
-      ${e.lat && e.lon ? `<span class="coord-pill">📍</span>` : ''}
-      ${driveInfoHTML(e)}
+      ${seg.type || 'stop'}
+      ${seg.name ? ' • ' + seg.name : ''}
+      ${seg.lat && seg.lon ? `<span class="coord-pill">📍</span>` : ''}
+      ${driveInfoHTML(seg)}
     </div>
-    <div class="meta">
-      ${e.start || e.end
-      ? `${fmtDate(e.start)}${e.end ? ' → ' + fmtDate(e.end) : ''}`
-      : 'No date set'}
-    </div>
-    <div class="card-footer">
+    <div class="meta">${metaHTML}</div>
+    <div class="card-footer">     
       <button class="fill-forward-btn">⏩ Fill Forward</button>
       <button class="fill-backward-btn">⏪ Fill Backward</button>
-      <button class="nudge-backward-btn">⏪ -30m</button>
-      <button class="nudge-forward-btn">⏩ +30m</button>
-      <button class="nudge-forward-cascade-btn">⏩ +30m (cascade)</button>
-      
       <button class="edit-btn">Edit</button>
       <button class="del-btn">Delete</button>
     </div>`;
@@ -46,22 +59,18 @@ function renderCard(e) {
   attachCardHandlers(card);
 
   // safely bind the fill buttons
-  card.querySelector('.fill-forward-btn').onclick = () => fillForward(e);
-  card.querySelector('.fill-backward-btn').onclick = () => fillBackward(e);
-  card.querySelector('.nudge-backward-btn').onclick = () => nudgeEvent(e, -30, false)
-  card.querySelector('.nudge-forward-btn').onclick = () => nudgeEvent(e, 30, false)
-  card.querySelector('.nudge-forward-cascade-btn').onclick = () => nudgeEvent(e, 30, true)
-
+  card.querySelector('.fill-forward-btn').onclick = () => fillForward(seg);
+  card.querySelector('.fill-backward-btn').onclick = () => fillBackward(seg);
 
   return card;
 }
 
 // --- Generate drive info snippet ---
-function driveInfoHTML(e) {
-  if (e.nextDistanceMi)
-    return `<div class="drive-info">🚗 ${e.nextDistanceMi} mi • ${e.nextDurationMin} min</div>`;
-  if (e.type === 'drive' && e.distanceMi)
-    return `<div class="drive-info">🚗 ${e.distanceMi} mi • ${e.durationMin} min</div>`;
+function driveInfoHTML(seg) {
+  if (seg.nextDistanceMi)
+    return `<div class="drive-info">🚗 ${seg.nextDistanceMi} mi • ${seg.nextDurationMin} min</div>`;
+  if (seg.type === 'drive' && seg.distanceMi)
+    return `<div class="drive-info">🚗 ${seg.distanceMi} mi • ${seg.durationMin} min</div>`;
   return '';
 }
 
@@ -70,22 +79,21 @@ function driveInfoHTML(e) {
    Data Operations
    =============================== */
 
-function deleteEventById(id) {
-  const idx = events.findIndex(e => String(e.id) === String(id));
+function deleteSegmentById(id) {
+  const idx = segments.findIndex((seg) => String(seg.id) === String(id));
   if (idx !== -1) {
-    events.splice(idx, 1);
+    segments.splice(idx, 1);
     save();
   }
 }
-
 
 /* ===============================
    Styling helpers
    =============================== */
 
-function cardBadgeClass(e) {
-  if (e.type !== 'drive') return '';
-  if (e.autoDrive && !e.manualEdit) return 'auto';
-  if (e.manualEdit) return 'edited';
+function cardBadgeClass(seg) {
+  if (seg.type !== 'drive') return '';
+  if (seg.autoDrive && !seg.manualEdit) return 'auto';
+  if (seg.manualEdit) return 'edited';
   return 'manual';
 }

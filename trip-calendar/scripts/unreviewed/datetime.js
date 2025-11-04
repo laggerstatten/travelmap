@@ -1,21 +1,4 @@
 /* ---------- Dates ---------- */
-function fmtDate(dtString) {
-    if (!dtString) return '';
-    const d = new Date(dtString);
-    return isNaN(d) ?
-        '' :
-        d.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
-};
-
-function parseDate(v) {
-    const d = new Date(v);
-    return isNaN(d) ? null : d;
-};
-
-function dayStr(iso) {
-    if (!iso) return '';
-    return new Date(iso).toDateString();
-}
 
 function sortByDate() {
     sortByDateInPlace(events);

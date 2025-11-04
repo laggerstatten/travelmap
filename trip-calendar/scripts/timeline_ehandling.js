@@ -11,13 +11,13 @@ function attachCardHandlers(card) {
         ev.stopPropagation();
         if (card.classList.contains('editing')) return;
         card.classList.add('editing');
-        const e = events.find(x => String(x.id) === String(id));
-        const editor = buildInlineEditor(e, card);
+        const seg = segments.find(x => String(x.id) === String(id));
+        const editor = buildOnCardEditor(seg, card);
     };
 
     card.querySelector('.del-btn').onclick = ev => {
         ev.stopPropagation();
-        deleteEventById(id);
+        deleteSegmentById(id);
         renderTimeline();
     };
 
@@ -71,10 +71,9 @@ function getDragAfterElement(container, y) {
         (closest, el) => {
             const box = el.getBoundingClientRect();
             const offset = y - (box.top + box.height / 2);
-            return offset < 0 && offset > closest.offset
-                ? { offset, element: el.querySelector('.timeline-card') }
-                : closest;
-        },
-        { offset: Number.NEGATIVE_INFINITY, element: null }
+            return offset < 0 && offset > closest.offset ?
+                { offset, element: el.querySelector('.timeline-card') } :
+                closest;
+        }, { offset: Number.NEGATIVE_INFINITY, element: null }
     ).element;
 }

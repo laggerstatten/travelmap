@@ -7,13 +7,11 @@ function renderTimeline() {
     const cal = document.getElementById('calendar');
     cal.className = 'timeline';
     cal.innerHTML = '';
-    //console.log("sortByDateInPlace");
-    //sortByDateInPlace(events); //FIXME
 
     let lastDay = '';
 
-    for (const e of events) {
-        const day = e.start ? dayStr(e.start) : '';
+    for (const seg of segments) {
+        const day = seg.start ? dayStr(seg.start) : '';
         if (day && day !== lastDay) {
             cal.appendChild(renderDayDivider(day));
             lastDay = day;
@@ -22,7 +20,7 @@ function renderTimeline() {
         const wrapper = document.createElement('div');
         wrapper.className = 'rail-pair';
         wrapper.appendChild(renderRails());
-        wrapper.appendChild(renderCard(e));
+        wrapper.appendChild(renderCard(seg));
         cal.appendChild(wrapper);
     }
 
@@ -46,11 +44,4 @@ function renderRails() {
     <div class="insolation-rail"></div>
     <div class="weather-rail"></div>`;
     return rails;
-}
-
-
-function reorderFromDOM(container) {
-    const ids = [...container.querySelectorAll('.timeline-card')].map(el => el.dataset.id);
-    events.sort((a, b) => ids.indexOf(String(a.id)) - ids.indexOf(String(b.id)));
-    save();
 }

@@ -1,120 +1,149 @@
-function initTrip(events, saveFn, getRouteInfo, newId) {
-  const container = document.createElement("div");
-  container.className = "trip-init";
-  container.innerHTML = `
+function initTrip(segments) {
+    const container = createTripInitUI();
+    document.getElementById("calendar").prepend(container);
+
+    const startBox = container.querySelector("#trip-start-search");
+    const endBox = container.querySelector("#trip-end-search");
+    [startBox, endBox].forEach(el => el.accessToken = mapboxgl.accessToken);
+
+    const tripState = { start: {}, end: {} };
+
+    startBox.addEventListener("retrieve", ev => handleRetrieve(ev, tripState, "start"));
+    endBox.addEventListener("retrieve", ev => handleRetrieve(ev, tripState, "end"));
+
+    container.querySelector(".cancel").onclick = () => container.remove();
+    container.querySelector(".create").onclick = () =>
+        handleCreateTrip(container, tripState, segments);
+}
+
+function createTripInitUI() {
+    const div = document.createElement("div");
+    div.className = "trip-init";
+    div.innerHTML = `
     <div class="trip-init-fields">
       <label>Starting Location</label>
       <mapbox-search-box id="trip-start-search"></mapbox-search-box>
-      <label>Start Date/Time</label>
-      <input type="datetime-local" id="trip-start-time">
+        <label>Start Date/Time</label>
+        <input type="datetime-local" id="trip-start-time">
 
-      <label>Destination</label>
-      <mapbox-search-box id="trip-end-search"></mapbox-search-box>
-      <label>End Date/Time</label>
-      <input type="datetime-local" id="trip-end-time">
+        <label>Destination</label>
+        <mapbox-search-box id="trip-end-search"></mapbox-search-box>
+        <label>End Date/Time</label>
+        <input type="datetime-local" id="trip-end-time">
 
       <div class="actions">
         <button class="small cancel">Cancel</button>
         <button class="small create">Create Trip</button>
       </div>
     </div>
-  `;
-  document.getElementById("calendar").prepend(container);
+    `;
+    return div;
+}
 
-  // Set up search boxes
-  const startBox = container.querySelector("#trip-start-search");
-  const endBox = container.querySelector("#trip-end-search");
-  [startBox, endBox].forEach(el => el.accessToken = mapboxgl.accessToken);
-
-  let tripStart = {}, tripEnd = {};
-
-  startBox.addEventListener("retrieve", ev => {
+async function handleRetrieve(ev, tripState, key) {
     const f = ev.detail?.features?.[0];
-    if (f) {
-      tripStart = {
+    if (!f) return;
+
+    const lat = f.geometry.coordinates[1];
+    const lon = f.geometry.coordinates[0];
+
+    // Build base object immediately
+    const location = {
         name: f.properties?.name || f.place_name,
-        lat: f.geometry.coordinates[1],
-        lon: f.geometry.coordinates[0],
-        location_name: f.properties?.place_formatted || f.place_name
-      };
-    }
-  });
-
-  endBox.addEventListener("retrieve", ev => {
-    const f = ev.detail?.features?.[0];
-    if (f) {
-      tripEnd = {
-        name: f.properties?.name || f.place_name,
-        lat: f.geometry.coordinates[1],
-        lon: f.geometry.coordinates[0],
-        location_name: f.properties?.place_formatted || f.place_name
-      };
-    }
-  });
-
-  // Cancel handler
-  container.querySelector(".cancel").onclick = () => container.remove();
-
-  // Create handler
-  container.querySelector(".create").onclick = async () => {
-    const startTime = container.querySelector("#trip-start-time").value;
-    const endTime = container.querySelector("#trip-end-time").value;
-
-    if (!tripStart.lat || !tripEnd.lat) {
-      alert("Please choose both start and end points.");
-      return;
-    }
-
-    // Clear existing trip
-    events.length = 0;
-
-    // Create start and end anchors
-    const startEvent = {
-      id: newId(),
-      ...tripStart,
-      type: "trip_start",
-      isAnchorStart: true,
-      start: startTime || "",
-      end: ""
+        lat,
+        lon,
+        location_name: f.properties?.place_formatted || f.place_name,
     };
 
-    const endEvent = {
-      id: newId(),
-      ...tripEnd,
-      type: "trip_end",
-      isAnchorEnd: true,
-      start: "",
-      end: endTime || ""
+    // Store base info immediately (so it's never empty)
+    tripState[key] = location;
+
+    // Then fetch timezone (async, augment in place)
+    try {
+        const tz = await getTimeZone(lat, lon);
+        location.timeZone = tz;
+        console.log(`[${key}] resolved timezone:`, tz);
+    } catch (err) {
+        console.warn(`[${key}] timezone lookup failed:`, err);
+    }
+
+    console.log(`[${key}] tripState now:`, tripState[key]);
+}
+
+
+
+async function handleCreateTrip(container, tripState, segments) {
+    const startInput = container.querySelector("#trip-start-time").value;
+    const endInput = container.querySelector("#trip-end-time").value;
+
+    if (!tripState.start.lat || !tripState.end.lat) {
+        alert("Please choose both start and end points.");
+        return;
+    }
+
+    // Ensure zones exist
+  if (!tripState.start.timeZone) {
+    tripState.start.timeZone = await getTimeZone(tripState.start.lat, tripState.start.lon);
+  }
+  if (!tripState.end.timeZone) {
+    tripState.end.timeZone = await getTimeZone(tripState.end.lat, tripState.end.lon);
+  }
+
+    // Convert entered local times → UTC
+    const startUTC = startInput ? localToUTC(startInput, tripState.start.timeZone) : "";
+    const endUTC = endInput ? localToUTC(endInput, tripState.end.timeZone) : "";
+
+    console.log("Converted start:", startUTC, "end:", endUTC);
+
+    segments.length = 0;
+
+    const startSegment = {
+        id: newId(),
+        ...tripState.start,
+        type: "trip_start",
+        isAnchorStart: true,
+        start: "",
+        end: startUTC
     };
 
-    // Build initial drive
-    let driveEvent = {
-      id: newId(),
-      name: "Initial Drive",
-      type: "drive",
-      originId: startEvent.id,
-      destinationId: endEvent.id
+    const endSegment = {
+        id: newId(),
+        ...tripState.end,
+        type: "trip_end",
+        isAnchorEnd: true,
+        start: endUTC,
+        end: ""
+    };
+
+
+    let driveSegment = {
+        id: newId(),
+        name: "Initial Drive",
+        type: "drive",
+        originId: startSegment.id,
+        destinationId: endSegment.id
     };
 
     try {
-      const route = await getRouteInfo(tripStart, tripEnd);
-      if (route) {
-        driveEvent = {
-          ...driveEvent,
-          autoDrive: true,
-          routeGeometry: route.geometry,
-          distanceMi: route.distance_mi.toFixed(1),
-          durationMin: route.duration_min.toFixed(0),
-          duration: (route.duration_min / 60).toFixed(2)
-        };
-      }
+        console.log("StartSegment ID:", startSegment.id);
+        console.log("EndSegment ID:", endSegment.id);
+
+        const route = await getRouteInfo(tripState.start, tripState.end);
+        if (route) {
+            Object.assign(driveSegment, {
+                autoDrive: true,
+                routeGeometry: route.geometry,
+                distanceMi: route.distance_mi.toFixed(1),
+                durationMin: route.duration_min.toFixed(0),
+                duration: (route.duration_min / 60).toFixed(2)
+            });
+        }
     } catch (err) {
-      console.error("Failed to get initial route:", err);
+        console.error("Failed to get initial route:", err);
     }
 
-    // Assemble trip
-    events.push(startEvent, driveEvent, endEvent);
-    if (typeof saveFn === "function") saveFn();
+    segments.push(startSegment, driveSegment, endSegment);
+    save();
     container.remove();
-  };
 }
+
