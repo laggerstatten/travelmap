@@ -155,3 +155,32 @@
     content: 'EDITED';
     background: #0d47a1;
 }
+
+
+.connector {
+  height: 4px;
+  border-radius: 2px;
+  margin: 2px 0 6px 0;
+}
+
+.connector.slack {
+  background: repeating-linear-gradient(
+    45deg,
+    #27ae60,
+    #27ae60 8px,
+    transparent 8px,
+    transparent 16px
+  );
+  opacity: 0.6;
+}
+
+.connector.overlap {
+  background: repeating-linear-gradient(
+    45deg,
+    #e74c3c,
+    #e74c3c 8px,
+    transparent 8px,
+    transparent 16px
+  );
+  opacity: 0.8;
+}

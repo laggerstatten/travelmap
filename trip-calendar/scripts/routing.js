@@ -24,7 +24,7 @@ function sortByDateInPlace(list) {
     list.splice(0, list.length, ...merged);
 };
 
-function insertDriveSegments() {
+function insertDriveSegments() { //edit to ignore slack and overlaps
     sortByDateInPlace(segments);
     const out = [];
     for (let i = 0; i < segments.length; i++) {
@@ -61,11 +61,11 @@ async function generateRoutes() {
         // Fallback: nearest non-drive neighbors
         const originAlt =
             origin || [...segments.slice(0, segments.indexOf(seg))]
-            .reverse()
-            .find((ev) => ev.lat && ev.lon);
+                .reverse()
+                .find((ev) => ev.lat && ev.lon);
         const destAlt =
             destination || segments.slice(segments.indexOf(seg) + 1)
-            .find((ev) => ev.lat && ev.lon);
+                .find((ev) => ev.lat && ev.lon);
         const from = originAlt;
         const to = destAlt;
 
@@ -84,8 +84,7 @@ async function generateRoutes() {
                 seg.originId = from.id;
                 seg.destinationId = to.id;
             }
-        } catch (err) {
-        }
+        } catch (err) { }
     }
 
     save();

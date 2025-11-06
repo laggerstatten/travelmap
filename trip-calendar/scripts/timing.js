@@ -27,7 +27,7 @@ function clearAllTimesAndFlags() {
 /* ===============================
    Per-card Fill FORWARD (UTC)
    =============================== */
-function fillForward(fromSegment) {
+function fillForward(fromSegment) { //EDIT TO IGNORE SLACK / OVERLAP
   const idx = segments.findIndex(ev => ev.id === fromSegment.id);
   if (idx === -1) return;
 
@@ -59,7 +59,7 @@ function fillForward(fromSegment) {
 /* ===============================
    Per-card Fill BACKWARD (UTC)
    =============================== */
-function fillBackward(fromSegment) {
+function fillBackward(fromSegment) { //EDIT TO IGNORE SLACK / OVERLAP
   const idx = segments.findIndex(ev => ev.id === fromSegment.id);
   if (idx === -1) return;
 

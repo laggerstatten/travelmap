@@ -2,14 +2,14 @@
    Trip Validation & Repair Module
    =============================== */
 
-async function validateAndRepair() {
+async function validateAndRepair() { // edit for slack / overlap
 
     removeAdjacentDrives();
 
-    segments = segments.filter(e => {
-        if (e.type !== "drive") return true;
-        const origin = segments.find(x => x.id === e.originId);
-        const dest = segments.find(x => x.id === e.destinationId);
+    segments = segments.filter(seg => {
+        if (seg.type !== "drive") return true;
+        const origin = segments.find(x => x.id === seg.originId);
+        const dest = segments.find(x => x.id === seg.destinationId);
         if (!origin || !dest) {
             return false;
         }
@@ -25,7 +25,7 @@ async function validateAndRepair() {
 
 }
 
-function removeAdjacentDrives() {
+function removeAdjacentDrives() { // edit for slack / overlap
 
     let removed = 0;
     for (let i = 0; i < segments.length - 1; i++) {
