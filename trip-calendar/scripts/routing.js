@@ -62,10 +62,10 @@ async function generateRoutes() {
         const originAlt =
             origin || [...segments.slice(0, segments.indexOf(seg))]
                 .reverse()
-                .find((ev) => ev.lat && ev.lon);
+                .find((ev) => ev.coordinates[1] && ev.coordinates[0]);
         const destAlt =
             destination || segments.slice(segments.indexOf(seg) + 1)
-                .find((ev) => ev.lat && ev.lon);
+                .find((ev) => ev.coordinates[1] && ev.coordinates[0]);
         const from = originAlt;
         const to = destAlt;
 
@@ -83,6 +83,7 @@ async function generateRoutes() {
                 seg.duration = (route.duration_min / 60).toFixed(2);
                 seg.originId = from.id;
                 seg.destinationId = to.id;
+                seg.durationLock = 'hard';
             }
         } catch (err) { }
     }

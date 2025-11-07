@@ -21,20 +21,20 @@ function createTripInitUI() {
     div.className = "trip-init";
     div.innerHTML = `
     <div class="trip-init-fields">
-      <label>Starting Location</label>
-      <mapbox-search-box id="trip-start-search"></mapbox-search-box>
+        <label>Starting Location</label>
+        <mapbox-search-box id="trip-start-search"></mapbox-search-box>
         <label>Start Date/Time</label>
         <input type="datetime-local" id="trip-start-time">
-
+        <br>
         <label>Destination</label>
         <mapbox-search-box id="trip-end-search"></mapbox-search-box>
         <label>End Date/Time</label>
         <input type="datetime-local" id="trip-end-time">
 
-      <div class="actions">
-        <button class="small cancel">Cancel</button>
-        <button class="small create">Create Trip</button>
-      </div>
+        <div class="actions">
+            <button class="small cancel">Cancel</button>
+            <button class="small create">Create Trip</button>
+        </div>
     </div>
     `;
     return div;
@@ -44,14 +44,10 @@ async function handleRetrieve(ev, tripState, key) {
     const f = ev.detail?.features?.[0];
     if (!f) return;
 
-    const lat = f.geometry.coordinates[1];
-    const lon = f.geometry.coordinates[0];
-
     // Build base object immediately
     const location = {
         name: f.properties?.name || f.place_name,
-        lat,
-        lon,
+        coordinates: f.geometry.coordinates,
         location_name: f.properties?.place_formatted || f.place_name,
     };
 
@@ -60,7 +56,7 @@ async function handleRetrieve(ev, tripState, key) {
 
     // Then fetch timezone (async, augment in place)
     try {
-        const tz = await getTimeZone(lat, lon);
+        const tz = await getTimeZone(f.geometry.coordinates);
         location.timeZone = tz;
         console.log(`[${key}] resolved timezone:`, tz);
     } catch (err) {
@@ -76,17 +72,17 @@ async function handleCreateTrip(container, tripState, segments) {
     const startInput = container.querySelector("#trip-start-time").value;
     const endInput = container.querySelector("#trip-end-time").value;
 
-    if (!tripState.start.lat || !tripState.end.lat) {
+    if (!tripState.start.coordinates || !tripState.end.coordinates) {
         alert("Please choose both start and end points.");
         return;
     }
 
     // Ensure zones exist
   if (!tripState.start.timeZone) {
-    tripState.start.timeZone = await getTimeZone(tripState.start.lat, tripState.start.lon);
+    tripState.start.timeZone = await getTimeZone(tripState.start.coordinates);
   }
   if (!tripState.end.timeZone) {
-    tripState.end.timeZone = await getTimeZone(tripState.end.lat, tripState.end.lon);
+    tripState.end.timeZone = await getTimeZone(tripState.end.coordinates);
   }
 
     // Convert entered local times → UTC
@@ -102,6 +98,7 @@ async function handleCreateTrip(container, tripState, segments) {
         ...tripState.start,
         type: "trip_start",
         isAnchorStart: true,
+        endLock: 'hard',
         start: "",
         end: startUTC
     };
@@ -111,6 +108,7 @@ async function handleCreateTrip(container, tripState, segments) {
         ...tripState.end,
         type: "trip_end",
         isAnchorEnd: true,
+        startLock: 'hard',
         start: endUTC,
         end: ""
     };

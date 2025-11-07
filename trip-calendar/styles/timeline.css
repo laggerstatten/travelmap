@@ -184,3 +184,15 @@
   );
   opacity: 0.8;
 }
+
+.timeline-card.queued {
+  opacity: 0.8;
+  background: repeating-linear-gradient(
+    -45deg,
+    #fff8,
+    #fff8 6px,
+    #ffe8a8 6px,
+    #ffe8a8 12px
+  );
+  border-color: goldenrod;
+}

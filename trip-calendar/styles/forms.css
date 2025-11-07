@@ -53,3 +53,24 @@
   font-size: 11px;
   color: #6b7280;
 }
+
+.lock-toggle,
+.clear-field {
+  margin-left: 6px;
+  cursor: pointer;
+  font-size: 0.9em;
+  border: none;
+  background: transparent;
+}
+
+.lock-toggle[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.clear-field {
+  color: #c33;
+}
+.clear-field:hover {
+  opacity: 0.8;
+}

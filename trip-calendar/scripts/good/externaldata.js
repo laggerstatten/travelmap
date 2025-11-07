@@ -1,5 +1,5 @@
 async function getRouteInfo(origin, destination) {
-    const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${origin.lon},${origin.lat};${destination.lon},${destination.lat}?geometries=geojson&overview=full&access_token=${mapboxgl.accessToken}`;
+    const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${origin.coordinates[0]},${origin.coordinates[1]};${destination.coordinates[0]},${destination.coordinates[1]}?geometries=geojson&overview=full&access_token=${mapboxgl.accessToken}`;
     const res = await fetch(url);
     if (!res.ok) throw new Error("Directions API request failed");
     const data = await res.json();
@@ -14,8 +14,8 @@ async function getRouteInfo(origin, destination) {
     };
 }
 
-async function getTimeZone(lat, lon) {
-    const url = `https://api.timezonedb.com/v2.1/get-time-zone?key=${TIMEZONE_TOKEN}&format=json&by=position&lat=${lat}&lng=${lon}`;
+async function getTimeZone(coordinates) {
+    const url = `https://api.timezonedb.com/v2.1/get-time-zone?key=${TIMEZONE_TOKEN}&format=json&by=position&lat=${coordinates[1]}&lng=${coordinates[0]}`;
     const res = await fetch(url);
     if (!res.ok) throw new Error("Timezone API failed");
     const data = await res.json();

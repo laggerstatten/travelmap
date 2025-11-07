@@ -1,43 +1,52 @@
-function queueStop(segments) {
+async function addStop(segments) {
+  // 2️⃣ Create temporary stop at top of timeline
   const newStop = {
     id: newId(),
     name: '(untitled)',
     type: 'stop',
-    isQueued: true
+    isTemporary: true
   };
   segments.unshift(newStop);
 
   save();
   renderTimeline();
 
-  // Open editor for queued stop
+  // 3️⃣ After render, open oncard editor and attach single retrieve handler
   setTimeout(() => {
     const card = document.querySelector(`.segment[data-id="${newStop.id}"]`);
     if (!card) return;
     buildOnCardEditor(newStop, card);
-  }, 50);
-}
 
-async function insertQueuedStops(segments) {
-  const queued = segments.filter((s) => s.isQueued);
-  if (!queued.length) {
-    alert('No queued stops to insert.');
-    return;
-  }
+    setTimeout(() => {
+      const editor = card.querySelector('.oncard-editor');
+      if (!editor) return;
 
-  // Example: show a selection dialog, or auto-insert sequentially
-  for (const stop of queued) {
-    if (!stop.coordinates) continue; // skip incomplete
-    delete stop.isQueued;
-    await insertStopInNearestRoute(stop, segments);
-  }
+      // intercept Save submit from oncard editor
+      editor.addEventListener('submit', async (ev) => {
+        ev.preventDefault();
+        const data = Object.fromEntries(new FormData(editor).entries());
+        Object.assign(newStop, data);
 
-  save();
-  renderTimeline();
+        // derive duration-based end time if needed
+        if (data.duration && data.start) {
+          newStop.end = endFromDuration(data.start, data.duration);
+        }
+
+        // confirm lat/lon exist before proceeding
+        if (!newStop.coordinates) {
+          save();
+          renderTimeline();
+          return;
+        }
+
+        delete newStop.isTemporary;
+        await insertStopInNearestRoute(newStop, segments);
+      });
+    }, 100);
+  }, 100);
 }
 
 async function insertStopInNearestRoute(stop, segments) {
-  
   const drives = segments.filter(
     (ev) => ev.type === 'drive' && ev.routeGeometry
   );

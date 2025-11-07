@@ -21,12 +21,13 @@
     <div id="toolbar">
       <button id="mode-timeline">Timeline</button>
       <button id="init-trip">Start Trip</button>
-      <button id="add-event">Add Segment</button>
+      <button id="add-stop">Add Segment</button>
       <button id="clear-auto">Clear Auto Drives</button>
       <button id="insert-drives">Insert Drives</button>
       <button id="gen-routes">Generate Routes</button>
       <button id="validate-btn">Validate & Repair</button>
-      <button id="clear-times">Clear Times</button>
+      <button id="clear-unlocked-times">Clear Unlocked Times</button>
+      <button id="clear-all-times">Clear All Times</button>
     </div>
 
     <div id="calendar" class="timeline"></div>
@@ -171,8 +172,8 @@
         initTrip(segments);
       };
 
-      document.getElementById('add-event').onclick = () => {
-        addStop(segments);
+      document.getElementById('add-stop').onclick = () => {
+        queueStop(segments);
       };
 
       document.getElementById('clear-auto').onclick = () => {
@@ -191,8 +192,14 @@
         await validateAndRepair();
       };
 
-      document.getElementById('clear-times').onclick = () => {
-        clearAllTimesAndFlags();
+      document.getElementById('clear-unlocked-times').onclick = () => {
+        clearTimesAndDurations({
+          onlyUnlocked: true
+        });
+      };
+
+      document.getElementById('clear-all-times').onclick = () => {
+        clearTimesAndDurations();
       };
 
       // Initial render

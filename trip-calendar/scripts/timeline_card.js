@@ -2,7 +2,7 @@
    Timeline Rendering & Interaction
    =============================== */
 
-   
+
 // --- Build a card ---
 function renderCard(seg) {
   const card = document.createElement('div');
@@ -52,11 +52,13 @@ function renderCard(seg) {
     <div class="card-footer">     
       <button class="fill-forward-btn">⏩ Fill Forward</button>
       <button class="fill-backward-btn">⏪ Fill Backward</button>
+      ${seg.isQueued ? `<button class="insert-btn small">Insert into Route</button>` : ''}
       <button class="edit-btn">Edit</button>
       <button class="del-btn">Delete</button>
     </div>`;
 
   attachCardHandlers(card);
+  attachInsertButton(card, seg);
 
   // safely bind the fill buttons
   card.querySelector('.fill-forward-btn').onclick = () => fillForward(seg);
@@ -96,4 +98,29 @@ function cardBadgeClass(seg) {
   if (seg.autoDrive && !seg.manualEdit) return 'auto';
   if (seg.manualEdit) return 'edited';
   return 'manual';
+}
+
+function attachInsertButton(card, seg) {
+  const insertBtn = card.querySelector(".insert-btn");
+  if (!insertBtn) return;
+
+  insertBtn.addEventListener("click", async () => {
+    if (!seg.coordinates) {
+      alert("Please select a location before inserting this stop.");
+      return;
+    }
+
+    // Confirm action
+    if (!confirm(`Insert "${seg.name || 'this stop'}" into route?`)) return;
+
+    try {
+      delete seg.isQueued;
+      await insertStopInNearestRoute(seg, segments);
+      save();
+      renderTimeline();
+    } catch (err) {
+      console.error("Error inserting stop:", err);
+      alert("Failed to insert stop into route.");
+    }
+  });
 }
