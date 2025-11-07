@@ -150,6 +150,7 @@
       }
 
       function save(noRender = false) {
+        computeSlackAndOverlap(segments);
         localStorage.setItem('tripSegments', JSON.stringify(segments));
         if (!noRender) renderTimeline();
       }

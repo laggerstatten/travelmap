@@ -4,16 +4,18 @@
 
 // --- Main render ---
 function renderTimeline() {
+  console.log('renderTimeline');
   const cal = document.getElementById('calendar');
   cal.className = 'timeline';
   cal.innerHTML = '';
 
-  let lastDay = '';
-  const { slack, overlaps } = computeSlackAndOverlap(segments);
+  // recompute & inject derived events
+  //computeSlackAndOverlap(segments);
 
+  let lastDay = '';
   for (let i = 0; i < segments.length; i++) {
     const seg = segments[i];
-    const day = seg.start?.utc ? dayStr(seg.start.utc) : '';
+    const day = seg.start ?.utc ? dayStr(seg.start.utc) : '';
     if (day && day !== lastDay) {
       cal.appendChild(renderDayDivider(day));
       lastDay = day;
@@ -24,20 +26,15 @@ function renderTimeline() {
     wrapper.appendChild(renderRails());
     wrapper.appendChild(renderCard(seg));
     cal.appendChild(wrapper);
-
-    // Draw connectors after each non-last event
-    const next = segments[i + 1];
-    if (next) {
-      const slackConn = slack.find(s => s.a.id === seg.id && s.b.id === next.id);
-      const overlapConn = overlaps.find(o => o.a.id === seg.id && o.b.id === next.id);
-      if (slackConn) cal.appendChild(renderConnector('slack', slackConn.minutes));
-      if (overlapConn) cal.appendChild(renderConnector('overlap', overlapConn.minutes));
-    }
   }
 
   cal.addEventListener('dragover', handleDragOver);
-  cal.addEventListener('drop', seg => seg.preventDefault());
+  cal.addEventListener('drop', e => e.preventDefault());
 }
+
+
+
+
 
 // --- Build single day divider ---
 function renderDayDivider(day) {

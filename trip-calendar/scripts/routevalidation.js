@@ -19,7 +19,6 @@ async function validateAndRepair() { // edit for slack / overlap
     insertDriveSegments();
 
     await generateRoutes();
-
     save();
     renderTimeline();
 
@@ -41,5 +40,5 @@ function removeAdjacentDrives() { // edit for slack / overlap
     if (removed > 0) {
         save();
         renderTimeline();
-    } 
+    }
 }
