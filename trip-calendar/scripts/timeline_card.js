@@ -2,7 +2,6 @@
    Timeline Rendering & Interaction
    =============================== */
 
-
 // --- Build a card ---
 function renderCard(seg) {
   const card = document.createElement('div');
@@ -12,19 +11,101 @@ function renderCard(seg) {
 
   // --- Title logic ---
   let title = seg.name || '(untitled)';
-  let origin, dest;
+
+  // --- Time display logic ---
+  let metaHTML = 'No date set';
+  let driveInfoHTML = 'No date set';
+
+  if (seg.type === 'trip_start') {
+    if (seg.end) {
+      const endStr = fmtDate(seg.end.utc, seg.timeZone);
+      metaHTML = `${endStr || ''}`;
+    }
+
+    card.innerHTML = `
+    <div class="title">${title}</div>
+    <div class="subtitle">
+      ${seg.type}${seg.name ? ' • ' + seg.name : ''}
+      ${seg.coordinates ? `<span class="coord-pill">📍</span>` : ''}
+    </div>
+    <div class="meta">${metaHTML}</div>
+    <div class="card-footer">     
+      <button class="fill-forward-btn">⏩ Fill Forward</button>
+      ${seg.isQueued
+        ? `<button class="insert-btn small">Insert into Route</button>`
+        : ''
+      }
+      <button class="edit-btn">Edit</button>
+    </div>`;
+    attachCardEditHandlers(card);
+    card.querySelector('.fill-forward-btn').onclick = () => fillForward(seg);
+  }
+
+  if (seg.type === 'trip_end') {
+    if (seg.start) {
+      const startStr = fmtDate(seg.start.utc, seg.timeZone);
+      metaHTML = `${startStr || ''}`;
+    }
+
+    card.innerHTML = `
+    <div class="title">${title}</div>
+    <div class="subtitle">
+      ${seg.type}${seg.name ? ' • ' + seg.name : ''}
+      ${seg.coordinates ? `<span class="coord-pill">📍</span>` : ''}
+    </div>
+    <div class="meta">${metaHTML}</div>
+    <div class="card-footer">     
+      <button class="fill-backward-btn">⏪ Fill Backward</button>
+      ${seg.isQueued
+        ? `<button class="insert-btn small">Insert into Route</button>`
+        : ''
+      }
+      <button class="edit-btn">Edit</button>
+    </div>`;
+    attachCardEditHandlers(card);
+    card.querySelector('.fill-backward-btn').onclick = () => fillBackward(seg);
+  }
+
+  if (seg.type === 'stop') {
+    if (seg.start || seg.end) {
+      const startStr = fmtDate(seg.start.utc, seg.timeZone);
+      const endStr = fmtDate(seg.end.utc, seg.timeZone);
+      metaHTML = `${startStr || ''}${endStr ? ' → ' + endStr : ''}`;
+    }
+
+    card.innerHTML = `
+    <div class="title">${title}</div>
+    <div class="subtitle">
+      ${seg.type}${seg.name ? ' • ' + seg.name : ''}
+      ${seg.coordinates ? `<span class="coord-pill">📍</span>` : ''}
+    </div>
+    <div class="meta">${metaHTML}</div>
+    <div class="card-footer">     
+      <button class="fill-forward-btn">⏩ Fill Forward</button>
+      <button class="fill-backward-btn">⏪ Fill Backward</button>
+      ${seg.isQueued
+        ? `<button class="insert-btn small">Insert into Route</button>`
+        : ''
+      }
+      <button class="edit-btn">Edit</button>
+      <button class="del-btn">Delete</button>
+    </div>`;
+
+    attachCardEditHandlers(card);
+    attachCardDeleteHandlers(card);
+    card.querySelector('.fill-forward-btn').onclick = () => fillForward(seg);
+    card.querySelector('.fill-backward-btn').onclick = () => fillBackward(seg);
+  }
+
   if (seg.type === 'drive') {
+    let origin, dest;
     origin = segments.find((ev) => ev.id === seg.originId);
     dest = segments.find((ev) => ev.id === seg.destinationId);
     const originName = origin?.name || origin?.location_name || 'Unknown';
     const destName = dest?.name || dest?.location_name || 'Unknown';
     title = `Drive: ${originName} → ${destName}`;
-  }
 
-  // --- Time display logic ---
-  let metaHTML = 'No date set';
-  if (seg.start || seg.end) {
-    if (seg.type === 'drive') {
+    if (seg.start || seg.end) {
       const startStr =
         seg.start && origin
           ? fmtDate(seg.start.utc, origin.timeZone)
@@ -34,47 +115,46 @@ function renderCard(seg) {
           ? fmtDate(seg.end.utc, dest.timeZone)
           : fmtDate(seg.end.utc, seg.timeZone);
       metaHTML = `${startStr || ''}${endStr ? ' → ' + endStr : ''}`;
-    } else {
-      const startStr = fmtDate(seg.start.utc, seg.timeZone);
-      const endStr = fmtDate(seg.end.utc, seg.timeZone);
-      metaHTML = `${startStr || ''}${endStr ? ' → ' + endStr : ''}`;
     }
-  }
 
-  card.innerHTML = `
+    if (seg.distanceMi) {
+      driveInfoHTML = `<div class="drive-info">🚗 ${seg.distanceMi} mi • ${seg.durationMin} min</div>`;
+    }
+
+    card.innerHTML = `
     <div class="title">${title}</div>
     <div class="subtitle">
-      ${seg.type || 'stop'}
-      ${seg.name ? ' • ' + seg.name : ''}
-      ${seg.coordinates ? `<span class="coord-pill">📍</span>` : ''}
-      ${driveInfoHTML(seg)}
+      ${seg.type}${seg.name ? ' • ' + seg.name : ''}
+      ${driveInfoHTML}
     </div>
     <div class="meta">${metaHTML}</div>
     <div class="card-footer">     
       <button class="fill-forward-btn">⏩ Fill Forward</button>
       <button class="fill-backward-btn">⏪ Fill Backward</button>
-      ${seg.isQueued ? `<button class="insert-btn small">Insert into Route</button>` : ''}
       <button class="edit-btn">Edit</button>
       <button class="del-btn">Delete</button>
     </div>`;
 
-  attachCardHandlers(card);
+    attachCardEditHandlers(card);
+    attachCardDeleteHandlers(card);
+    card.querySelector('.fill-forward-btn').onclick = () => fillForward(seg);
+    card.querySelector('.fill-backward-btn').onclick = () => fillBackward(seg);
+  }
+  
+  if (seg.type === 'slack') {
+  }
+
+  if (seg.type === 'overlap') {
+  }
+
+  attachCardDragHandlers(card);
   attachInsertButton(card, seg);
 
   // safely bind the fill buttons
-  card.querySelector('.fill-forward-btn').onclick = () => fillForward(seg);
-  card.querySelector('.fill-backward-btn').onclick = () => fillBackward(seg);
+
 
   return card;
 }
-
-// --- Generate drive info snippet ---
-function driveInfoHTML(seg) {
-  if (seg.type === 'drive' && seg.distanceMi)
-    return `<div class="drive-info">🚗 ${seg.distanceMi} mi • ${seg.durationMin} min</div>`;
-  return '';
-}
-
 
 /* ===============================
    Data Operations
@@ -100,12 +180,12 @@ function cardBadgeClass(seg) {
 }
 
 function attachInsertButton(card, seg) {
-  const insertBtn = card.querySelector(".insert-btn");
+  const insertBtn = card.querySelector('.insert-btn');
   if (!insertBtn) return;
 
-  insertBtn.addEventListener("click", async () => {
+  insertBtn.addEventListener('click', async () => {
     if (!seg.coordinates) {
-      alert("Please select a location before inserting this stop.");
+      alert('Please select a location before inserting this stop.');
       return;
     }
 
@@ -118,8 +198,8 @@ function attachInsertButton(card, seg) {
       save();
       renderTimeline();
     } catch (err) {
-      console.error("Error inserting stop:", err);
-      alert("Failed to insert stop into route.");
+      console.error('Error inserting stop:', err);
+      alert('Failed to insert stop into route.');
     }
   });
 }

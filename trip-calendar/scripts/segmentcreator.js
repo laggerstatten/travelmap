@@ -14,6 +14,7 @@ function queueStop(segments) {
   setTimeout(() => {
     const card = document.querySelector(`.segment[data-id="${newStop.id}"]`);
     if (!card) return;
+    console.log(newStop, card);
     buildOnCardEditor(newStop, card);
   }, 50);
 }

@@ -38,7 +38,7 @@ function createEditorForm(seg) {
   if (seg.type === 'trip_start') {
     timeFields = `<label>Trip Start
         <input type="datetime-local" name="end" value="${localEnd}" />
-        ${lockButtonHTML('end.lock', seg.end)}
+        ${lockButtonHTML('endLock', seg.end)}
         ${clearButtonHTML('end')}
       </label>`
   }
@@ -46,7 +46,7 @@ function createEditorForm(seg) {
   if (seg.type === 'trip_end') {
     timeFields = `<label>Trip End
         <input type="datetime-local" name="start" value="${localStart}" />
-        ${lockButtonHTML('start.lock', seg.start)}
+        ${lockButtonHTML('startLock', seg.start)}
         ${clearButtonHTML('start')}
       </label>`
   }
@@ -54,22 +54,22 @@ function createEditorForm(seg) {
   if (seg.type === 'stop') {
     timeFields = `<label>Start
         <input type="datetime-local" name="start" value="${localStart}" />
-        ${lockButtonHTML('start.lock', seg.start)}
+        ${lockButtonHTML('startLock', seg.start)}
         ${clearButtonHTML('start')}
       </label>
       <label>End
         <input type="datetime-local" name="end" value="${localEnd}" />
-        ${lockButtonHTML('end.lock', seg.end)}
+        ${lockButtonHTML('endLock', seg.end)}
         ${clearButtonHTML('end')}
       </label>
       <label>Duration (hours)
         <input type="number" step="0.25" name="duration" value="${seg.duration?.val ?? ''}" />
-        ${lockButtonHTML('duration.lock', seg.duration)}
+        ${lockButtonHTML('durationLock', seg.duration)}
         ${clearButtonHTML('duration')}
       </label>`;
   }
 
-  if (seg.type === 'drive') { }
+  if (seg.type === 'drive') {  }
 
   if (seg.type === 'slack') { }
 
@@ -152,18 +152,18 @@ function handleEditorSubmit(editor, seg, card) {
       ? localToUTC(formData['end'], seg.timeZone)
       : '';
 
-    // Only set hard locks if user explicitly changed or field was previously unlocked
+    // Only set hard locks if user explicitly changed the field
     if (newStartUTC && newStartUTC !== prev.start?.utc) {
       seg.start.utc = newStartUTC;
-      if (seg.start.lock !== "hard") seg.start.lock = "unlocked";
+      seg.start.lock = 'hard';
     }
     if (newEndUTC && newEndUTC !== prev.end?.utc) {
       seg.end.utc = newEndUTC;
-      if (seg.end.lock !== "hard") seg.end.lock = "unlocked";
+      seg.end.lock = 'hard';
     }
     if (durVal !== null && durVal !== Number(prev.duration?.val || 0)) {
       seg.duration.val = durVal;
-      if (seg.duration.lock !== "hard") seg.duration.lock = "unlocked";
+      seg.duration.lock = 'hard';
     }
 
     // Preserve any existing soft/unlocked states
@@ -190,45 +190,33 @@ function handleEditorSubmit(editor, seg, card) {
 }
 
 function updateLockConsistency(seg) {
-  const locks = {
-    start: seg.start.lock,
-    end: seg.end.lock,
-    duration: seg.duration.lock,
+  const hard = {
+    start: seg.start.lock === 'hard',
+    end: seg.end.lock === 'hard',
+    duration: seg.duration.lock === 'hard'
   };
 
-  const hardCount = Object.values(locks).filter(l => l === "hard").length;
+  // Soft-lock logic
+  seg.start.lock = hard.start ? 'hard' : 'unlocked';
+  seg.end.lock = hard.end ? 'hard' : 'unlocked';
+  seg.duration.lock = hard.duration ? 'hard' : 'unlocked';
 
-  // Clear derived states first
-  if (locks.start !== "hard") seg.start.lock = "unlocked";
-  if (locks.end !== "hard") seg.end.lock = "unlocked";
-  if (locks.duration !== "hard") seg.duration.lock = "unlocked";
+  const lockedCount = Object.values(hard).filter(Boolean).length;
 
-  // ────────────────────────────────
-  // 1️⃣ Exactly two hard locks → derive the third as soft
-  // ────────────────────────────────
-  if (hardCount === 2) {
-    const hardStart = locks.start === "hard";
-    const hardEnd = locks.end === "hard";
-    const hardDur = locks.duration === "hard";
-
-    if (hardStart && hardEnd && !hardDur) {
+  // Apply soft locks and derive missing field
+  if (lockedCount >= 2) {
+    if (hard.start && hard.end && !hard.duration) {
       seg.duration.val = durationFromStartEnd(seg.start.utc, seg.end.utc);
-      seg.duration.lock = "soft";
-    } else if (hardStart && hardDur && !hardEnd) {
+      seg.duration.lock = 'soft';
+    } else if (hard.start && hard.duration && !hard.end) {
       seg.end.utc = endFromDuration(seg.start.utc, seg.duration.val);
-      seg.end.lock = "soft";
-    } else if (hardEnd && hardDur && !hardStart) {
+      seg.end.lock = 'soft';
+    } else if (hard.end && hard.duration && !hard.start) {
       seg.start.utc = startFromDuration(seg.end.utc, seg.duration.val);
-      seg.start.lock = "soft";
+      seg.start.lock = 'soft';
     }
   }
-
-  // ────────────────────────────────
-  // 2️⃣ One or zero hard locks → everything else stays unlocked
-  // ────────────────────────────────
-  // (no auto-promotion to hard — user must click to lock)
 }
-
 
 
 
@@ -241,22 +229,20 @@ function clearButtonHTML(field) {
 function attachLockButtons(editor, seg) {
   editor.querySelectorAll(".lock-toggle").forEach(btn => {
     btn.addEventListener("click", e => {
-      const fieldPath = e.currentTarget.dataset.field;
-      if (!fieldPath) return;
+      const field = e.currentTarget.dataset.field;
+      if (!field) return;
 
-      const [base, key] = fieldPath.split(".");
-      const target = key ? seg[base]?.[key] : seg[base];
-      const targetObj = key ? seg[base] : seg;
+      // Prevent manual toggle of soft locks
+      if (seg[field] === "soft") return;
 
-      if (!targetObj || typeof targetObj.lock === "undefined") return;
-      if (targetObj.lock === "soft") return;
+      seg[field] =
+        seg[field] === "hard" ? "unlocked" : "hard";
 
-      targetObj.lock = targetObj.lock === "hard" ? "unlocked" : "hard";
-
-      // Update the icon + title
-      e.currentTarget.textContent = targetObj.lock === "hard" ? "🔒" : "🔓";
+      // Update icon
+      e.currentTarget.textContent =
+        seg[field] === "hard" ? "🔒" : "🔓";
       e.currentTarget.title =
-        targetObj.lock === "hard"
+        seg[field] === "hard"
           ? "Hard locked — click to unlock"
           : "Unlocked — click to hard lock";
     });
@@ -269,28 +255,13 @@ function attachClearButtons(editor, seg) {
       const field = e.currentTarget.dataset.field;
       if (!field) return;
 
-      // Clear the form control value
+      // Clear form field value
       const input = editor.querySelector(`[name="${field}"]`);
       if (input) input.value = "";
 
-      // Clear the segment field properly
-      if (field === "duration") {
-        seg.duration.val = null;
-        seg.duration.lock = "unlocked";
-      } else if (field === "start" || field === "end") {
-        seg[field].utc = "";
-        seg[field].lock = "unlocked";
-      }
-
-      // Optional: update lock icon in the editor
-      const lockBtn = e.currentTarget
-        .closest("label")
-        ?.querySelector(".lock-toggle");
-      if (lockBtn) {
-        lockBtn.textContent = "🔓";
-        lockBtn.title = "Unlocked — click to hard lock";
-        lockBtn.disabled = false;
-      }
+      // Remove value from segment but keep logic intact
+      seg[field] = "";
+      seg[`${field}Lock`] = "unlocked";
     });
   });
 }

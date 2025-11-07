@@ -1,38 +1,36 @@
 function clearTimesAndDurations(opts = {}) {
   const { onlyUnlocked = false } = opts;
 
-  let message = onlyUnlocked
-    ? 'Clear all non-locked times and durations?'
-    : 'Clear all start/end times and durations?';
-
+  let message = 'Clear all start/end times and durations?';
+  if (onlyUnlocked) message = 'Clear all non-locked times and durations?';
   if (!confirm(message)) return;
 
   segments.forEach((seg) => {
-    // Ensure nested structure exists
-    seg.start ??= { utc: '', lock: 'unlocked' };
-    seg.end ??= { utc: '', lock: 'unlocked' };
-    seg.duration ??= { val: null, lock: 'unlocked' };
+    const isDriveRoute =
+      seg.type === 'drive' && seg.autoDrive && seg.duration.val;
 
-    const clearIf = (lock) => !onlyUnlocked || lock !== 'hard';
+    if (onlyUnlocked) {
+      if (seg.start.lock !== 'hard') {
+        seg.start.utc = '';
+        seg.start.lock = 'unlocked';
+      }
 
-    if (clearIf(seg.start.lock)) {
+      if (seg.end.lock !== 'hard') {
+        seg.end.utc = '';
+        seg.end.lock = 'unlocked';
+      }
+
+      if (seg.duration.lock !== 'hard') {
+        seg.duration.val = '';
+        seg.duration.lock = 'unlocked';
+      }
+    } else if (!onlyUnlocked) {
       seg.start.utc = '';
       seg.start.lock = 'unlocked';
-    }
-
-    if (clearIf(seg.end.lock)) {
       seg.end.utc = '';
       seg.end.lock = 'unlocked';
-    }
-
-    if (clearIf(seg.duration.lock)) {
-      seg.duration.val = null;
+      seg.duration.val = '';
       seg.duration.lock = 'unlocked';
-    }
-
-    if (seg.type === 'drive') {
-      seg.duration.val = seg.durationHr;
-      seg.duration.lock = "auto";
     }
 
     // Clear transient manual flags
