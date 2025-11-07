@@ -78,12 +78,12 @@ async function handleCreateTrip(container, tripState, segments) {
     }
 
     // Ensure zones exist
-  if (!tripState.start.timeZone) {
-    tripState.start.timeZone = await getTimeZone(tripState.start.coordinates);
-  }
-  if (!tripState.end.timeZone) {
-    tripState.end.timeZone = await getTimeZone(tripState.end.coordinates);
-  }
+    if (!tripState.start.timeZone) {
+        tripState.start.timeZone = await getTimeZone(tripState.start.coordinates);
+    }
+    if (!tripState.end.timeZone) {
+        tripState.end.timeZone = await getTimeZone(tripState.end.coordinates);
+    }
 
     // Convert entered local times → UTC
     const startUTC = startInput ? localToUTC(startInput, tripState.start.timeZone) : "";
@@ -98,19 +98,30 @@ async function handleCreateTrip(container, tripState, segments) {
         ...tripState.start,
         type: "trip_start",
         isAnchorStart: true,
-        endLock: 'hard',
-        start: "",
-        end: startUTC
+        start: {
+            lock: "undefined",
+            utc: ""
+        },
+        end: {
+            lock: "hard",
+            utc: startUTC
+        }
     };
+
 
     const endSegment = {
         id: newId(),
         ...tripState.end,
         type: "trip_end",
         isAnchorEnd: true,
-        startLock: 'hard',
-        start: endUTC,
-        end: ""
+        start: {
+            lock: "hard",
+            utc: endUTC
+        },
+        end: {
+            lock: "undefined",
+            utc: ""
+        }
     };
 
 
@@ -119,7 +130,15 @@ async function handleCreateTrip(container, tripState, segments) {
         name: "Initial Drive",
         type: "drive",
         originId: startSegment.id,
-        destinationId: endSegment.id
+        destinationId: endSegment.id,
+        start: {
+            lock: "auto",
+            utc: ""
+        },
+        end: {
+            lock: "auto",
+            utc: ""
+        }
     };
 
     try {
@@ -133,7 +152,8 @@ async function handleCreateTrip(container, tripState, segments) {
                 routeGeometry: route.geometry,
                 distanceMi: route.distance_mi.toFixed(1),
                 durationMin: route.duration_min.toFixed(0),
-                duration: (route.duration_min / 60).toFixed(2)
+                durationHr: (route.duration_min / 60).toFixed(2),
+                duration: { val: (route.duration_min / 60).toFixed(2) }
             });
         }
     } catch (err) {

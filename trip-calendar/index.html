@@ -110,7 +110,10 @@
 
       // Convert stored UTC → local input string for display
       function utcToLocalInput(utcString, timeZone) {
+        if (!utcString) return ''; // cleared field
         const d = new Date(utcString);
+        if (isNaN(d)) return ''; // invalid date
+
         const parts = new Intl.DateTimeFormat('en-CA', {
           timeZone,
           year: 'numeric',
@@ -120,6 +123,7 @@
           minute: '2-digit',
           hour12: false
         }).formatToParts(d);
+
         const map = Object.fromEntries(parts.map((p) => [p.type, p.value]));
         return `${map.year}-${map.month}-${map.day}T${map.hour}:${map.minute}`;
       }

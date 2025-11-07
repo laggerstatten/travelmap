@@ -28,42 +28,40 @@ function createEditorForm(segment) {
   const isEnd = segment.type === 'trip_end';
 
   const localStart = segment.start
-    ? utcToLocalInput(segment.start, segment.timeZone)
+    ? utcToLocalInput(segment.start.utc, segment.timeZone)
     : '';
   const localEnd = segment.end
-    ? utcToLocalInput(segment.end, segment.timeZone)
+    ? utcToLocalInput(segment.end.utc, segment.timeZone)
     : '';
 
   const timeFields = isStart
     ? `
       <label>Trip Start
         <input type="datetime-local" name="end" value="${localEnd}" />
-        ${lockButtonHTML('endLock', segment.endLock)}
+        ${lockButtonHTML('endLock', segment.end)}
         ${clearButtonHTML('end')}
       </label>`
     : isEnd
-    ? `
+      ? `
       <label>Trip End
         <input type="datetime-local" name="start" value="${localStart}" />
-        ${lockButtonHTML('startLock', segment.startLock)}
+        ${lockButtonHTML('startLock', segment.start)}
         ${clearButtonHTML('start')}
       </label>`
-    : `
+      : `
       <label>Start
         <input type="datetime-local" name="start" value="${localStart}" />
-        ${lockButtonHTML('startLock', segment.startLock)}
+        ${lockButtonHTML('startLock', segment.start)}
         ${clearButtonHTML('start')}
       </label>
       <label>End
         <input type="datetime-local" name="end" value="${localEnd}" />
-        ${lockButtonHTML('endLock', segment.endLock)}
+        ${lockButtonHTML('endLock', segment.end)}
         ${clearButtonHTML('end')}
       </label>
       <label>Duration (hours)
-        <input type="number" step="0.25" name="duration" value="${
-          segment.duration || ''
-        }" />
-        ${lockButtonHTML('durationLock', segment.durationLock)}
+        <input type="number" step="0.25" name="duration" value="${segment.duration?.val ?? ''}" />
+        ${lockButtonHTML('durationLock', segment.duration)}
         ${clearButtonHTML('duration')}
       </label>`;
 
@@ -74,19 +72,17 @@ function createEditorForm(segment) {
     <label>Type
       <select name="type">
         ${['trip_start', 'stop', 'drive', 'lodging', 'break', 'trip_end']
-          .map(
-            (t) =>
-              `<option value="${t}" ${segment.type === t ? 'selected' : ''}>${
-                t[0].toUpperCase() + t.slice(1)
-              }</option>`
-          )
-          .join('')}
+      .map(
+        (t) =>
+          `<option value="${t}" ${segment.type === t ? 'selected' : ''}>${t[0].toUpperCase() + t.slice(1)
+          }</option>`
+      )
+      .join('')}
       </select>
     </label>
     <label>Location
-      <mapbox-search-box id="searchbox-${id}" value="${
-    segment.location_name || ''
-  }"></mapbox-search-box>
+      <mapbox-search-box id="searchbox-${id}" value="${segment.location_name || ''
+    }"></mapbox-search-box>
     </label>
     ${timeFields}
 
@@ -105,7 +101,7 @@ function attachSearchBox(editor, segment) {
 
   try {
     searchEl.accessToken = mapboxgl.accessToken;
-  } catch {}
+  } catch { }
   searchEl.addEventListener('retrieve', async (ev) => {
     const f = ev.detail?.features?.[0];
     if (!f?.geometry) return;
@@ -140,38 +136,47 @@ function handleEditorSubmit(editor, segment, card) {
     submitEv.preventDefault();
 
     const formData = Object.fromEntries(new FormData(editor).entries());
-    const prev = { ...segment };
-    const dur = formData.duration?.trim() ? Number(formData.duration) : null;
+    console.log(formData);
+    const prev = structuredClone(segment); // full copy
 
-    // Convert form times to UTC for comparison
-    const newStartUTC = formData.start
-      ? localToUTC(formData.start, segment.timeZone)
+    // ✅ Ensure nested structure exists
+    segment.start ??= { utc: '', lock: 'unlocked' };
+    segment.end ??= { utc: '', lock: 'unlocked' };
+    segment.duration ??= { val: null, lock: 'unlocked' };
+
+    // Parse numeric duration
+    const durVal = formData['duration']?.trim()
+      ? Number(formData['duration'])
+      : null;
+
+    // Convert form times to UTC
+    const newStartUTC = formData['start']
+      ? localToUTC(formData['start'], segment.timeZone)
       : '';
-    const newEndUTC = formData.end
-      ? localToUTC(formData.end, segment.timeZone)
+    const newEndUTC = formData['end']
+      ? localToUTC(formData['end'], segment.timeZone)
       : '';
 
     // Only set hard locks if user explicitly changed the field
-    if (newStartUTC && newStartUTC !== prev.start) {
-      segment.start = newStartUTC;
-      segment.startLock = 'hard';
+    if (newStartUTC && newStartUTC !== prev.start?.utc) {
+      segment.start.utc = newStartUTC;
+      segment.start.lock = 'hard';
     }
-    if (newEndUTC && newEndUTC !== prev.end) {
-      segment.end = newEndUTC;
-      segment.endLock = 'hard';
+    if (newEndUTC && newEndUTC !== prev.end?.utc) {
+      segment.end.utc = newEndUTC;
+      segment.end.lock = 'hard';
     }
-    if (dur !== null && dur !== Number(prev.duration || 0)) {
-      segment.duration = dur;
-      segment.durationLock = 'hard';
+    if (durVal !== null && durVal !== Number(prev.duration?.val || 0)) {
+      segment.duration.val = durVal;
+      segment.duration.lock = 'hard';
     }
 
-    // Preserve any existing "auto" or "soft" lock if unchanged
-    if (!segment.startLock) segment.startLock = prev.startLock || 'unlocked';
-    if (!segment.endLock) segment.endLock = prev.endLock || 'unlocked';
-    if (!segment.durationLock)
-      segment.durationLock = prev.durationLock || 'unlocked';
+    // Preserve any existing soft/unlocked states
+    segment.start.lock ??= prev.start?.lock || 'unlocked';
+    segment.end.lock ??= prev.end?.lock || 'unlocked';
+    segment.duration.lock ??= prev.duration?.lock || 'unlocked';
 
-    // Apply consistency logic (soft-lock derivation)
+    // Apply derived/soft lock logic
     updateLockConsistency(segment);
 
     segment.name = formData.name || '';
@@ -191,29 +196,29 @@ function handleEditorSubmit(editor, segment, card) {
 
 function updateLockConsistency(segment) {
   const hard = {
-    start: segment.startLock === 'hard',
-    end: segment.endLock === 'hard',
-    duration: segment.durationLock === 'hard'
+    start: segment.start.lock === 'hard',
+    end: segment.end.lock === 'hard',
+    duration: segment.duration.lock === 'hard'
   };
 
   // Soft-lock logic
-  segment.startLock = hard.start ? 'hard' : 'unlocked';
-  segment.endLock = hard.end ? 'hard' : 'unlocked';
-  segment.durationLock = hard.duration ? 'hard' : 'unlocked';
+  segment.start.lock = hard.start ? 'hard' : 'unlocked';
+  segment.end.lock = hard.end ? 'hard' : 'unlocked';
+  segment.duration.lock = hard.duration ? 'hard' : 'unlocked';
 
   const lockedCount = Object.values(hard).filter(Boolean).length;
 
   // Apply soft locks and derive missing field
   if (lockedCount >= 2) {
     if (hard.start && hard.end && !hard.duration) {
-      segment.duration = durationFromStartEnd(segment.start, segment.end);
-      segment.durationLock = 'soft';
+      segment.duration.val = durationFromStartEnd(segment.start.utc, segment.end.utc);
+      segment.duration.lock = 'soft';
     } else if (hard.start && hard.duration && !hard.end) {
-      segment.end = endFromDuration(segment.start, segment.duration);
-      segment.endLock = 'soft';
+      segment.end.utc = endFromDuration(segment.start.utc, segment.duration.val);
+      segment.end.lock = 'soft';
     } else if (hard.end && hard.duration && !hard.start) {
-      segment.start = startFromDuration(segment.end, segment.duration);
-      segment.startLock = 'soft';
+      segment.start.utc = startFromDuration(segment.end.utc, segment.duration.val);
+      segment.start.lock = 'soft';
     }
   }
 }
@@ -234,18 +239,19 @@ function startFromDuration(endUTC, hours) {
   return new Date(e.getTime() - hours * 3600000).toISOString();
 }
 
-function lockButtonHTML(field, state) {
+function lockButtonHTML(field, state = {}) {
+  const lock = state.lock || "";
   const icon =
-    state === "hard" ? "🔒" :
-    state === "soft" ? "🟡" :
-    "🔓";
+    lock === "hard" ? "🔒" :
+      lock === "soft" ? "🟡" :
+        "🔓";
   const title =
-    state === "hard"
+    lock === "hard"
       ? "Hard locked — click to unlock"
-      : state === "soft"
-      ? "Soft locked (derived)"
-      : "Unlocked — click to hard lock";
-  const disabled = state === "soft" ? "disabled" : "";
+      : lock === "soft"
+        ? "Soft locked (derived)"
+        : "Unlocked — click to hard lock";
+  const disabled = lock === "soft" ? "disabled" : "";
   return `<button type="button" class="lock-toggle" data-field="${field}" ${disabled} title="${title}">${icon}</button>`;
 }
 

@@ -1,38 +1,40 @@
 function clearTimesAndDurations(opts = {}) {
   const { clearDurationsOnly = false, onlyUnlocked = false } = opts;
 
-  let message = "Clear all start/end times and durations?";
-  if (clearDurationsOnly) message = "Clear all durations except routed drive durations?";
-  else if (onlyUnlocked) message = "Clear all non-locked times and durations?";
+  let message = 'Clear all start/end times and durations?';
+  if (clearDurationsOnly)
+    message = 'Clear all durations except routed drive durations?';
+  else if (onlyUnlocked) message = 'Clear all non-locked times and durations?';
   if (!confirm(message)) return;
 
-  segments.forEach(seg => {
-    const isDriveRoute = seg.type === "drive" && seg.autoDrive && seg.duration;
+  segments.forEach((seg) => {
+    const isDriveRoute =
+      seg.type === 'drive' && seg.autoDrive && seg.duration.val;
 
     // --- If we are only clearing durations ---
     if (clearDurationsOnly) {
-      if (!isDriveRoute) seg.duration = "";
+      if (!isDriveRoute) seg.duration.val = '';
       return; // skip other logic
     }
 
     // --- Otherwise handle full time clearing (with optional onlyUnlocked filter) ---
 
     // Start
-    if (!onlyUnlocked || seg.startLock !== "hard") {
-      delete seg.start;
-      seg.startLock = "unlocked";
+    if (!onlyUnlocked || seg.start.lock !== 'hard') {
+      seg.start.utc = '';
+      seg.start.lock = 'unlocked';
     }
 
     // End
-    if (!onlyUnlocked || seg.endLock !== "hard") {
-      delete seg.end;
-      seg.endLock = "unlocked";
+    if (!onlyUnlocked || seg.end.lock !== 'hard') {
+      seg.end.utc = '';
+      seg.end.lock = 'unlocked';
     }
 
     // Duration
-    if (!onlyUnlocked || seg.durationLock !== "hard") {
-      if (!isDriveRoute) seg.duration = "";
-      seg.durationLock = "unlocked";
+    if (!onlyUnlocked || seg.duration.lock !== 'hard') {
+      if (!isDriveRoute) seg.duration.val = '';
+      seg.duration.lock = 'unlocked';
     }
 
     // Clear transient manual flags
@@ -43,8 +45,6 @@ function clearTimesAndDurations(opts = {}) {
   renderTimeline();
 }
 
-
-
 /* ===============================
    Fill FORWARD (UTC) — Lock-Aware
    =============================== */
@@ -52,41 +52,48 @@ function fillForward(fromSegment) {
   const idx = segments.findIndex(ev => ev.id === fromSegment.id);
   if (idx === -1) return;
 
-  let cursor = fromSegment.end || fromSegment.start;
+  const fromStart = fromSegment.start?.utc;
+  const fromEnd = fromSegment.end?.utc;
+  let cursor = fromEnd || fromStart;
   if (!cursor) return;
 
   for (let i = idx + 1; i < segments.length; i++) {
     const seg = segments[i];
 
-    // --- Skip slack / overlap segments entirely ---
-    if (seg.type === "slack" || seg.type === "overlap") continue;
+    // --- normalize nested objects ---
+    seg.start ??= { utc: '', lock: 'unlocked' };
+    seg.end ??= { utc: '', lock: 'unlocked' };
+    seg.duration ??= { val: null, lock: 'unlocked' };
 
-    // --- Stop if we hit a hard or soft start lock ---
-    if (seg.startLock === "hard" || seg.startLock === "soft") break;
+    // --- Skip slack / overlap segments ---
+    if (seg.type === 'slack' || seg.type === 'overlap') continue;
+
+    // --- Stop if start is hard/soft locked ---
+    if (['hard', 'soft'].includes(seg.start.lock)) break;
 
     // --- Trip end special handling ---
-    if (seg.type === "trip_end") {
-      if (seg.startLock !== "hard" && seg.startLock !== "soft") {
-        seg.start = cursor;
-        seg.startLock = "auto";
+    if (seg.type === 'trip_end') {
+      if (!['hard', 'soft'].includes(seg.start.lock)) {
+        seg.start.utc = cursor;
+        seg.start.lock = 'auto';
       }
       break;
     }
 
     // --- Propagate start ---
-    if (seg.startLock !== "hard" && seg.startLock !== "soft") {
-      seg.start = cursor;
-      seg.startLock = "auto";
+    if (!['hard', 'soft'].includes(seg.start.lock)) {
+      seg.start.utc = cursor;
+      seg.start.lock = 'auto';
     }
 
     // --- Propagate end ---
-    const durHrs = Number(seg.duration) || 0;
-    if (seg.endLock !== "hard" && seg.endLock !== "soft") {
-      seg.end = addMinutesUTC(seg.start, durHrs * 60);
-      seg.endLock = "auto";
+    const durHrs = Number(seg.duration.val) || 0;
+    if (!['hard', 'soft'].includes(seg.end.lock)) {
+      seg.end.utc = addMinutesUTC(seg.start.utc, durHrs * 60);
+      seg.end.lock = 'auto';
     }
 
-    cursor = seg.end || seg.start;
+    cursor = seg.end.utc || seg.start.utc;
   }
 
   save();
@@ -100,41 +107,48 @@ function fillBackward(fromSegment) {
   const idx = segments.findIndex(ev => ev.id === fromSegment.id);
   if (idx === -1) return;
 
-  let cursor = fromSegment.start || fromSegment.end;
+  const fromStart = fromSegment.start?.utc;
+  const fromEnd = fromSegment.end?.utc;
+  let cursor = fromStart || fromEnd;
   if (!cursor) return;
 
   for (let i = idx - 1; i >= 0; i--) {
     const seg = segments[i];
 
-    // --- Skip slack / overlap segments ---
-    if (seg.type === "slack" || seg.type === "overlap") continue;
+    // --- normalize nested objects ---
+    seg.start ??= { utc: '', lock: 'unlocked' };
+    seg.end ??= { utc: '', lock: 'unlocked' };
+    seg.duration ??= { val: null, lock: 'unlocked' };
 
-    // --- Stop if we hit a hard or soft end lock ---
-    if (seg.endLock === "hard" || seg.endLock === "soft") break;
+    // --- Skip slack / overlap segments ---
+    if (seg.type === 'slack' || seg.type === 'overlap') continue;
+
+    // --- Stop if end is hard/soft locked ---
+    if (['hard', 'soft'].includes(seg.end.lock)) break;
 
     // --- Trip start special handling ---
-    if (seg.type === "trip_start") {
-      if (seg.endLock !== "hard" && seg.endLock !== "soft") {
-        seg.end = cursor;
-        seg.endLock = "auto";
+    if (seg.type === 'trip_start') {
+      if (!['hard', 'soft'].includes(seg.end.lock)) {
+        seg.end.utc = cursor;
+        seg.end.lock = 'auto';
       }
       break;
     }
 
     // --- Propagate end ---
-    if (seg.endLock !== "hard" && seg.endLock !== "soft") {
-      seg.end = cursor;
-      seg.endLock = "auto";
+    if (!['hard', 'soft'].includes(seg.end.lock)) {
+      seg.end.utc = cursor;
+      seg.end.lock = 'auto';
     }
 
     // --- Propagate start ---
-    const durHrs = Number(seg.duration) || 0;
-    if (seg.startLock !== "hard" && seg.startLock !== "soft") {
-      seg.start = addMinutesUTC(seg.end, -durHrs * 60);
-      seg.startLock = "auto";
+    const durHrs = Number(seg.duration.val) || 0;
+    if (!['hard', 'soft'].includes(seg.start.lock)) {
+      seg.start.utc = addMinutesUTC(seg.end.utc, -durHrs * 60);
+      seg.start.lock = 'auto';
     }
 
-    cursor = seg.start || seg.end;
+    cursor = seg.start.utc || seg.end.utc;
   }
 
   save();

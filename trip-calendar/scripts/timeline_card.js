@@ -27,16 +27,17 @@ function renderCard(seg) {
     if (seg.type === 'drive') {
       const startStr =
         seg.start && origin
-          ? fmtDate(seg.start, origin.timeZone)
-          : fmtDate(seg.start, seg.timeZone);
+          ? fmtDate(seg.start.utc, origin.timeZone)
+          : fmtDate(seg.start.utc, seg.timeZone);
       const endStr =
         seg.end && dest
-          ? fmtDate(seg.end, dest.timeZone)
-          : fmtDate(seg.end, seg.timeZone);
+          ? fmtDate(seg.end.utc, dest.timeZone)
+          : fmtDate(seg.end.utc, seg.timeZone);
       metaHTML = `${startStr || ''}${endStr ? ' → ' + endStr : ''}`;
     } else {
-      metaHTML = `${fmtDate(seg.start, seg.timeZone)}${seg.end ? ' → ' + fmtDate(seg.end, seg.timeZone) : ''
-        }`;
+      const startStr = fmtDate(seg.start.utc, seg.timeZone);
+      const endStr = fmtDate(seg.end.utc, seg.timeZone);
+      metaHTML = `${startStr || ''}${endStr ? ' → ' + endStr : ''}`;
     }
   }
 
@@ -45,7 +46,7 @@ function renderCard(seg) {
     <div class="subtitle">
       ${seg.type || 'stop'}
       ${seg.name ? ' • ' + seg.name : ''}
-      ${seg.lat && seg.lon ? `<span class="coord-pill">📍</span>` : ''}
+      ${seg.coordinates ? `<span class="coord-pill">📍</span>` : ''}
       ${driveInfoHTML(seg)}
     </div>
     <div class="meta">${metaHTML}</div>
@@ -69,8 +70,6 @@ function renderCard(seg) {
 
 // --- Generate drive info snippet ---
 function driveInfoHTML(seg) {
-  if (seg.nextDistanceMi)
-    return `<div class="drive-info">🚗 ${seg.nextDistanceMi} mi • ${seg.nextDurationMin} min</div>`;
   if (seg.type === 'drive' && seg.distanceMi)
     return `<div class="drive-info">🚗 ${seg.distanceMi} mi • ${seg.durationMin} min</div>`;
   return '';

@@ -12,13 +12,13 @@ function parseDate(v) {
 
 /* ---------- Sorting (keep undated in place) ---------- */
 function sortByDateInPlace(list) {
-    const dated = list.filter((seg) => parseDate(seg.start));
-    dated.sort((a, b) => parseDate(a.start) - parseDate(b.start));
+    const dated = list.filter((seg) => parseDate(seg.start.utc));
+    dated.sort((a, b) => parseDate(a.start.utc) - parseDate(b.start.utc));
 
     const merged = [];
     let di = 0;
     for (const seg of list) {
-        if (!parseDate(seg.start)) merged.push(seg);
+        if (!parseDate(seg.start.utc)) merged.push(seg);
         else merged.push(dated[di++]);
     }
     list.splice(0, list.length, ...merged);
@@ -80,10 +80,11 @@ async function generateRoutes() {
                 seg.routeGeometry = route.geometry;
                 seg.distanceMi = route.distance_mi.toFixed(1);
                 seg.durationMin = route.duration_min.toFixed(0);
-                seg.duration = (route.duration_min / 60).toFixed(2);
+                seg.durationHr = (route.duration_min / 60).toFixed(2);
+                seg.duration.val = (route.duration_min / 60).toFixed(2);
                 seg.originId = from.id;
                 seg.destinationId = to.id;
-                seg.durationLock = 'hard';
+                seg.duration.lock = 'hard';
             }
         } catch (err) { }
     }

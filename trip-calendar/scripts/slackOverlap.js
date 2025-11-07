@@ -6,11 +6,13 @@ function computeSlackAndOverlap(segments) {
 
   for (let i = 0; i < segments.length - 1; i++) {
     const cur = segments[i];
-    //console.log(cur);
     const next = segments[i + 1];
-    //console.log(next);
 
-    const gap = (new Date(next.start) - new Date(cur.end)) / 60000; // minutes
+    if (!cur.end?.utc || !next.start?.utc) {
+      continue; // skip incomplete segments
+    }
+
+    const gap = (new Date(next.start.utc) - new Date(cur.end.utc)) / 60000; // minutes
     //console.log(gap);
     if (gap > 0) {
       slack.push({ a: cur, b: next, minutes: gap });

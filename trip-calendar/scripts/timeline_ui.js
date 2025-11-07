@@ -13,7 +13,7 @@ function renderTimeline() {
 
   for (let i = 0; i < segments.length; i++) {
     const seg = segments[i];
-    const day = seg.start ? dayStr(seg.start) : '';
+    const day = seg.start?.utc ? dayStr(seg.start.utc) : '';
     if (day && day !== lastDay) {
       cal.appendChild(renderDayDivider(day));
       lastDay = day;

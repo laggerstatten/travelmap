@@ -37,7 +37,7 @@ async function insertQueuedStops(segments) {
 }
 
 async function insertStopInNearestRoute(stop, segments) {
-  
+
   const drives = segments.filter(
     (ev) => ev.type === 'drive' && ev.routeGeometry
   );
@@ -75,10 +75,8 @@ async function insertStopInNearestRoute(stop, segments) {
   }
 
   if (
-    !origin.coordinates[1] ||
-    !origin.coordinates[0] ||
-    !destination.coordinates[1] ||
-    !destination.coordinates[0]
+    !origin.coordinates ||
+    !destination.coordinates
   ) {
     return;
   }
@@ -98,10 +96,13 @@ async function insertStopInNearestRoute(stop, segments) {
     routeGeometry: r1.geometry,
     distanceMi: r1.distance_mi.toFixed(1),
     durationMin: r1.duration_min.toFixed(0),
-    duration: (r1.duration_min / 60).toFixed(2),
+    durationHr: (r1.duration_min / 60).toFixed(2),
+    duration: {
+      val: (r1.duration_min / 60).toFixed(2),
+      lock: 'hard'
+    },
     originId: origin.id,
-    destinationId: stop.id,
-    durationLock: 'hard'
+    destinationId: stop.id
   };
 
   const newDrive2 = {
@@ -111,10 +112,13 @@ async function insertStopInNearestRoute(stop, segments) {
     routeGeometry: r2.geometry,
     distanceMi: r2.distance_mi.toFixed(1),
     durationMin: r2.duration_min.toFixed(0),
-    duration: (r2.duration_min / 60).toFixed(2),
+    durationHr: (r2.duration_min / 60).toFixed(2),
+    duration: {
+      val: (r2.duration_min / 60).toFixed(2),
+      lock: 'hard'
+    },
     originId: stop.id,
-    destinationId: destination.id,
-    durationLock: 'hard'
+    destinationId: destination.id
   };
 
   // remove temp and replace old drive
