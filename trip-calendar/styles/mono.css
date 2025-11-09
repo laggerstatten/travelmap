@@ -1,0 +1,213 @@
+
+body {
+    font-family: system-ui, Segoe UI, Roboto, Arial, sans-serif;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    color: #111;
+}
+
+#toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    padding: 0.6rem;
+    background: #f3f4f6;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+#toolbar button {
+    padding: 0.45rem 0.7rem;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: #fff;
+    cursor: pointer;
+}
+
+#toolbar button:hover {
+    background: #f9fafb;
+}
+
+#calendar {
+    flex: 1;
+    overflow: auto;
+    background: #fafafa;
+}
+
+#calendar.timeline {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 16px 0 40px;
+    gap: 14px;
+    background: #fafafa;
+}
+
+
+/* --- Rails container (side-by-side) --- */
+
+.rail-pair {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    width: var(--card-width);
+    position: relative;
+}
+
+.rails {
+    position: absolute;
+    left: -48px;
+    top: 16px;
+    height: 48px;
+    display: flex;
+    flex-direction: row;
+    gap: 4px;
+    width: 32px;
+}
+
+.rails .insolation-rail,
+.rails .weather-rail {
+    flex: 1;
+    height: 100%;
+    border-radius: 3px;
+}
+
+.rails .insolation-rail {
+    background: linear-gradient(to top, #ffe9a6, #ffe17a);
+}
+
+.rails .weather-rail {
+    background: linear-gradient(to top, #bfe2ff, #ffffff);
+}
+
+
+/* --- Card --- */
+
+.segment.timeline-card {
+    position: relative;
+    width: var(--card-width);
+    min-height: 80px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    padding: 12px 14px 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 6px;
+    border-left: 5px solid #e5e7eb;
+    z-index: 1;
+}
+
+
+
+
+/* Text inside card */
+
+.segment .title {
+    font-weight: 600;
+}
+
+.segment .subtitle {
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.segment .meta {
+    font-size: 12px;
+    color: #6b7280;
+    margin-top: auto;
+}
+
+:root {
+    --card-width: 600px;
+    --hour-row: 56px;
+    --timeline-gap: 10px;
+    --muted: #6b7280;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+.oncard-editor {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  margin-top: 8px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: relative;
+  z-index: 20;
+}
+
+.oncard-editor label {
+  font-size: 12px;
+  color: #374151;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.oncard-editor input,
+.oncard-editor select {
+  font: inherit;
+  padding: 5px 6px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.oncard-editor mapbox-search-box {
+  width: 100%;
+  min-width: 200px;
+}
+
+.oncard-editor mapbox-search-box input {
+  padding-left: 2.2em !important;
+  /* space for the icon */
+  text-indent: 0 !important;
+  /* ensure text starts at padding edge */
+  box-sizing: border-box;
+}
+
+.oncard-editor .actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.oncard-editor .hint {
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.lock-toggle,
+.clear-field {
+  margin-left: 6px;
+  cursor: pointer;
+  font-size: 0.9em;
+  border: none;
+  background: transparent;
+}
+
+.lock-toggle[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.clear-field {
+  color: #c33;
+}
+.clear-field:hover {
+  opacity: 0.8;
+}
+
+
+

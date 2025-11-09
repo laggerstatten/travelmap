@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Trip Calendar Prototype</title>
+    <link rel="stylesheet" href="styles/mono.css" />
+
+    <link
+      href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css"
+      rel="stylesheet"
+    />
+
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+    />
+
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+
+    <!-- Mapbox Search Box -->
+    <script src="https://api.mapbox.com/search-js/v1.0.0-beta.17/web.js"></script>
+  </head>
+
+  <body>
+    <div id="toolbar">
+      <button id="mode-timeline">Timeline</button>
+      <button id="init-trip">Start Trip</button>
+      <button id="add-stop">Add Segment</button>
+    </div>
+
+    <div id="calendar" class="timeline"></div>
+
+    <script>
+      mapboxgl.accessToken =
+        'pk.eyJ1IjoiZXJpY3NjaGFsbCIsImEiOiJjbDBsbmpvNHYwY3JhM2N0a2Ribm1rZ2k5In0.XY-ziSu8DLnv5UIstoSGRQ';
+      MapboxSearchBox.accessToken = mapboxgl.accessToken;
+      const TIMEZONE_TOKEN = '9QEU1A5823HR';
+    </script>
+    <!-- SEGMENT FUNCTIONS-->
+    <script src="scripts/mono.js" defer></script>
+    <script src="scripts/datetime.js"></script>
+    <script src="scripts/creation.js"></script>
+    <script src="scripts/cardactions.js"></script>
+    <script src="scripts/routing.js"></script>
+    <script src="scripts/timing.js"></script>
+
+    <!-- UI FUNCTIONS-->
+
+    <!-- API FUNCTIONS-->
+
+    <script defer>
+      /* ---------- State ---------- */
+      let segments = JSON.parse(localStorage.getItem('tripSegments')) || [];
+
+      // Toolbar actions
+      document.getElementById('mode-timeline').onclick = () => {
+        renderTimeline();
+      };
+
+      document.getElementById('init-trip').onclick = () => {
+        initTrip(segments);
+      };
+
+      document.getElementById('add-stop').onclick = () => {
+        queueStop(segments);
+      };
+
+      // Initial render
+      renderTimeline();
+    </script>
+  </body>
+</html>

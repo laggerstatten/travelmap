@@ -1,27 +1,27 @@
-function attachLockButtons(editor, seg) {
-  editor.querySelectorAll('.lock-toggle').forEach((btn) => {
-    btn.addEventListener('click', (e) => {
-      const fieldPath = e.currentTarget.dataset.field;
-      if (!fieldPath) return;
-
-      const [base, key] = fieldPath.split('.');
-      const targetObj = key ? seg[base] : seg;
-
-      if (!targetObj || targetObj.lock === 'soft') return;
-
-      targetObj.lock = targetObj.lock === 'hard' ? 'unlocked' : 'hard';
-
-      const icon = e.currentTarget.querySelector('i');
-      if (targetObj.lock === 'hard') {
-        icon.className = 'fa-solid fa-lock';
-        e.currentTarget.title = 'Hard locked — click to unlock';
-      } else {
-        icon.className = 'fa-regular fa-square';
-        e.currentTarget.title = 'Unlocked — click to hard lock';
-      }
+  function attachLockButtons(editor, seg) {
+    editor.querySelectorAll('.lock-toggle').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        const fieldPath = e.currentTarget.dataset.field;
+        if (!fieldPath) return;
+  
+        const [base, key] = fieldPath.split('.');
+        const target = key ? seg[base]?.[key] : seg[base];
+        const targetObj = key ? seg[base] : seg;
+  
+        if (!targetObj || typeof targetObj.lock === 'undefined') return;
+        if (targetObj.lock === 'soft') return;
+  
+        targetObj.lock = targetObj.lock === 'hard' ? 'unlocked' : 'hard';
+  
+        // Update the icon + title
+        e.currentTarget.textContent = targetObj.lock === 'hard' ? '🔒' : '🔓';
+        e.currentTarget.title =
+          targetObj.lock === 'hard'
+            ? 'Hard locked — click to unlock'
+            : 'Unlocked — click to hard lock';
+      });
     });
-  });
-}
+  }
 
 
 function attachClearButtons(editor, seg) {
