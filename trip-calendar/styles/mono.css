@@ -211,3 +211,49 @@ body {
 
 
 
+/* container wrapper in your form */
+.geocoder-container {
+  position: relative;
+  width: 100%;
+}
+
+/* the actual Mapbox geocoder input control */
+.geocoder-container .mapboxgl-ctrl-geocoder {
+  width: 100%;
+  min-width: 200px;
+  font-size: 0.9rem;
+  box-sizing: border-box;
+}
+
+/* ensure the text input leaves room for the icon */
+.geocoder-container .mapboxgl-ctrl-geocoder--input {
+  padding-left: 32px !important; /* space for magnifier */
+  font-size: 0.9rem;
+  height: 32px;
+  line-height: 1.2;
+}
+
+/* reposition / resize the search icon */
+.geocoder-container .mapboxgl-ctrl-geocoder--icon-search {
+  left: 8px !important;
+  top: 6px !important;
+  width: 16px;
+  height: 16px;
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+/* tighten clear button spacing */
+.geocoder-container .mapboxgl-ctrl-geocoder--button {
+  right: 6px;
+  top: 4px;
+  width: 20px;
+  height: 20px;
+}
+
+/* optional: remove box shadow and border if it clashes with your UI */
+.geocoder-container .mapboxgl-ctrl-geocoder {
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-shadow: none;
+}

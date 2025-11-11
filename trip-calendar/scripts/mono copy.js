@@ -1,121 +1,3 @@
-function detectOverlaps(segments) {
-  console.log('Checking for overlaps...');
-  const overlaps = [];
-
-  // clear any previous highlights/connectors
-  document
-    .querySelectorAll('.overlap')
-    .forEach((el) => el.classList.remove('overlap'));
-  document.querySelectorAll('.overlap-connector').forEach((el) => el.remove());
-
-  const calendar = document.getElementById('calendar');
-  const cards = [...calendar.querySelectorAll('.timeline-card')];
-
-  for (let i = 0; i < segments.length - 1; i++) {
-    const a = segments[i],
-      b = segments[i + 1];
-    if (!a.end || !b.start) continue;
-
-    const aEnd = new Date(a.end);
-    const bStart = new Date(b.start);
-
-    if (aEnd > bStart) {
-      overlaps.push({ a, b, overlapMinutes: (aEnd - bStart) / 60000 });
-
-      // find matching cards
-      const aCard = cards.find((c) => c.dataset.id === a.id);
-      const bCard = cards.find((c) => c.dataset.id === b.id);
-
-      // highlight them
-      if (aCard) aCard.classList.add('overlap');
-      if (bCard) bCard.classList.add('overlap');
-
-      // visually connect
-      // visually connect — use the shared parent container
-      if (aCard && bCard) {
-        // when you detect overlap:
-        const connector = document.createElement('div');
-        connector.className = 'overlap-connector';
-
-        // find the wrapper of the earlier event
-        const wrapper = aCard.closest('.rail-pair');
-
-        // insert connector after that wrapper (keeps same width and centering)
-        wrapper.insertAdjacentElement('afterend', connector);
-      }
-    }
-  }
-
-  if (overlaps.length) {
-    console.warn('⚠ Overlaps detected:', overlaps);
-    alert(`${overlaps.length} overlapping segments detected. Check console.`);
-  } else {
-    console.log('✅ No overlaps found.');
-  }
-}
-
-
-function computeSlackAndOverlap(segments) {
-  console.log('computeSlackAndOverlap');
-
-  // Remove existing slack/overlap entries
-  for (let i = segments.length - 1; i >= 0; i--) {
-    if (segments[i].type === 'slack' || segments[i].type === 'overlap') {
-      segments.splice(i, 1);
-    }
-  }
-
-  // Build a working copy excluding derived types
-  const baseSegments = segments.filter(
-    (s) => s.type !== 'slack' && s.type !== 'overlap'
-  );
-
-  // Insert new derived events directly into the global array
-  for (let i = 0; i < baseSegments.length - 1; i++) {
-    const cur = baseSegments[i];
-    const next = baseSegments[i + 1];
-    const curEnd = cur.end ? .utc;
-    const nextStart = next.start ? .utc;
-    if (!curEnd || !nextStart) continue;
-
-    const startDate = new Date(curEnd);
-    const endDate = new Date(nextStart);
-    const diffMin = (endDate - startDate) / 60000;
-
-    if (diffMin > 0) {
-      const slack = {
-        id: crypto.randomUUID(),
-        type: 'slack',
-        name: 'Slack',
-        a: cur.id,
-        b: next.id,
-        start: { utc: curEnd },
-        end: { utc: nextStart },
-        duration: { val: diffMin / 60 },
-        minutes: diffMin
-      };
-      const insertIndex = segments.findIndex((s) => s.id === next.id);
-      segments.splice(insertIndex, 0, slack);
-    } else if (diffMin < 0) {
-      const overlapMin = -diffMin;
-      const overlap = {
-        id: crypto.randomUUID(),
-        type: 'overlap',
-        name: 'Overlap',
-        a: cur.id,
-        b: next.id,
-        start: { utc: nextStart },
-        end: { utc: curEnd },
-        duration: { val: overlapMin / 60 },
-        minutes: overlapMin
-      };
-      const insertIndex = segments.findIndex((s) => s.id === next.id);
-      segments.splice(insertIndex, 0, overlap);
-    }
-  }
-  console.log('Segments after recompute:', segments);
-}
-
 function clearTimesAndDurations(opts = {}) {
   const { onlyUnlocked = false } = opts;
 
@@ -320,8 +202,7 @@ function getDragAfterElement(container, y) {
     (closest, el) => {
       const box = el.getBoundingClientRect();
       const offset = y - (box.top + box.height / 2);
-      return offset < 0 && offset > closest.offset ?
-        { offset, element: el.querySelector('.timeline-card') } :
+      return offset < 0 && offset > closest.offset ? { offset, element: el.querySelector('.timeline-card') } :
         closest;
     }, { offset: Number.NEGATIVE_INFINITY, element: null }
   ).element;
@@ -373,6 +254,3 @@ function addMinutes(baseIso, mins) {
   const min = String(d.getMinutes()).padStart(2, '0');
   return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
 }
-
-
-

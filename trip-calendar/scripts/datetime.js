@@ -83,3 +83,35 @@ function fmtDate(dateStr, timeZone) {
   };
   return new Intl.DateTimeFormat('en-US', opts).format(d);
 }
+
+function durationFromStartEnd(startUTC, endUTC) {
+  const s = new Date(startUTC),
+    e = new Date(endUTC);
+  return (e - s) / 3600000; // hours
+}
+
+function endFromDuration(startUTC, hours) {
+  const s = new Date(startUTC);
+  return new Date(s.getTime() + hours * 3600000).toISOString();
+}
+
+function startFromDuration(endUTC, hours) {
+  const e = new Date(endUTC);
+  return new Date(e.getTime() - hours * 3600000).toISOString();
+}
+
+function addMinutesUTC(utcString, minutes) {
+  const date = new Date(utcString);
+  const newDate = new Date(date.getTime() + minutes * 60000);
+  return newDate.toISOString();
+}
+
+function dayStr(iso) {
+  if (!iso) return '';
+  return new Date(iso).toDateString();
+}
+
+function parseDate(v) {
+  const d = new Date(v);
+  return isNaN(d) ? null : d;
+}

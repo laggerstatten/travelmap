@@ -5,53 +5,104 @@
     <title>Trip Calendar Prototype</title>
     <link rel="stylesheet" href="styles/mono.css" />
 
+    <!-- Mapbox GL + Geocoder -->
     <link
       href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css"
       rel="stylesheet"
     />
 
     <link
+      href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.1.0/mapbox-gl-geocoder.css"
+      rel="stylesheet"
+    />
+
+    <!-- Icons & Flatpickr -->
+    <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
     />
 
     <link
-      rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css"
+      rel="stylesheet"
+
     />
 
-    <!-- External JS -->
     <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
-    <script src="https://api.mapbox.com/search-js/v1.0.0-beta.17/web.js"></script>
-
-    <!-- Flatpickr -->
+    <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.1.0/mapbox-gl-geocoder.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr" defer></script>
 
-    <!-- Your scripts (all must defer) -->
-    <script src="scripts/mono.js" defer></script>
-    <script src="scripts/externaldata.js" defer></script>
+    <!-- Scripts Unlikely to Need Refactoring -->
+
     <script src="scripts/datetime.js" defer></script>
+    <script src="scripts/externaldata.js" defer></script>
+    <script src="scripts/newId.js" defer></script>
+
+
+    <!-- Scripts -->
+    <script src="scripts/timeline.js" defer></script>
+    <script src="scripts/segmentActions.js" defer></script>
+    <script src="scripts/tripInitiationSequence.js" defer></script>
+    <script src="scripts/segmentEditor.js" defer></script>
+    <script src="scripts/prop_new.js" defer></script>
+    <script src="scripts/tripAddingSequence.js" defer></script>
+
+
+
+
+
+    <!--
+
     <script src="scripts/creation.js" defer></script>
+    <script src="scripts/mono.js" defer></script>
+    <script src="scripts/helper.js" defer></script>
     <script src="scripts/cardactions.js" defer></script>
     <script src="scripts/routing.js" defer></script>
-    <script src="scripts/timing.js" defer></script>
+    <script src="scripts/timing.js" defer></script>-->
 
     <script>
-      let segments = JSON.parse(localStorage.getItem('tripSegments')) || [];
+      //let segments = JSON.parse(localStorage.getItem('tripSegments')) || [];
       mapboxgl.accessToken =
         'pk.eyJ1IjoiZXJpY3NjaGFsbCIsImEiOiJjbDBsbmpvNHYwY3JhM2N0a2Ribm1rZ2k5In0.XY-ziSu8DLnv5UIstoSGRQ';
-      MapboxSearchBox.accessToken = mapboxgl.accessToken;
       const TIMEZONE_TOKEN = '9QEU1A5823HR';
+
+      const SEG_KEY = 'tripSegments';
+
+      function loadSegments() {
+        return JSON.parse(localStorage.getItem(SEG_KEY)) || [];
+      }
+
+      function saveSegments(next) {
+        localStorage.setItem(SEG_KEY, JSON.stringify(next));
+        return next;
+      }
+
+      // Keep a single in-memory copy in sync when needed
+      function syncGlobal() {
+        segments = loadSegments();
+        return segments;
+      }
+
     </script>
 
     <script>
       window.addEventListener('DOMContentLoaded', () => {
-        document.getElementById('mode-timeline').onclick = () =>
-          renderTimeline();
-        document.getElementById('init-trip').onclick = () => initTrip(segments);
-        document.getElementById('add-stop').onclick = () => queueStop(segments);
-
-        renderTimeline();
+        document.getElementById('mode-timeline').onclick = () => renderTimeline(syncGlobal());
+        //document.getElementById('init-trip').onclick = () => initTrip(segments);
+        document.getElementById('init-trip').onclick = () => initTrip();
+        //document.getElementById('add-stop').onclick = () => queueStop(segments);
+        document.getElementById('add-stop').onclick = () => queueStop();
+        document.getElementById('fill-times').onclick = () => {
+          // After you load/build segs, before any propagation:
+          let segs = loadSegments();
+          segs = annotateEmitters(segments);
+          //segs = determineEmitterDirections(segs, { priority: 'forward' }); // or 'backward'
+          segs = determineEmitterDirections(segs, { priority: 'backward' }); // or 'backward'
+          segs = propagateTimes(segs);
+          saveSegments(segs);
+          renderTimeline(syncGlobal());
+        }
+        renderTimeline(syncGlobal());
       });
     </script>
   </head>
@@ -60,6 +111,8 @@
       <button id="mode-timeline">Timeline</button>
       <button id="init-trip">Start Trip</button>
       <button id="add-stop">Add Segment</button>
+      <button id="fill-times">Fill Times</button>
+
     </div>
 
     <div id="calendar" class="timeline"></div>
