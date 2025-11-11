@@ -12,11 +12,11 @@ function renderTimeline(segments) {
   let lastDay = '';
   for (let i = 0; i < segments.length; i++) {
     const seg = segments[i];
-    const day = seg.start?.utc ? dayStr(seg.start.utc) : '';
-    if (day && day !== lastDay) {
-      cal.appendChild(renderDayDivider(day));
-      lastDay = day;
-    }
+      const day = seg.start?.utc ? dayStr(seg.start.utc) : '';
+      if (day && day !== lastDay) {
+        cal.appendChild(renderDayDivider(day));
+        lastDay = day;
+      }
 
     const wrapper = document.createElement('div');
     wrapper.className = 'rail-pair';
@@ -43,7 +43,7 @@ function renderRails() {
 function renderCard(seg, segments) {
   const card = document.createElement('div');
   card.className = `segment timeline-card ${seg.type || 'stop'} ${cardBadgeClass(seg)}`;
-
+  card.dataset.id = seg.id;
   // For drive cards, use the passed-in `segments` to resolve origin/dest.
 
   let title = seg.name || '(untitled)';

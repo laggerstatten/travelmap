@@ -39,6 +39,34 @@ function handleDragOver(e) {
   }
 }
 
+function getDragAfterElement(container, y) {
+  // include entire rail-pair for position math
+  const pairs = [...container.querySelectorAll('.rail-pair:not(.dragging)')];
+  return pairs.reduce(
+    (closest, el) => {
+      const box = el.getBoundingClientRect();
+      const offset = y - (box.top + box.height / 2);
+      return offset < 0 && offset > closest.offset ? { offset, element: el.querySelector('.timeline-card') } :
+        closest;
+    }, { offset: Number.NEGATIVE_INFINITY, element: null }
+  ).element;
+}
+
+
+function reorderFromDOM(calendar) {
+const ids = [...calendar.querySelectorAll('.rail-pair .timeline-card')]
+    .map(el => el.dataset.id);
+
+  segments = ids.map(id => segments.find(s => s.id === id));
+  saveSegments(segments);
+  //renderTimeline(syncGlobal());
+}
+
+
+
+
+
+
 function attachLockButtons(editor, seg) {
   editor.querySelectorAll('.lock-toggle').forEach((btn) => {
     btn.addEventListener('click', (e) => {
@@ -165,7 +193,7 @@ function handleEditorSubmit(editor, seg, card) {
       seg.openEditor = false;
     }
 
-    // 🔹 PERSIST THE UPDATED SEGMENT
+    // PERSIST THE UPDATED SEGMENT
     const list = loadSegments();
     const idx = list.findIndex(s => s.id === seg.id);
     if (idx !== -1) {
@@ -273,10 +301,20 @@ function editSegment(seg, card) {
   const editor = buildOnCardEditor(seg, card);
 }
 
+function deleteSegment(seg, card) {
+  const id = seg.id;
+  deleteSegmentById(id);
+  renderTimeline(syncGlobal());
+}
 
-
-
-
+function deleteSegmentById(id) {
+  let segments = loadSegments();
+  const idx = segments.findIndex((seg) => String(seg.id) === String(id));
+  if (idx !== -1) {
+    segments.splice(idx, 1);
+    saveSegments(segments);
+  }
+}
 
 
 

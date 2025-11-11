@@ -257,3 +257,20 @@ body {
   border-radius: 4px;
   box-shadow: none;
 }
+
+
+#toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.5rem;
+}
+
+.toolbar-group {
+  display: flex;
+  gap: 0.5rem;
+  margin-right: 1rem;
+  border-right: 1px solid #ccc;
+  padding-right: 1rem;
+}
+

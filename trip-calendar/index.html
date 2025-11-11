@@ -28,6 +28,8 @@
 
     />
 
+
+
     <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
     <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.1.0/mapbox-gl-geocoder.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr" defer></script>
@@ -88,32 +90,110 @@
     <script>
       window.addEventListener('DOMContentLoaded', () => {
         document.getElementById('mode-timeline').onclick = () => renderTimeline(syncGlobal());
-        //document.getElementById('init-trip').onclick = () => initTrip(segments);
         document.getElementById('init-trip').onclick = () => initTrip();
-        //document.getElementById('add-stop').onclick = () => queueStop(segments);
         document.getElementById('add-stop').onclick = () => queueStop();
-        document.getElementById('fill-times').onclick = () => {
-          // After you load/build segs, before any propagation:
+
+        document.getElementById('clear-unlocked-times').onclick = () => {
           let segs = loadSegments();
-          segs = annotateEmitters(segments);
-          //segs = determineEmitterDirections(segs, { priority: 'forward' }); // or 'backward'
-          segs = determineEmitterDirections(segs, { priority: 'backward' }); // or 'backward'
-          segs = propagateTimes(segs);
+          segs = removeSlackAndOverlap(segs);
+          segs = clearTimesAndDurations(segs);
           saveSegments(segs);
           renderTimeline(syncGlobal());
         }
+
+        document.getElementById('fill-times').onclick = () => {
+          let segs = loadSegments();
+          segs = removeSlackAndOverlap(segs);
+          segs = annotateEmitters(segs);
+          //segs = determineEmitterDirections(segs, { priority: 'forward' }); // or 'backward'
+          segs = determineEmitterDirections(segs, { priority: 'backward' }); // or 'backward'
+          segs = propagateTimes(segs);
+          segs = computeSlackAndOverlap(segs); //test
+          saveSegments(segs);
+          renderTimeline(syncGlobal());
+        }
+
+        document.getElementById('clear-auto').onclick = () => {
+          let segs = loadSegments();
+          segs = removeSlackAndOverlap(segs);
+          segs = clearAutoDrives(segs);
+          saveSegments(segs);
+          renderTimeline(syncGlobal());
+        };
+
+        document.getElementById('insert-drives').onclick = () => {
+          let segs = loadSegments();
+          segs = insertDriveSegments(segs);
+          saveSegments(segs);
+          renderTimeline(syncGlobal());
+        };
+
+        document.getElementById('gen-routes').onclick = async () => {
+          let segs = loadSegments();
+          segs = await generateRoutes(segs);
+          saveSegments(segs);
+          renderTimeline(syncGlobal());
+        };
+
+        document.getElementById('validate-btn').onclick = async () => {
+          let segs = loadSegments();
+          segs = await validateAndRepair(segs);
+          saveSegments(segs);
+          renderTimeline(syncGlobal());
+        };
+
         renderTimeline(syncGlobal());
       });
     </script>
   </head>
   <body>
-    <div id="toolbar">
+    <!--<div id="toolbar">
       <button id="mode-timeline">Timeline</button>
       <button id="init-trip">Start Trip</button>
       <button id="add-stop">Add Segment</button>
+      <button id="clear-unlocked-times">Clear Unlocked Times</button>
       <button id="fill-times">Fill Times</button>
+      <button id="clear-slack">Clear Slack</button>
+      <button id="show-slack">Show Slack</button>
+      <button id="clear-auto">Clear Auto Drives</button>
+      <button id="insert-drives">Insert Drives</button>
+      <button id="gen-routes">Generate Routes</button>
+      <button id="validate-btn">Validate & Repair Routing</button>
+    </div>-->
+
+    <div id="toolbar" class="toolbar">
+      <!-- === Modes & Trip Setup === -->
+      <div class="toolbar-group">
+        <button id="mode-timeline">Timeline</button>
+        <button id="init-trip">Start Trip</button>
+        <button id="add-stop">Add Segment</button>
+      </div>
+
+      <!-- === Route Generation === -->
+      <div class="toolbar-group">
+        <button id="clear-auto">Clear Auto Drives</button>
+        <button id="insert-drives">Insert Drives</button>
+        <button id="gen-routes">Generate Routes</button>
+        <button id="validate-btn">Validate & Repair Routing</button>
+      </div>
+
+
+      <!-- === Time Management === -->
+      <div class="toolbar-group">
+        <button id="clear-unlocked-times">Clear Unlocked Times</button>
+        <button id="fill-times">Fill Times</button>
+      </div>
+
+      <!-- === Slack & Overlap === -->
+      <div class="toolbar-group">
+        <button id="clear-slack">Clear Slack</button>
+        <button id="show-slack">Show Slack</button>
+      </div>
+
+
 
     </div>
+
 
     <div id="calendar" class="timeline"></div>
   </body>

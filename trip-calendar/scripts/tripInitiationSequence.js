@@ -19,58 +19,20 @@ async function initTrip() {
   saveSegments(segs);
   renderTimeline(segs);
 
-  //segs = syncGlobal();              
+  segs = annotateEmitters(segs);
+  segs = determineEmitterDirections(segs, { priority: 'forward' }); // or 'backward'
+  segs = propagateTimes(segs);
 
-  const origin = segs.find(s => s.type === 'trip_start');
-  const destination = segs.find(s => s.type === 'trip_end');
-
-  let filled = false;
-
-  /**
-    if (origin?.end?.utc && origin.end.lock === 'hard') {
-      console.log('Origin hard-locked — filling forward...');
-      segs = fillForward(segs, origin.id);                
-      filled = true;
-    } else if (destination?.start?.utc && destination.start.lock === 'hard') {
-      console.log('Destination hard-locked — filling backward...');
-      segs = fillBackward(segs, destination.id);      
-      filled = true;
-    } else if (origin?.end?.utc) {
-      console.log('No hard lock — filling forward...');
-      segs = fillForward(segs, origin.id);
-      filled = true;
-    } else if (destination?.start?.utc) {
-      console.log('No hard lock — filling backward...');
-      segs = fillBackward(segs, destination.id);
-      filled = true;
-    } else {
-      console.warn('No anchor times available — skipping fill.');
-    }
-  */
-
-  if (origin?.end?.utc && destination?.start?.utc) {
-    // both sides pinned: use chosen priority
-    segs = propagate(segs, { priority: 'forward' /* or 'backward' */ });
-  } else if (origin?.end?.utc) {
-    segs = propagate(segs, { priority: 'forward' });
-  } else if (destination?.start?.utc) {
-    segs = propagate(segs, { priority: 'backward' });
-  }
-
-
-  //segs = syncGlobal();
   saveSegments(segs);
   renderTimeline(segs);
 
   // Compute slack/overlap on the same canonical array
-  console.log('Computing slack/overlap...');
-  //computeSlackAndOverlap(segs);     //temporarily commented out  
+  segs = computeSlackAndOverlap(segs);
   saveSegments(segs);
   renderTimeline(segs);
 
   console.log('Trip initialization complete.');
 }
-
 
 /* ===============================
    Queue Trip Origin / Destination
@@ -105,7 +67,6 @@ function queueTripDestination(segments) {
   segments.push(seg);
 }
 
-
 /* ===============================
    Helper: Wait for Anchors Ready
    =============================== */
@@ -121,7 +82,6 @@ function waitForTripAnchorsReady() {
     check();
   });
 }
-
 
 /* ===============================
    Trip Validation & Repair Module
@@ -230,7 +190,6 @@ async function generateRoutes(list) {
   return segments;
 }
 
-
 function sortByDateInPlace(list = []) {
   const dated = list.filter((seg) => parseDate(seg?.start?.utc));
   dated.sort((a, b) => parseDate(a?.start?.utc) - parseDate(b?.start?.utc));
@@ -245,35 +204,70 @@ function sortByDateInPlace(list = []) {
   return list;
 }
 
-
-/* ===============================
-   Fill FORWARD / BACKWARD (UTC)
-   =============================== */
-
-/**
-  function fillForward(list, fromId) {
-    console.log('fillForward');
+function computeSlackAndOverlap(list) {
+    console.log('computeSlackAndOverlap');
     let segments = [...list];
-    const idx = segments.findIndex(s => s.id === fromId);
-    if (idx === -1) return segments;
-  
-    // run the propagation sweeps with forward priority
-    segments = runPropagation(segments, "forward");
-  
+
+    // Remove existing slack/overlap entries
+    for (let i = segments.length - 1; i >= 0; i--) {
+        if (segments[i].type === 'slack' || segments[i].type === 'overlap') {
+            segments.splice(i, 1);
+        }
+    }
+
+    // Build a working copy excluding derived types
+    const baseSegments = segments.filter(
+        (s) => s.type !== 'slack' && s.type !== 'overlap'
+    );
+
+    // Insert new derived events directly into the global array
+    for (let i = 0; i < baseSegments.length - 1; i++) {
+        const cur = baseSegments[i];
+        const next = baseSegments[i + 1];
+        const curEnd = cur.end ?.utc  ;
+        const nextStart = next.start ?.utc  ;
+        if (!curEnd || !nextStart) continue;
+
+        const startDate = new Date(curEnd);
+        const endDate = new Date(nextStart);
+        const diffMin = (endDate - startDate) / 60000;
+
+        if (diffMin > 0) {
+            const slack = {
+                id: crypto.randomUUID(),
+                type: 'slack',
+                name: 'Slack',
+                a: cur.id,
+                b: next.id,
+                start: { utc: curEnd },
+                end: { utc: nextStart },
+                duration: { val: diffMin / 60 },
+                minutes: diffMin
+            };
+            const insertIndex = segments.findIndex((s) => s.id === next.id);
+            segments.splice(insertIndex, 0, slack);
+        } else if (diffMin < 0) {
+            const overlapMin = -diffMin;
+            const overlap = {
+                id: crypto.randomUUID(),
+                type: 'overlap',
+                name: 'Overlap',
+                a: cur.id,
+                b: next.id,
+                start: { utc: nextStart },
+                end: { utc: curEnd },
+                duration: { val: overlapMin / 60 },
+                minutes: overlapMin
+            };
+            const insertIndex = segments.findIndex((s) => s.id === next.id);
+            segments.splice(insertIndex, 0, overlap);
+        }
+    }
+    console.log('Segments after recompute:', segments);
     return segments;
-  }
-  
-  function fillBackward(list, fromId) {
-    console.log('fillBackward');
-    let segments = [...list];
-    const idx = segments.findIndex(s => s.id === fromId);
-    if (idx === -1) return segments;
-  
-    segments = runPropagation(segments, "backward");
-  
-    return segments;
-  }
-*/
+}
+
+
 
 
 

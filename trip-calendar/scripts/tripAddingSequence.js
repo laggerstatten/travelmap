@@ -18,12 +18,22 @@ function queueStop() {
 }
 
 async function insertQueuedSegment(seg, card) {
-  let segments = loadSegments();
+  let segs = loadSegments();
   delete seg.isQueued;
   delete seg.openEditor;
-  segments = await insertStopInNearestRoute(seg, segments);
-  saveSegments(segments);
-  renderTimeline(segments);
+  segs = await insertStopInNearestRoute(seg, segs);
+
+  //TEST
+  segs = removeSlackAndOverlap(segs);
+  segs = await validateAndRepair(segs);
+  segs = annotateEmitters(segs);
+  segs = determineEmitterDirections(segs, { priority: 'forward' }); // or 'backward'
+  segs = propagateTimes(segs);
+  segs = computeSlackAndOverlap(segs);
+  //TEST
+
+  saveSegments(segs);
+  renderTimeline(segs);
 }
 
 
@@ -123,4 +133,73 @@ async function insertStopInNearestRoute(stop, list) {
 
 }
 
+function removeSlackAndOverlap(list) {
+    console.log('removeSlackAndOverlap');
+    let segments = [...list];
 
+    // Build a working copy excluding derived types
+    const baseSegments = segments.filter(
+        (s) => s.type !== 'slack' && s.type !== 'overlap'
+    );
+
+    console.log('Segments after recompute:', baseSegments);
+    return baseSegments;
+}
+
+function clearTimesAndDurations(list, opts = {}) {
+  console.log('clearTimesAndDurations');
+  let segments = [...list];
+  console.log(segments);
+  const { onlyUnlocked = false } = opts;
+
+  let message = onlyUnlocked ?
+    'Clear all non-locked times and durations?' :
+    'Clear all start/end times and durations?';
+
+  if (!confirm(message)) return;
+
+  segments.forEach((seg) => {
+    // Ensure nested structure exists
+    seg.start ??= { utc: '', lock: 'unlocked' };
+    seg.end ??= { utc: '', lock: 'unlocked' };
+    seg.duration ??= { val: null, lock: 'unlocked' };
+
+    const clearIf = (lock) => !onlyUnlocked || lock !== 'hard';
+
+    if (clearIf(seg.start.lock)) {
+      seg.start.utc = '';
+      seg.start.lock = 'unlocked';
+    }
+
+    if (clearIf(seg.end.lock)) {
+      seg.end.utc = '';
+      seg.end.lock = 'unlocked';
+    }
+
+    if (clearIf(seg.duration.lock)) {
+      seg.duration.val = null;
+      seg.duration.lock = 'unlocked';
+    }
+
+    if (seg.type === 'drive') {
+      seg.duration.val = seg.durationHr;
+      seg.duration.lock = 'auto';
+    }
+
+    // Clear transient manual flags
+    delete seg.manualEdit;
+  });
+
+  console.log(segments);
+
+  return segments;
+}
+
+
+function clearAutoDrives(list) {
+  let segments = [...list];
+  segments = segments.filter(
+    (seg) => !(seg.type === 'drive' && seg.autoDrive && !seg.manualEdit)
+  );
+  return segments;
+}

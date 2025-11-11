@@ -1,67 +1,3 @@
-function clearTimesAndDurations(opts = {}) {
-  const { onlyUnlocked = false } = opts;
-
-  let message = onlyUnlocked ?
-    'Clear all non-locked times and durations?' :
-    'Clear all start/end times and durations?';
-
-  if (!confirm(message)) return;
-
-  segments.forEach((seg) => {
-    // Ensure nested structure exists
-    seg.start ? ? = { utc: '', lock: 'unlocked' };
-    seg.end ? ? = { utc: '', lock: 'unlocked' };
-    seg.duration ? ? = { val: null, lock: 'unlocked' };
-
-    const clearIf = (lock) => !onlyUnlocked || lock !== 'hard';
-
-    if (clearIf(seg.start.lock)) {
-      seg.start.utc = '';
-      seg.start.lock = 'unlocked';
-    }
-
-    if (clearIf(seg.end.lock)) {
-      seg.end.utc = '';
-      seg.end.lock = 'unlocked';
-    }
-
-    if (clearIf(seg.duration.lock)) {
-      seg.duration.val = null;
-      seg.duration.lock = 'unlocked';
-    }
-
-    if (seg.type === 'drive') {
-      seg.duration.val = seg.durationHr;
-      seg.duration.lock = 'auto';
-    }
-
-    // Clear transient manual flags
-    delete seg.manualEdit;
-  });
-
-  save();
-  renderTimeline();
-}
-
-async function insertQueuedStops(segments) {
-  const queued = segments.filter((s) => s.isQueued);
-  if (!queued.length) {
-    alert('No queued stops to insert.');
-    return;
-  }
-
-  // Example: show a selection dialog, or auto-insert sequentially
-  for (const stop of queued) {
-    if (!stop.coordinates) continue; // skip incomplete
-    delete stop.isQueued;
-    await insertStopInNearestRoute(stop, segments);
-  }
-
-  save();
-  renderTimeline();
-}
-
-
 /* ===============================
    Nudge Tools
    =============================== */
@@ -108,149 +44,120 @@ function nudgeEvent(event, minutes, cascade = false) {
   console.log(`🕓 Nudged ${event.name} by ${minutes} min (cascade=${cascade})`);
 }
 
-function clearAutoDrives() {
-  segments = segments.filter(
-    (seg) => !(seg.type === 'drive' && seg.autoDrive && !seg.manualEdit)
-  );
-  save();
-}
 
 
 /* ===============================
-   Timing Fill Helpers
+   Fill FORWARD (UTC) — Lock-Aware
    =============================== */
+function fillForward(fromSegment) {
+  const idx = segments.findIndex((ev) => ev.id === fromSegment.id);
+  if (idx === -1) return;
 
-/**
- * Forward-fill times from start → end.
- * Propagates start/end times based on durations
- * until a null is found.
- */
-function forwardFillTimes(segments) {
-  for (let i = 0; i < segments.length - 1; i++) {
-    const cur = segments[i];
-    const next = segments[i + 1];
-    const dur = Number(cur.duration) || 0;
+  const fromStart = fromSegment.start ?.utc;
+  const fromEnd = fromSegment.end ?.utc;
+  let cursor = fromEnd || fromStart;
+  if (!cursor) return;
 
-    // Fill missing end (unless manually set)
-    if (!cur.end && cur.start && !cur.manualEnd) {
-      cur.end = window.TripCal.endFromDuration(cur.start, dur);
+  for (let i = idx + 1; i < segments.length; i++) {
+    const seg = segments[i];
+
+    // --- normalize nested objects ---
+    seg.start ??= { utc: '', lock: 'unlocked' };
+    seg.end ??= { utc: '', lock: 'unlocked' };
+    seg.duration??= { val: null, lock: 'unlocked' };
+
+    // --- Skip slack / overlap segments ---
+    if (seg.type === 'slack' || seg.type === 'overlap') continue;
+
+    // --- Stop if start is hard/soft locked ---
+    if (['hard', 'soft'].includes(seg.start.lock)) break;
+
+    // --- Trip end special handling ---
+    if (seg.type === 'trip_end') {
+      if (!['hard', 'soft'].includes(seg.start.lock)) {
+        seg.start.utc = cursor;
+        seg.start.lock = 'auto';
+      }
+      break;
     }
 
-    // Forward-fill next start (stop only if next has manualStart)
-    if (cur.end && next && !next.start) {
-      next.start = cur.end;
+    // --- Propagate start ---
+    if (!['hard', 'soft'].includes(seg.start.lock)) {
+      seg.start.utc = cursor;
+      seg.start.lock = 'auto';
     }
-    if (next && next.manualStart) break;
+
+    // --- Propagate end ---
+    const durHrs = Number(seg.duration.val) || 0;
+    if (!['hard', 'soft'].includes(seg.end.lock)) {
+      seg.end.utc = addMinutesUTC(seg.start.utc, durHrs * 60);
+      seg.end.lock = 'auto';
+    }
+
+    cursor = seg.end.utc || seg.start.utc;
   }
-  return segments;
+
+  //save();
+  localStorage.setItem('tripSegments', JSON.stringify(segments));
+  console.log('save');
+  renderTimeline();
 }
 
-/**
- * Back-fill times from end → start.
- * Works backwards until a missing value is hit.
- */
+/* ===============================
+   Fill BACKWARD (UTC) — Lock-Aware
+   =============================== */
+function fillBackward(fromSegment) {
+  const idx = segments.findIndex((ev) => ev.id === fromSegment.id);
+  if (idx === -1) return;
 
-function backFillTimes(segments) {
-  for (let i = segments.length - 1; i > 0; i--) {
-    const cur = segments[i];
-    const prev = segments[i - 1];
-    const dur = Number(cur.duration) || 0;
+  const fromStart = fromSegment.start ?.utc;
+  const fromEnd = fromSegment.end ?.utc;
+  let cursor = fromStart || fromEnd;
+  if (!cursor) return;
 
-    // Fill missing start (unless manually set)
-    if (!cur.start && cur.end && !cur.manualStart) {
-      const d = new Date(cur.end);
-      d.setHours(d.getHours() - dur);
-      cur.start = d.toISOString().slice(0, 16);
+  for (let i = idx - 1; i >= 0; i--) {
+    const seg = segments[i];
+
+    // --- normalize nested objects ---
+    seg.start ??= { utc: '', lock: 'unlocked' };
+    seg.end ??= { utc: '', lock: 'unlocked' };
+    seg.duration ??= { val: null, lock: 'unlocked' };
+
+    // --- Skip slack / overlap segments ---
+    if (seg.type === 'slack' || seg.type === 'overlap') continue;
+
+    // --- Stop if end is hard/soft locked ---
+    if (['hard', 'soft'].includes(seg.end.lock)) break;
+
+    // --- Trip start special handling ---
+    if (seg.type === 'trip_start') {
+      if (!['hard', 'soft'].includes(seg.end.lock)) {
+        seg.end.utc = cursor;
+        seg.end.lock = 'auto';
+      }
+      break;
     }
 
-    // Back-fill previous end (stop only if prev.manualEnd)
-    if (cur.start && prev && !prev.end) {
-      prev.end = cur.start;
+    // --- Propagate end ---
+    if (!['hard', 'soft'].includes(seg.end.lock)) {
+      seg.end.utc = cursor;
+      seg.end.lock = 'auto';
     }
-    if (prev && prev.manualEnd) break;
+
+    // --- Propagate start ---
+    const durHrs = Number(seg.duration.val) || 0;
+    if (!['hard', 'soft'].includes(seg.start.lock)) {
+      seg.start.utc = addMinutesUTC(seg.end.utc, -durHrs * 60);
+      seg.start.lock = 'auto';
+    }
+
+    cursor = seg.start.utc || seg.end.utc;
   }
-  return segments;
-}
 
-
-
-/* ===============================
-   Styling helpers
-   =============================== */
-
-/* ===============================
-   UTC minute math helper
-   =============================== */
-function addMinutesUTC(utcString, minutes) {
-  const date = new Date(utcString);
-  const newDate = new Date(date.getTime() + minutes * 60000);
-  return newDate.toISOString(); // always returns UTC ISO
-}
-
-
-
-
-/* ===============================
-   Timeline Rendering & Interaction
-   =============================== */
-
-
-function getDragAfterElement(container, y) {
-  // include entire rail-pair for position math
-  const pairs = [...container.querySelectorAll('.rail-pair:not(.dragging)')];
-  return pairs.reduce(
-    (closest, el) => {
-      const box = el.getBoundingClientRect();
-      const offset = y - (box.top + box.height / 2);
-      return offset < 0 && offset > closest.offset ? { offset, element: el.querySelector('.timeline-card') } :
-        closest;
-    }, { offset: Number.NEGATIVE_INFINITY, element: null }
-  ).element;
-}
-
-
-
-/* ---------- Dates ---------- */
-
-function sortByDate() {
-  sortByDateInPlace(events);
   save();
+  renderTimeline();
 }
 
-/* ---------- Utility: compute end from duration (hours, local) ---------- */
-function endFromDuration(startLocal, hoursStr) {
-  const hrs = parseFloat(hoursStr);
-  if (!startLocal || !isFinite(hrs)) return '';
-  const start = new Date(startLocal);
-  const end = new Date(start.getTime() + hrs * 3600000);
-  // return value in local time for input[type=datetime-local]
-  const tzOffset = end.getTimezoneOffset() * 60000;
-  const localISO = new Date(end - tzOffset).toISOString().slice(0, 16);
-  return localISO;
-}
-
-const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 
 
-function hasCoords(e) {
-  return e && typeof e.lat === 'number' && typeof e.lon === 'number';
-}
-
-function addMinutes(baseIso, mins) {
-  // assume baseIso in "YYYY-MM-DDTHH:mm" local form
-  const [datePart, timePart] = baseIso.split('T');
-  const [year, month, day] = datePart.split('-').map(Number);
-  const [hour, minute] = timePart.split(':').map(Number);
-
-  const d = new Date(year, month - 1, day, hour, minute); // local Date
-  d.setMinutes(d.getMinutes() + mins);
-
-  // re-emit as local YYYY-MM-DDTHH:mm (no timezone conversion)
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  const hh = String(d.getHours()).padStart(2, '0');
-  const min = String(d.getMinutes()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
-}
