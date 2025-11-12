@@ -44,7 +44,7 @@
     <script src="scripts/segmentActions.js" defer></script>
     <script src="scripts/tripInitiationSequence.js" defer></script>
     <script src="scripts/segmentEditor.js" defer></script>
-    <script src="scripts/prop_new.js" defer></script>
+    <script src="scripts/timingPropagation.js" defer></script>
     <script src="scripts/tripAddingSequence.js" defer></script>
 
     <script>
@@ -140,7 +140,7 @@
         document.getElementById('show-slack').onclick = () => {
           let segs = loadSegments();
           segs = removeSlackAndOverlap(segs);
-          segs = computeSlackAndOverlap(segs); //test
+          segs = computeSlackAndOverlap(segs); //test // this does not work as expected unless times are filled first -- which would make it identical to document.getElementById('fill-times').onclick
           saveSegments(segs);
           renderTimeline(syncGlobal());
         }

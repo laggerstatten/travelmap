@@ -131,3 +131,26 @@ function parseDate(v) {
   const d = new Date(v);
   return isNaN(d) ? null : d;
 }
+
+
+function segDurationMinutes(seg) {
+  if (!seg) return 0;
+
+  if (seg.type === 'drive') {
+    //if (seg.durationMin) return Number(seg.durationMin);
+    if (seg.duration?.val) return Math.round(Number(seg.duration.val) * 60);
+  }
+  if (seg.durationMin) return Number(seg.durationMin);
+  if (seg.duration?.minutes) return Number(seg.duration.minutes);
+  if (seg.duration?.val) return Math.round(Number(seg.duration.val) * 60);
+
+  return 0;
+}
+
+function addMinutes(isoUtc, minutes) {
+
+  const t = new Date(isoUtc).getTime() + minutes * 60000;
+  return new Date(t).toISOString();
+}
+
+

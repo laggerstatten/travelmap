@@ -6,27 +6,6 @@ function canWrite(ep) {
   return LOCK_RANK[ep?.lock || 'undefined'] <= LOCK_RANK.auto;
 }
 
-function addMinutes(isoUtc, minutes) {
-
-  const t = new Date(isoUtc).getTime() + minutes * 60000;
-  return new Date(t).toISOString();
-}
-
-function segDurationMinutes(seg) {
-  if (!seg) return 0;
-
-  if (seg.type === 'drive') {
-    //if (seg.durationMin) return Number(seg.durationMin);
-    if (seg.duration?.val) return Math.round(Number(seg.duration.val) * 60);
-  }
-  if (seg.durationMin) return Number(seg.durationMin);
-  if (seg.duration?.minutes) return Number(seg.duration.minutes);
-  if (seg.duration?.val) return Math.round(Number(seg.duration.val) * 60);
-
-  return 0;
-}
-
-
 function normalizeSegments(segments) {
   for (const s of segments) {
     s.start    ??= { utc: '', lock: 'undefined' };
@@ -69,31 +48,6 @@ function annotateEmitters(list) {
   }
   return segs;
 }
-
-/** Pretty logger so we can inspect what’s happening per segment */
-function logEmitMatrix(segments) {
-  const rows = segments.map((s, i) => ({
-    idx: i,
-    id: (s.id||'').slice(0,6),
-    type: s.type,
-    // START
-    s_lock: s.start.lock,
-    s_rank: s.start.meta?.rank ?? '',
-    s_pinned: !!s.start.meta?.pinned,
-    s_emitF: !!s.start.meta?.emitsForward,
-    s_emitB: !!s.start.meta?.emitsBackward,
-    s_utc: s.start.utc || '',
-    // END
-    e_lock: s.end.lock,
-    e_rank: s.end.meta?.rank ?? '',
-    e_pinned: !!s.end.meta?.pinned,
-    e_emitF: !!s.end.meta?.emitsForward,
-    e_emitB: !!s.end.meta?.emitsBackward,
-    e_utc: s.end.utc || '',
-  }));
-  console.table(rows);
-}
-
 
 
 /**
@@ -179,26 +133,6 @@ function determineEmitterDirections(segments, { priority = 'forward' } = {}) {
   }
 
   return segs;
-}
-
-function logEmitterDirections(segments) {
-  const rows = [];
-  segments.forEach((s, i) => {
-    ['start','end'].forEach(side => {
-      const m = s[side].meta;
-      if (!m?.pinned) return;
-      rows.push({
-        idx: i,
-        name: s.name,
-        type: s.type,
-        side,
-        rank: m.rank,
-        willEmitB: !!m.willEmitBackward,
-        willEmitF: !!m.willEmitForward
-      });
-    });
-  });
-  console.table(rows);
 }
 
 

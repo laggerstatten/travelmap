@@ -22,7 +22,6 @@ async function initTrip() {
   segs = annotateEmitters(segs);
   segs = determineEmitterDirections(segs, { priority: PLANNING_DIRECTION }); 
   segs = propagateTimes(segs);
-
   saveSegments(segs);
   renderTimeline(segs);
 
@@ -102,10 +101,7 @@ async function validateAndRepair(list) {
   segments = insertDriveSegments(segments);
   segments = await generateRoutes(segments);
 
-  //saveSegments(segments);
-  //renderTimeline(segments);
-
-  return segments; // return updated canonical list
+  return segments;
 }
 
 function removeAdjacentDrives(list) {
@@ -146,7 +142,9 @@ function insertDriveSegments(list) {
 }
 
 async function generateRoutes(list) {
-  const segments = sortByDateInPlace([...list]);
+  //const segments = sortByDateInPlace([...list]); // commenting this out to see if anything breaks
+  const segments = [...list];
+
   for (const seg of segments) {
     if (seg.type !== 'drive') continue;
 
@@ -183,6 +181,8 @@ async function generateRoutes(list) {
         seg.duration = {val: (route.duration_min / 60).toFixed(2), lock: 'hard'};
         seg.originId = from.id;
         seg.destinationId = to.id;
+        seg.originTz = from.timeZone;
+        seg.destinationTz = to.timeZone;       
       }
     } catch (err) {}
   }
@@ -190,23 +190,30 @@ async function generateRoutes(list) {
   return segments;
 }
 
-function sortByDateInPlace(list = []) {
-  const dated = list.filter((seg) => parseDate(seg?.start?.utc));
-  dated.sort((a, b) => parseDate(a?.start?.utc) - parseDate(b?.start?.utc));
-
-  const merged = [];
-  let di = 0;
-  for (const seg of list) {
-    if (!parseDate(seg?.start?.utc)) merged.push(seg);
-    else merged.push(dated[di++]);
+/**
+  function sortByDateInPlace(list = []) {
+    const dated = list.filter((seg) => parseDate(seg?.start?.utc));
+    dated.sort((a, b) => parseDate(a?.start?.utc) - parseDate(b?.start?.utc));
+  
+    const merged = [];
+    let di = 0;
+    for (const seg of list) {
+      if (!parseDate(seg?.start?.utc)) merged.push(seg);
+      else merged.push(dated[di++]);
+    }
+    list.splice(0, list.length, ...merged);
+    return list;
   }
-  list.splice(0, list.length, ...merged);
-  return list;
-}
+*/
 
 function computeSlackAndOverlap(list) {
     console.log('computeSlackAndOverlap');
     let segments = [...list];
+
+    for (const s of segments) {
+      delete s.overlapEmitters;
+    }
+
 
     // Remove existing slack/overlap entries
     for (let i = segments.length - 1; i >= 0; i--) {
@@ -233,8 +240,17 @@ function computeSlackAndOverlap(list) {
         const diffMin = (endDate - startDate) / 60000;
 
         if (diffMin > 0) {
+            // Lookup related segments
+            const tz =
+              cur?.timeZone ||
+              (cur?.type === 'drive' && baseSegments.find(s => s.id === cur.destinationId)?.timeZone) ||
+              (next?.type === 'drive' && baseSegments.find(s => s.id === next.originId)?.timeZone) ||
+              next?.timeZone;
+            const aLabel = segLabel(cur, segments);
+            const bLabel = segLabel(next, segments);
+
             const slack = {
-                id: crypto.randomUUID(),
+                id: newId(),
                 type: 'slack',
                 name: 'Slack',
                 a: cur.id,
@@ -242,14 +258,38 @@ function computeSlackAndOverlap(list) {
                 start: { utc: curEnd },
                 end: { utc: nextStart },
                 duration: { val: diffMin / 60 },
-                minutes: diffMin
+                minutes: diffMin,
+                slackInfo: {
+                    tz,
+                    aLabel,
+                    bLabel
+                }
             };
             const insertIndex = segments.findIndex((s) => s.id === next.id);
             segments.splice(insertIndex, 0, slack);
         } else if (diffMin < 0) {
             const overlapMin = -diffMin;
+
+            // Lookup related segments
+            //const idx = segments.findIndex(s => s.id === cur.id);
+            const leftAnchor  = findNearestEmitterLeft(i, baseSegments);
+            const rightAnchor = findNearestEmitterRight(i, baseSegments);
+            const tz = (leftAnchor?.seg?.timeZone) || (rightAnchor?.seg?.timeZone) || cur.timeZone;
+            const aLabel = segLabel(cur, segments);
+            const bLabel = segLabel(next, segments);
+
+            for (const [anchor, role] of [[leftAnchor, 'left'], [rightAnchor, 'right']]) {
+              if (anchor?.seg?.id) {
+                const s = segments.find(x => x.id === anchor.seg.id);
+                if (s) {
+                  s.overlapEmitters = s.overlapEmitters || [];
+                  if (!s.overlapEmitters.includes(role)) s.overlapEmitters.push(role);
+                }
+              }
+            }
+
             const overlap = {
-                id: crypto.randomUUID(),
+                id: newId(),
                 type: 'overlap',
                 name: 'Overlap',
                 a: cur.id,
@@ -257,8 +297,16 @@ function computeSlackAndOverlap(list) {
                 start: { utc: nextStart },
                 end: { utc: curEnd },
                 duration: { val: overlapMin / 60 },
-                minutes: overlapMin
+                minutes: overlapMin,
+                overlapInfo: {
+                    tz,
+                    aLabel,
+                    bLabel,
+                    leftAnchor,
+                    rightAnchor
+                }
             };
+
             const insertIndex = segments.findIndex((s) => s.id === next.id);
             segments.splice(insertIndex, 0, overlap);
         }
@@ -268,6 +316,31 @@ function computeSlackAndOverlap(list) {
 }
 
 
+function findNearestEmitterLeft(idx, segments) {
+  for (let i = idx - 1; i >= 0; i--) {
+    const s = segments[i];
+    if (isEmitter(s.end, 'forward'))     return { seg: s, kind: 'end',   field: s.end };
+    if (isEmitter(s.start, 'forward'))   return { seg: s, kind: 'start', field: s.start };
+    if (isEmitter(s.duration, 'forward'))return { seg: s, kind: 'duration', field: s.duration };
+  }
+  return null;
+}
 
+function findNearestEmitterRight(idx, segments) {
+  for (let i = idx + 1; i < segments.length; i++) {
+    const s = segments[i];
+    if (isEmitter(s.start, 'backward'))    return { seg: s, kind: 'start', field: s.start };
+    if (isEmitter(s.end, 'backward'))      return { seg: s, kind: 'end',   field: s.end };
+    if (isEmitter(s.duration, 'backward')) return { seg: s, kind: 'duration', field: s.duration };
+  }
+  return null;
+}
 
+function isEmitter(f, dir) {
+    if (!boundaryLocked(f)) return false;
+    return dir === 'forward' ? !!f.emitsForward : !!f.emitsBackward;
+}
 
+function boundaryLocked(f) { 
+  return !!(f && f.lock && f.lock !== 'unlocked'); 
+}

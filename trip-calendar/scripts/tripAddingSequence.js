@@ -43,7 +43,6 @@ async function insertStopInNearestRoute(stop, list) {
   let segments = [...list];
   let timeWindow = getSegmentsInTimeWindow(stop, segments);
 
-  
   if (!Array.isArray(timeWindow) || !timeWindow.length) {
     console.log('No time window found — falling back to all segments');
     timeWindow = [...segments];
@@ -104,7 +103,9 @@ async function insertStopInNearestRoute(stop, list) {
     durationHr: (r1.duration_min / 60).toFixed(2),
     duration: { val: (r1.duration_min / 60).toFixed(2), lock: 'hard' },
     originId: origin.id,
-    destinationId: stop.id
+    destinationId: stop.id,
+    originTz: origin.timeZone,
+    destinationTz: stop.timeZone,
   };
 
   const newDrive2 = {
@@ -118,7 +119,9 @@ async function insertStopInNearestRoute(stop, list) {
     durationHr: (r2.duration_min / 60).toFixed(2),
     duration: { val: (r2.duration_min / 60).toFixed(2), lock: 'hard' },
     originId: stop.id,
-    destinationId: destination.id
+    destinationId: destination.id,
+    originTz: stop.timeZone,
+    destinationTz: destination.timeZone,   
   };
 
   const tempIndex = segments.findIndex((seg) => seg.id === stop.id);
@@ -191,49 +194,48 @@ function removeSlackAndOverlap(list) {
 function clearTimesAndDurations(list, opts = {}) {
   console.log('clearTimesAndDurations');
   let segments = [...list];
-  console.log(segments);
-  const { onlyUnlocked = false } = opts;
+  const { onlyUnlocked = true } = opts;
 
-  let message = onlyUnlocked
+  const message = onlyUnlocked
     ? 'Clear all non-locked times and durations?'
     : 'Clear all start/end times and durations?';
 
   if (!confirm(message)) return;
 
+  const shouldClear = (lock) => {
+    if (!onlyUnlocked) return true;
+    return !(lock === 'hard' || lock === 'soft');
+  };
+
   segments.forEach((seg) => {
-    // Ensure nested structure exists
     seg.start ??= { utc: '', lock: 'unlocked' };
     seg.end ??= { utc: '', lock: 'unlocked' };
     seg.duration ??= { val: null, lock: 'unlocked' };
 
-    const clearIf = (lock) => !onlyUnlocked || lock !== 'hard';
-
-    if (clearIf(seg.start.lock)) {
+    if (shouldClear(seg.start.lock)) {
       seg.start.utc = '';
       seg.start.lock = 'unlocked';
     }
 
-    if (clearIf(seg.end.lock)) {
+    if (shouldClear(seg.end.lock)) {
       seg.end.utc = '';
       seg.end.lock = 'unlocked';
     }
 
-    if (clearIf(seg.duration.lock)) {
+    if (shouldClear(seg.duration.lock)) {
       seg.duration.val = null;
       seg.duration.lock = 'unlocked';
     }
 
     if (seg.type === 'drive') {
-      seg.duration.val = seg.durationHr;
+      seg.duration.val = seg.durationHr ?? seg.duration?.val ?? null;
       seg.duration.lock = 'auto';
     }
 
-    // Clear transient manual flags
     delete seg.manualEdit;
   });
 
   console.log(segments);
-
   return segments;
 }
 

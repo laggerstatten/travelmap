@@ -46,17 +46,20 @@ function getDragAfterElement(container, y) {
     (closest, el) => {
       const box = el.getBoundingClientRect();
       const offset = y - (box.top + box.height / 2);
-      return offset < 0 && offset > closest.offset ? { offset, element: el.querySelector('.timeline-card') } :
-        closest;
-    }, { offset: Number.NEGATIVE_INFINITY, element: null }
+      return offset < 0 && offset > closest.offset
+        ? { offset, element: el.querySelector('.timeline-card') }
+        : closest;
+    },
+    { offset: Number.NEGATIVE_INFINITY, element: null }
   ).element;
 }
 
 function reorderFromDOM(calendar) {
-  const ids = [...calendar.querySelectorAll('.rail-pair .timeline-card')]
-    .map(el => el.dataset.id);
+  const ids = [...calendar.querySelectorAll('.rail-pair .timeline-card')].map(
+    (el) => el.dataset.id
+  );
 
-  segments = ids.map(id => segments.find(s => s.id === id));
+  segments = ids.map((id) => segments.find((s) => s.id === id));
   saveSegments(segments);
   //renderTimeline(syncGlobal());
 }
@@ -107,13 +110,59 @@ function attachClearButtons(editor, seg) {
 
       // Optional: update lock icon in the editor
       const lockBtn = e.currentTarget
-        .closest('label')?.querySelector('.lock-toggle');
+        .closest('label')
+        ?.querySelector('.lock-toggle');
       if (lockBtn) {
         lockBtn.textContent = '🔓';
         lockBtn.title = 'Unlocked — click to hard lock';
         lockBtn.disabled = false;
       }
     });
+  });
+}
+
+function attachGeocoder(editor, seg) {
+  const container = editor.querySelector(`#geocoder-${seg.id}`);
+  console.log(container);
+  if (!container) return;
+
+  const geocoder = new MapboxGeocoder({
+    accessToken: mapboxgl.accessToken,
+    useBrowserFocus: true,
+    marker: false,
+    placeholder: seg.location_name || 'Search location',
+    types: 'country,region,place,postcode,locality,neighborhood',
+    limit: 5
+  });
+
+  // Mount geocoder directly into that div
+  geocoder.addTo(container);
+
+  // Handle selection
+  geocoder.on('result', async (e) => {
+    const f = e.result;
+    if (!f?.geometry) return;
+
+    seg.coordinates = f.geometry.coordinates;
+    seg.location_name = f.text || f.place_name || '';
+
+    if (!seg.name || seg.name.trim() === '' || seg.name === '(untitled)') {
+      seg.name = seg.location_name;
+      const input = editor.querySelector('input[name="name"]');
+      if (input) input.value = seg.name;
+    }
+
+    try {
+      seg.timeZone = await getTimeZone(seg.coordinates);
+    } catch (err) {
+      console.warn('Timezone lookup failed:', err);
+    }
+  });
+
+  // Optional: clear handler if you want to wipe stored coords
+  geocoder.on('clear', () => {
+    seg.coordinates = null;
+    seg.location_name = '';
   });
 }
 
@@ -126,6 +175,7 @@ function handleEditorSubmit(editor, seg, card) {
     const formData = Object.fromEntries(new FormData(editor).entries());
     const prev = structuredClone(seg);
 
+    // refactor all this into a function
     seg.start ??= { utc: '', lock: 'unlocked' };
     seg.end ??= { utc: '', lock: 'unlocked' };
     seg.duration ??= { val: null, lock: 'unlocked' };
@@ -162,6 +212,8 @@ function handleEditorSubmit(editor, seg, card) {
     // Apply derived/soft lock logic
     updateLockConsistency(seg);
 
+    // up to here
+
 
     seg.name = formData.name || '';
 
@@ -170,14 +222,14 @@ function handleEditorSubmit(editor, seg, card) {
       seg.autoDrive = false;
     }
 
-
-
     // Capture subitems
-    const items = Array.from(editor.querySelectorAll('.sublist-items li')).map(li => {
-      const name = li.querySelector('.item-name')?.value.trim();
-      const dur = parseFloat(li.querySelector('.item-dur')?.value || 0);
-      return name ? { name, dur: isNaN(dur) ? null : dur } : null;
-    }).filter(Boolean);
+    const items = Array.from(editor.querySelectorAll('.sublist-items li'))
+      .map((li) => {
+        const name = li.querySelector('.item-name')?.value.trim();
+        const dur = parseFloat(li.querySelector('.item-dur')?.value || 0);
+        return name ? { name, dur: isNaN(dur) ? null : dur } : null;
+      })
+      .filter(Boolean);
     seg.items = items;
 
     if (seg.type === 'drive') {
@@ -187,70 +239,27 @@ function handleEditorSubmit(editor, seg, card) {
       seg.duration.val = (baseHr + breakHr).toFixed(2);
     }
 
-    if (      seg.isQueued &&      (seg.type === 'trip_start' || seg.type === 'trip_end')    ) {
+    if (
+      seg.isQueued &&
+      (seg.type === 'trip_start' || seg.type === 'trip_end')
+    ) {
       seg.isQueued = false;
     }
 
-    if (seg.openEditor) {      seg.openEditor = false;    }
-
+    if (seg.openEditor) {
+      seg.openEditor = false;
+    }
 
     const list = loadSegments();
-    const idx = list.findIndex(s => s.id === seg.id);
-    if (idx !== -1) list[idx] = seg; else list.push(seg);
+    const idx = list.findIndex((s) => s.id === seg.id);
+    if (idx !== -1) list[idx] = seg;
+    else list.push(seg);
     saveSegments(list);
     renderTimeline(syncGlobal());
 
     card.classList.remove('editing');
-    
+
     editor.remove();
-
-
-
-  });
-}
-
-function attachGeocoder(editor, seg) {
-  const container = editor.querySelector(`#geocoder-${seg.id}`);
-  console.log(container);
-  if (!container) return;
-
-  const geocoder = new MapboxGeocoder({
-    accessToken: mapboxgl.accessToken,
-    useBrowserFocus: true,
-    marker: false,
-    placeholder: seg.location_name || "Search location",
-    types: "country,region,place,postcode,locality,neighborhood",
-    limit: 5
-  });
-
-  // Mount geocoder directly into that div
-  geocoder.addTo(container);
-
-  // Handle selection
-  geocoder.on("result", async (e) => {
-    const f = e.result;
-    if (!f ?.geometry) return;
-
-    seg.coordinates = f.geometry.coordinates;
-    seg.location_name = f.text || f.place_name || '';
-
-    if (!seg.name || seg.name.trim() === '' || seg.name === '(untitled)') {
-      seg.name = seg.location_name;
-      const input = editor.querySelector('input[name="name"]');
-      if (input) input.value = seg.name;
-    }
-
-    try {
-      seg.timeZone = await getTimeZone(seg.coordinates);
-    } catch (err) {
-      console.warn('Timezone lookup failed:', err);
-    }
-  });
-
-  // Optional: clear handler if you want to wipe stored coords
-  geocoder.on("clear", () => {
-    seg.coordinates = null;
-    seg.location_name = '';
   });
 }
 
@@ -319,8 +328,9 @@ function deleteSegmentById(id) {
    Drive Duration Updater
    =============================== */
 function updateDriveDurations(editor, seg) {
-  const durFields = Array.from(editor.querySelectorAll('.item-dur'))
-    .map(i => parseFloat(i.value) || 0);
+  const durFields = Array.from(editor.querySelectorAll('.item-dur')).map(
+    (i) => parseFloat(i.value) || 0
+  );
   const breakHr = durFields.reduce((a, b) => a + b, 0);
 
   seg.breakHr = breakHr;
@@ -346,8 +356,10 @@ function attachSublistHandlers(editor, seg) {
   if (!sublist) return;
 
   // Prevent outer drag interference
-  ['mousedown','touchstart','pointerdown'].forEach(evt => {
-    sublist.addEventListener(evt, e => e.stopPropagation(), { passive: true });
+  ['mousedown', 'touchstart', 'pointerdown'].forEach((evt) => {
+    sublist.addEventListener(evt, (e) => e.stopPropagation(), {
+      passive: true
+    });
   });
 
   // Collapse / expand
@@ -399,10 +411,7 @@ function attachSublistHandlers(editor, seg) {
       fallbackOnBody: true,
       fallbackTolerance: 5,
       filter: 'input,button',
-      preventOnFilter: false,
+      preventOnFilter: false
     });
   }
 }
-
-
-

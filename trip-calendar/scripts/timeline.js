@@ -45,6 +45,7 @@ function renderCard(seg, segments) {
   card.className = `segment timeline-card ${type} ${cardBadgeClass(seg)}`;
   card.dataset.id = seg.id;
 
+  // add constrained attribute
   const lockedCount = ['start', 'end', 'duration']
     .map((k) => seg[k]?.lock === 'hard')
     .filter(Boolean).length;
@@ -166,11 +167,14 @@ function renderCard(seg, segments) {
       // ───────────────────────────────
       // Drive
       // ───────────────────────────────
-      const origin = segments.find((s) => s.id === seg.originId);
-      const dest = segments.find((s) => s.id === seg.destinationId);
-      const startStr = showDate(seg.start?.utc, origin?.timeZone);
-      const endStr = showDate(seg.end?.utc, dest?.timeZone);
-      title = `Drive: ${origin?.name || '?'} → ${dest?.name || '?'}`;
+      //const origin = segments.find((s) => s.id === seg.originId);
+      //const dest = segments.find((s) => s.id === seg.destinationId);
+      //const startStr = showDate(seg.start?.utc, origin?.timeZone);
+      //const endStr = showDate(seg.end?.utc, dest?.timeZone);
+      const startStr = showDate(seg.start?.utc, seg.originTz);
+      const endStr = showDate(seg.end?.utc, seg.destinationTz);      
+      //title = `Drive: ${origin?.name || '?'} → ${dest?.name || '?'}`;
+      title = segLabel(seg, segments)
       let durText = seg.durationMin ? formatDurationMin(seg.durationMin) : '';
       meta = `${startStr}<br>${seg.distanceMi} mi • ${durText}<br>${endStr}`;
       card.innerHTML = `
@@ -183,52 +187,54 @@ function renderCard(seg, segments) {
       break;
 
     case 'slack': {
-      const idx = segments.findIndex((s) => s.id === seg.id);
-      const prev = idx > 0 ? segments[idx - 1] : null;
-      const next = idx < segments.length - 1 ? segments[idx + 1] : null;
-      const tz =
-        prev?.timeZone ||
-        (prev?.type === 'drive' && segments.find(s => s.id === prev.destinationId)?.timeZone) ||
-        (next?.type === 'drive' && segments.find(s => s.id === next.originId)?.timeZone) ||
-        next?.timeZone ||
-        seg.timeZone;
+      //const idx = segments.findIndex((s) => s.id === seg.id);
+      //const prev = idx > 0 ? segments[idx - 1] : null;
+      //const next = idx < segments.length - 1 ? segments[idx + 1] : null;
+      /**
+        const tz =
+          prev?.timeZone ||
+          (prev?.type === 'drive' && segments.find(s => s.id === prev.destinationId)?.timeZone) ||
+          (next?.type === 'drive' && segments.find(s => s.id === next.originId)?.timeZone) ||
+          next?.timeZone ||
+          seg.timeZone;
+      */
       const hours = seg.duration?.val?.toFixed(2) ?? (seg.minutes / 60).toFixed(2);
-      const startStr = fmtDate(seg.start?.utc, tz);
-      const endStr = fmtDate(seg.end?.utc, tz);
+      const startStr = fmtDate(seg.start?.utc, seg.slackInfo.tz);
+      const endStr = fmtDate(seg.end?.utc, seg.slackInfo.tz);
 
-      const segA = segments.find(s => s.id === seg.a);
-      const segB = segments.find(s => s.id === seg.b);
-      const aLabel = segLabel(segA, segments);
-      const bLabel = segLabel(segB, segments);
+      //const segA = segments.find(s => s.id === seg.a);
+      //const segB = segments.find(s => s.id === seg.b);
+      //const aLabel = segLabel(segA, segments);
+      //const bLabel = segLabel(segB, segments);
 
       card.innerHTML = `
         <div class="title">Slack (${hours}h)</div>
-        <div class="subtitle">Gap between ${aLabel} → ${bLabel}</div>
+        <div class="subtitle">Gap between ${seg.slackInfo.aLabel} → ${seg.slackInfo.bLabel}</div>
         <div class="meta">${startStr}<br>${endStr}</div>
       `;
       break;
     }
 
     case 'overlap': {
-      const idx = segments.findIndex(s => s.id === seg.id);
-      const left  = findNearestEmitterLeft(idx, segments);
-      const right = findNearestEmitterRight(idx, segments);
-      const tz = (left?.seg?.timeZone) || (right?.seg?.timeZone) || seg.timeZone;
+      //const idx = segments.findIndex(s => s.id === seg.id);
+      //const left  = findNearestEmitterLeft(idx, segments);
+      //const right = findNearestEmitterRight(idx, segments);
+      //const tz = (left?.seg?.timeZone) || (right?.seg?.timeZone) || seg.timeZone;
       const hours = seg.duration?.val?.toFixed(2) ?? (seg.minutes / 60).toFixed(2);
-      const startStr = fmtDate(seg.start?.utc, tz);
-      const endStr   = fmtDate(seg.end?.utc, tz);
+      const startStr = fmtDate(seg.start?.utc, seg.overlapInfo.tz);
+      const endStr   = fmtDate(seg.end?.utc, seg.overlapInfo.tz);
 
-      const segA = segments.find(s => s.id === seg.a);
-      const segB = segments.find(s => s.id === seg.b);
-      const aLabel = segLabel(segA, segments);
-      const bLabel = segLabel(segB, segments);
+      //const segA = segments.find(s => s.id === seg.a);
+      //const segB = segments.find(s => s.id === seg.b);
+      //const aLabel = segLabel(segA, segments);
+      //const bLabel = segLabel(segB, segments);
 
-      const leftTxt  = left  ? `${left.seg.name || '(unnamed)'} • ${left.kind} ${lockIcons(left.field)}` : '—';
-      const rightTxt = right ? `${right.seg.name || '(unnamed)'} • ${right.kind} ${lockIcons(right.field)}`: '—';
+      const leftTxt  = seg.overlapInfo.leftAnchor  ? `${seg.overlapInfo.leftAnchor.seg.name || '(unnamed)'} • ${seg.overlapInfo.leftAnchor.kind} ${lockIcons(seg.overlapInfo.leftAnchor.field)}` : '—';
+      const rightTxt = seg.overlapInfo.rightAnchor ? `${seg.overlapInfo.rightAnchor.seg.name || '(unnamed)'} • ${seg.overlapInfo.rightAnchor.kind} ${lockIcons(seg.overlapInfo.rightAnchor.field)}`: '—';
 
       card.innerHTML = `
         <div class="title">Overlap (${hours}h)</div>
-        <div class="subtitle">Conflict between ${aLabel} ↔ ${bLabel}</div>
+        <div class="subtitle">Conflict between ${seg.overlapInfo.aLabel} ↔ ${seg.overlapInfo.bLabel}</div>
         <div class="meta">${startStr}<br>${endStr}</div>
         <div class="details">
           <div><strong>Left anchor:</strong> ${leftTxt}</div>
@@ -309,32 +315,6 @@ function lockIcons(field) {
   </span>`;
 }
 
-function boundaryLocked(f) { return !!(f && f.lock && f.lock !== 'unlocked'); }
-function isEmitter(f, dir) {
-  if (!boundaryLocked(f)) return false;
-  return dir === 'forward' ? !!f.emitsForward : !!f.emitsBackward;
-}
-
-function findNearestEmitterLeft(idx, segments) {
-  for (let i = idx - 1; i >= 0; i--) {
-    const s = segments[i];
-    if (isEmitter(s.end, 'forward'))     return { seg: s, kind: 'end',   field: s.end };
-    if (isEmitter(s.start, 'forward'))   return { seg: s, kind: 'start', field: s.start };
-    if (isEmitter(s.duration, 'forward'))return { seg: s, kind: 'duration', field: s.duration };
-  }
-  return null;
-}
-
-function findNearestEmitterRight(idx, segments) {
-  for (let i = idx + 1; i < segments.length; i++) {
-    const s = segments[i];
-    if (isEmitter(s.start, 'backward'))    return { seg: s, kind: 'start', field: s.start };
-    if (isEmitter(s.end, 'backward'))      return { seg: s, kind: 'end',   field: s.end };
-    if (isEmitter(s.duration, 'backward')) return { seg: s, kind: 'duration', field: s.duration };
-  }
-  return null;
-}
-
 function segLabel(seg, segments) {
   if (!seg) return '(unknown)';
   if (seg.name) return seg.name;
@@ -345,6 +325,3 @@ function segLabel(seg, segments) {
   }
   return seg.id;
 }
-
-
-
