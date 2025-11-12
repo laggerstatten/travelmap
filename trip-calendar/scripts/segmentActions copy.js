@@ -117,23 +117,25 @@ function attachClearButtons(editor, seg) {
   });
 }
 
-/* ===============================
-   Handle Save
-   =============================== */
 function handleEditorSubmit(editor, seg, card) {
   editor.addEventListener('submit', (submitEv) => {
     submitEv.preventDefault();
-    const formData = Object.fromEntries(new FormData(editor).entries());
-    const prev = structuredClone(seg);
 
+    const formData = Object.fromEntries(new FormData(editor).entries());
+    console.log(formData);
+    const prev = structuredClone(seg); // full copy
+
+    // ✅ Ensure nested structure exists
     seg.start ??= { utc: '', lock: 'unlocked' };
     seg.end ??= { utc: '', lock: 'unlocked' };
     seg.duration ??= { val: null, lock: 'unlocked' };
 
+    // Parse numeric duration
     const durVal = formData['duration']?.trim()
       ? Number(formData['duration'])
       : null;
 
+    // Convert form times to UTC
     const newStartUTC = formData['start']
       ? localToUTC(formData['start'], seg.timeZone)
       : '';
@@ -141,6 +143,7 @@ function handleEditorSubmit(editor, seg, card) {
       ? localToUTC(formData['end'], seg.timeZone)
       : '';
 
+    // Only set hard locks if user explicitly changed or field was previously unlocked
     if (newStartUTC && newStartUTC !== prev.start?.utc) {
       seg.start.utc = newStartUTC;
       if (seg.start.lock !== 'hard') seg.start.lock = 'unlocked';
@@ -154,9 +157,30 @@ function handleEditorSubmit(editor, seg, card) {
       if (seg.duration.lock !== 'hard') seg.duration.lock = 'unlocked';
     }
 
+    // Preserve any existing soft/unlocked states
+    seg.start.lock ??= prev.start?.lock || 'unlocked';
+    seg.end.lock ??= prev.end?.lock || 'unlocked';
+    seg.duration.lock ??= prev.duration?.lock || 'unlocked';
+
+    // Apply derived/soft lock logic
+    updateLockConsistency(seg);
+
     seg.name = formData.name || '';
 
-    // Capture subitems
+    if (seg.type === 'drive' && seg.autoDrive) {
+      seg.manualEdit = true;
+      seg.autoDrive = false;
+    }
+
+    // 🔹 Capture sublist items (new)
+    /**
+      const items = Array.from(editor.querySelectorAll('.sublist-items input'))
+        .map(el => el.value.trim())
+        .filter(Boolean);
+      if (items.length) seg.items = items;
+      else delete seg.items;
+    */
+
     const items = Array.from(editor.querySelectorAll('.sublist-items li')).map(li => {
       const name = li.querySelector('.item-name')?.value.trim();
       const dur = parseFloat(li.querySelector('.item-dur')?.value || 0);
@@ -167,20 +191,43 @@ function handleEditorSubmit(editor, seg, card) {
     if (seg.type === 'drive') {
       const breakHr = items.reduce((a, b) => a + (b.dur || 0), 0);
       seg.breakHr = breakHr;
-      const baseHr = parseFloat(seg.durationHr || seg.duration?.val || 0);
-      seg.duration.val = (baseHr + breakHr).toFixed(2);
+      seg.duration.val = (parseFloat(seg.durationHr || seg.duration?.val || 0) + breakHr).toFixed(2);
     }
 
-    const list = loadSegments();
-    const idx = list.findIndex(s => s.id === seg.id);
-    if (idx !== -1) list[idx] = seg; else list.push(seg);
-    saveSegments(list);
-    renderTimeline(syncGlobal());
+
+
+    // 🔹 Track collapsed/expanded state (optional but useful)
+    const sublist = editor.querySelector('.sublist');
+    if (sublist && sublist.classList.contains('collapsed')) {
+      seg.sublistCollapsed = true;
+    } else {
+      delete seg.sublistCollapsed;
+    }
 
     card.classList.remove('editing');
     editor.remove();
+
+    if (seg.isQueued && (seg.type === 'trip_start' || seg.type === 'trip_end')) {
+      seg.isQueued = false;
+    }
+
+    if (seg.openEditor) seg.openEditor = false;
+
+    // PERSIST THE UPDATED SEGMENT
+    const list = loadSegments();
+    const idx = list.findIndex(s => s.id === seg.id);
+    if (idx !== -1) {
+      list[idx] = seg;
+      saveSegments(list);
+    } else {
+      list.push(seg);
+      saveSegments(list);
+    }
+
+    renderTimeline(syncGlobal());
   });
 }
+
 
 function attachGeocoder(editor, seg) {
   const container = editor.querySelector(`#geocoder-${seg.id}`);

@@ -42,11 +42,11 @@ function createEditorForm(seg) {
   if (seg.type === 'trip_start') {
     timeFields = createTimeField('Trip Start', 'end', localEnd, 'end.lock', seg.end);
     form.innerHTML = `
-      <label>Name 
-      <input name="name" value="${seg.name || ''}" />
+      <label>Name
+        <input name="name" value="${seg.name || ''}" />
       </label>
-      <label>Location 
-      <div id="geocoder-${id}" class="geocoder-container"></div>
+      <label>Location
+        <div id="geocoder-${id}" class="geocoder-container"></div>
       </label>
       ${timeFields}
       <div class="actions">
@@ -59,11 +59,11 @@ function createEditorForm(seg) {
     timeFields = createTimeField('Trip End', 'start', localStart, 'start.lock', seg.start);
 
     form.innerHTML = `
-      <label>Name 
-      <input name="name" value="${seg.name || ''}" />
+      <label>Name
+        <input name="name" value="${seg.name || ''}" />
       </label>
-      <label>Location 
-      <div id="geocoder-${id}" class="geocoder-container"></div>
+      <label>Location
+        <div id="geocoder-${id}" class="geocoder-container"></div>
       </label>
       ${timeFields}
 
@@ -74,17 +74,13 @@ function createEditorForm(seg) {
   }
 
   else if (seg.type === 'stop' || seg.type === 'drive') {
-    const listItems = (seg.items || []).map((item, i) => {
-      const name = typeof item === 'object' ? item.name ?? '' : item;
-      const dur = typeof item === 'object' ? item.dur ?? '' : '';
-      return `
-        <li data-index="${i}">
-          <span class="drag-handle"><i class="fa-solid fa-grip-vertical"></i></span>
-          <input class="item-name" value="${name}" placeholder="Task or stop" />
-          <input class="item-dur" type="number" step="0.25" value="${dur}" placeholder="hr" />
-          <button type="button" class="remove-item">✕</button>
-        </li>`;
-    }).join('');
+    const listItems = (seg.items || []).map((item, i) => `
+      <li data-index="${i}">
+        <span class="drag-handle"><i class="fa-solid fa-grip-vertical"></i></span>
+        <input value="${item}" />
+        <button type="button" class="remove-item">✕</button>
+      </li>
+      `).join('');
 
     const hasItems = seg.items && seg.items.length > 0;
     const collapsed = hasItems ? '' : 'collapsed';
@@ -102,11 +98,11 @@ function createEditorForm(seg) {
 
     form.innerHTML = `
       ${seg.type === 'stop' ? `
-        <label>Name 
-        <input name="name" value="${seg.name || ''}" />
+        <label>Name
+          <input name="name" value="${seg.name || ''}" />
         </label>
-        <label>Location 
-        <div id="geocoder-${id}" class="geocoder-container"></div>
+        <label>Location
+          <div id="geocoder-${id}" class="geocoder-container"></div>
         </label>` : ''}
       ${timeFields}
       <div class="sublist ${collapsed}">
@@ -140,24 +136,27 @@ function createEditorForm(seg) {
     });
   }, 0);
 
-  attachSublistHandlers(form, seg);
+  attachSublistHandlers(form);
   return form;
 }
 
 /* ===============================
    Sublist Handlers (Add / Remove / Reorder / Collapse)
    =============================== */
-function attachSublistHandlers(editor, seg) {
+function attachSublistHandlers(editor) {
   const addBtn = editor.querySelector('.add-item');
   const list = editor.querySelector('.sublist-items');
   const sublist = editor.querySelector('.sublist');
   const toggle = editor.querySelector('.toggle-sublist');
-  if (!sublist) return;
 
-  // Prevent outer drag interference
+
+  // ensure outer timeline/card drag code doesn't intercept
   ['mousedown','touchstart','pointerdown'].forEach(evt => {
     sublist.addEventListener(evt, e => e.stopPropagation(), { passive: true });
   });
+
+
+  if (!sublist) return;
 
   // Collapse / expand
   toggle?.addEventListener('click', () => {
@@ -170,10 +169,8 @@ function attachSublistHandlers(editor, seg) {
   addBtn?.addEventListener('click', () => {
     const li = document.createElement('li');
     li.innerHTML = `
-      <span class="drag-handle"><i class="fa-solid fa-grip-vertical"></i></span>
-      <input class="item-name" placeholder="Task or stop" />
-      <input class="item-dur" type="number" step="0.25" placeholder="hr" />
-      <button type="button" class="remove-item">✕</button>`;
+    <input value="">
+    <button type="button" class="remove-item">✕</button>`;
     list.appendChild(li);
     sublist.classList.remove('collapsed');
     toggle.querySelector('i').className = 'fa-solid fa-caret-down';
@@ -186,53 +183,33 @@ function attachSublistHandlers(editor, seg) {
         sublist.classList.add('collapsed');
         toggle.querySelector('i').className = 'fa-solid fa-caret-right';
       }
-      if (seg.type === 'drive') updateDriveDurations(editor, seg);
     }
   });
 
-  // Auto-recalculate when durations change (drives only)
-  if (seg.type === 'drive') {
-    editor.addEventListener('input', (e) => {
-      if (e.target.classList.contains('item-dur')) {
-        updateDriveDurations(editor, seg);
-      }
-    });
-  }
-
-  // Enable reordering
+  // Optional reorder with SortableJS if available
   if (typeof Sortable !== 'undefined' && list) {
     new Sortable(list, {
       animation: 150,
       handle: '.drag-handle',
-      forceFallback: true,
+
+      // 👇 key bits to avoid conflicts with outer drag logic
+      forceFallback: true,        // use mouse/touch fallback (not HTML5 DnD)
       fallbackOnBody: true,
-      fallbackTolerance: 5,
+      fallbackTolerance: 5,       // px before it considers it a drag
+
+      // keep scrolling/dragover sane inside scrollable cards
+      scroll: true,
+      bubbleScroll: true,
+      dragoverBubble: true,
+
+      // don't block clicks on inputs/buttons
       filter: 'input,button',
       preventOnFilter: false,
     });
   }
+
+
 }
-
-/* ===============================
-   Drive Duration Updater
-   =============================== */
-function updateDriveDurations(editor, seg) {
-  const durFields = Array.from(editor.querySelectorAll('.item-dur'))
-    .map(i => parseFloat(i.value) || 0);
-  const breakHr = durFields.reduce((a, b) => a + b, 0);
-
-  seg.breakHr = breakHr;
-
-  const baseHr = parseFloat(seg.durationHr || seg.duration?.val || 0);
-  const totalHr = baseHr + breakHr;
-
-  seg.duration = seg.duration || {};
-  seg.duration.val = totalHr;
-
-  const durInput = editor.querySelector('input[name="duration"]');
-  if (durInput) durInput.value = totalHr.toFixed(2);
-}
-
 
 /* ===============================
    Time / Lock / Clear Helpers
@@ -270,3 +247,4 @@ function clearButtonHTML(field) {
             <i class="fa-solid fa-xmark"></i>
           </button>`;
 }
+

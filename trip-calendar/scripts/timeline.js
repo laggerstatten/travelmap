@@ -2,7 +2,6 @@
    Timeline Rendering & Interaction
    =============================== */
 
-
 // --- Main render ---
 function renderTimeline(segments) {
   const cal = document.getElementById('calendar');
@@ -12,11 +11,11 @@ function renderTimeline(segments) {
   let lastDay = '';
   for (let i = 0; i < segments.length; i++) {
     const seg = segments[i];
-      const day = seg.start?.utc ? dayStr(seg.start.utc) : '';
-      if (day && day !== lastDay) {
-        cal.appendChild(renderDayDivider(day));
-        lastDay = day;
-      }
+    const day = seg.start?.utc ? dayStr(seg.start.utc) : '';
+    if (day && day !== lastDay) {
+      cal.appendChild(renderDayDivider(day));
+      lastDay = day;
+    }
 
     const wrapper = document.createElement('div');
     wrapper.className = 'rail-pair';
@@ -42,177 +41,176 @@ function renderRails() {
 // --- Build a card ---
 function renderCard(seg, segments) {
   const card = document.createElement('div');
-  card.className = `segment timeline-card ${seg.type || 'stop'} ${cardBadgeClass(seg)}`;
+  const type = seg.type || 'stop';
+  card.className = `segment timeline-card ${type} ${cardBadgeClass(seg)}`;
   card.dataset.id = seg.id;
-  // For drive cards, use the passed-in `segments` to resolve origin/dest.
+
+  const lockedCount = ['start', 'end', 'duration']
+    .map((k) => seg[k]?.lock === 'hard')
+    .filter(Boolean).length;
+  if (lockedCount >= 2) card.classList.add('constrained');
+  if (!seg.type === 'stop')
+    card.classList.add('constrained');
 
   let title = seg.name || '(untitled)';
-  let metaHTML = 'No date set';
-  let driveInfoHTML = '';
+  let meta = '';
+  let buttons = [];
 
-  // ───────────────────────────────
-  // Trip start
-  // ───────────────────────────────
-  if (seg.type === 'trip_start') {
-    console.log('renderCard - trip_start');
-    if (seg.end?.utc) metaHTML = fmtDate(seg.end.utc, seg.timeZone);
+  const showDate = (utc, tz) => (utc ? fmtDate(utc, tz) : '');
 
-    card.innerHTML = `
-      <div class="title">${title}</div>
-      <div class="subtitle">
-      ${seg.type}${seg.name ? ' • ' + seg.name : ''}
-      ${seg.coordinates ? `<span class="coord-pill">📍</span>` : ''}
-      </div>
-      <div class="meta">${metaHTML}</div>
-      <div class="card-footer">
-        <button class="fill-forward-btn">⏩ Fill Forward</button>
-        <button class="edit-btn">Edit</button>
-      </div>`;
-    card.querySelector('.edit-btn').onclick = () => editSegment(seg, card);
-    card.querySelector('.fill-forward-btn').onclick = () => { fillForward(seg); renderTimeline(syncGlobal()); };
-  }
-
+  switch (type) {
     // ───────────────────────────────
-  // Trip end
-  // ───────────────────────────────
-  else if (seg.type === 'trip_end') {
-    console.log('renderCard - trip_end');
-    if (seg.start?.utc) metaHTML = fmtDate(seg.start.utc, seg.timeZone);
+    // Trip start
+    // ───────────────────────────────
+    case 'trip_start':
+      meta = `  ${showDate(seg.end?.utc, seg.timeZone)} ${lockIcons(seg.end)}`;
 
-    card.innerHTML = `
-      <div class="title">${title}</div>
-      <div class="subtitle">
-      ${seg.type}${seg.name ? ' • ' + seg.name : ''}
-      ${seg.coordinates ? `<span class="coord-pill">📍</span>` : ''}
-    </div>
-      <div class="meta">${metaHTML}</div>
-      <div class="card-footer">
-        <button class="fill-backward-btn">⏪ Fill Backward</button>
-        <button class="edit-btn">Edit</button>
-      </div>`;
-    card.querySelector('.edit-btn').onclick = () => editSegment(seg, card);
-    card.querySelector('.fill-backward-btn').onclick = () => { fillBackward(seg); renderTimeline(syncGlobal()); };
-  }
-
-  // ───────────────────────────────
-  // Stop
-  // ───────────────────────────────
-  else if (seg.type === 'stop') {
-    if (seg.start?.utc || seg.end?.utc) {
-      const startStr = fmtDate(seg.start.utc, seg.timeZone);
-      const endStr = fmtDate(seg.end.utc, seg.timeZone);
-      metaHTML = `${startStr || ''}${endStr ? ' → ' + endStr : ''}`;
-    }
-
-    card.innerHTML = `
-      <div class="title">${title}</div>
-      <div class="subtitle">
-      ${seg.type}${seg.name ? ' • ' + seg.name : ''}
-      ${seg.coordinates ? `<span class="coord-pill">📍</span>` : ''}
-    </div>
-      <div class="meta">${metaHTML}</div>
-      <div class="card-footer">
-        <button class="fill-forward-btn">⏩ Fill Forward</button>
-        <button class="fill-backward-btn">⏪ Fill Backward</button>
-        ${
-          seg.isQueued
-            ? `<button class="insert-btn small">Insert into Route</button>`
-            : ''
+      card.innerHTML = `
+        <div class="title">${title}</div>
+        <div class="subtitle">
+        Trip Start${seg.name ? ' • ' + seg.name : ''}
+        </div>
+        <div class="meta">${meta || 'No date set'}</div>
+        <div class="card-footer"></div>`;
+      buttons = [
+        {
+          cls: 'fill-forward-btn',
+          label: '⏩ Fill Forward',
+          onClick: () => {
+            fillForward(seg);
+            renderTimeline(syncGlobal());
+          }
         }
-        <button class="edit-btn">Edit</button>
-        <button class="del-btn">Delete</button>
-      </div>`;
+      ];
+      break;
 
-    card.querySelector('.edit-btn').onclick = () => editSegment(seg, card);
-    seg.isQueued
-      ? (card.querySelector('.insert-btn').onclick = async () =>
-          insertQueuedSegment(seg, card))
-      : '';
-    card.querySelector('.del-btn').onclick = () => { deleteSegment(seg, card); renderTimeline(syncGlobal()); };
-    card.querySelector('.fill-forward-btn').onclick = () => { fillForward(seg); renderTimeline(syncGlobal()); };
-    card.querySelector('.fill-backward-btn').onclick = () => { fillBackward(seg); renderTimeline(syncGlobal()); };
-  }
+    case 'trip_end':
+      // ───────────────────────────────
+      // Trip end
+      // ───────────────────────────────
+      meta = `  ${showDate(seg.start?.utc, seg.timeZone)} ${lockIcons(
+        seg.start
+      )}`;
+      card.innerHTML = `
+        <div class="title">${title}</div>
+        <div class="subtitle">
+        Trip End${seg.name ? ' • ' + seg.name : ''}
+        </div>
+        <div class="meta">${meta || 'No date set'}</div>
+        <div class="card-footer"></div>`;
+      buttons = [
+        {
+          cls: 'fill-backward-btn',
+          label: '⏪ Fill Backward',
+          onClick: () => {
+            fillBackward(seg);
+            renderTimeline(syncGlobal());
+          }
+        }
+      ];
+      break;
 
-  // ───────────────────────────────
-  // Drive
-  // ───────────────────────────────
-  else if (seg.type === 'drive') {
-    const origin = segments.find((ev) => ev.id === seg.originId);
-    const dest = segments.find((ev) => ev.id === seg.destinationId);
-    const originName = origin?.name || origin?.location_name || 'Unknown';
-    const destName = dest?.name || dest?.location_name || 'Unknown';
-    title = `Drive: ${originName} → ${destName}`;
+    case 'stop':
+      // ───────────────────────────────
+      // Stop
+      // ───────────────────────────────
+      let durTextHr = seg.duration.val
+        ? formatDurationHr(seg.duration.val)
+        : '';
+      meta = `
+      ${showDate(seg.start?.utc, seg.timeZone)} ${lockIcons(seg.start)}<br>
+      ${durTextHr} ${lockIcons(seg.duration)}<br>
+      ${showDate(seg.end?.utc, seg.timeZone)} ${lockIcons(seg.end)}
+    `;
+      card.innerHTML = `
+        <div class="title">${title}</div>
+        <div class="subtitle">
+        ${type}${seg.name ? ' • ' + seg.name : ''}
+        </div>
+        <div class="meta">${meta}</div>
+        <div class="card-footer"></div>`;
+      if (seg.isQueued) {
+        buttons = [
+          {
+            cls: 'insert-btn',
+            label: 'Insert into Route',
+            onClick: () => insertQueuedSegment(seg, card)
+          }
+        ];
+      } else {
+        buttons = [
+          {
+            cls: 'fill-forward-btn',
+            label: '⏩ Fill Forward',
+            onClick: () => {
+              fillForward(seg);
+              renderTimeline(syncGlobal());
+            }
+          },
+          {
+            cls: 'fill-backward-btn',
+            label: '⏪ Fill Backward',
+            onClick: () => {
+              fillBackward(seg);
+              renderTimeline(syncGlobal());
+            }
+          }
+        ];
+      }
+      break;
 
-    if (seg.start?.utc || seg.end?.utc) {
-      const startStr = fmtDate(seg.start.utc, origin?.timeZone || seg.timeZone);
-      const endStr = fmtDate(seg.end.utc, dest?.timeZone || seg.timeZone);
-      metaHTML = `${startStr || ''}${endStr ? ' → ' + endStr : ''}`;
+    case 'drive':
+      // ───────────────────────────────
+      // Drive
+      // ───────────────────────────────
+      const origin = segments.find((s) => s.id === seg.originId);
+      const dest = segments.find((s) => s.id === seg.destinationId);
+      const startStr = showDate(seg.start?.utc, origin?.timeZone);
+      const endStr = showDate(seg.end?.utc, dest?.timeZone);
+      title = `Drive: ${origin?.name || '?'} → ${dest?.name || '?'}`;
+      let durText = seg.durationMin ? formatDurationMin(seg.durationMin) : '';
+      meta = `${startStr}<br>${seg.distanceMi} mi • ${durText}<br>${endStr}`;
+      card.innerHTML = `
+        <div class="title">${title}</div>
+        <div class="subtitle">
+        Drive${seg.name ? ' • ' + seg.name : ''}
+        </div>
+        <div class="meta">${meta}</div>
+        <div class="card-footer"></div>`;
+      break;
+
+    case 'slack':
+    case 'overlap': {
+      const label = type === 'slack' ? 'Gap' : 'Conflict';
+      const hours =
+        seg.duration?.val?.toFixed(2) ?? (seg.minutes / 60).toFixed(2);
+
+      // Find the preceding segment in the list (the one before this slack/overlap)
+      const idx = segments.findIndex((s) => s.id === seg.id);
+      const prev = idx > 0 ? segments[idx - 1] : null;
+      const tz = prev?.timeZone || seg.timeZone;
+
+      const startStr = fmtDate(seg.start?.utc, tz);
+      const endStr = fmtDate(seg.end?.utc, tz);
+
+      card.innerHTML = `
+        <div class="title">${
+          type === 'slack' ? 'Slack' : 'Overlap'
+        } (${hours}h)</div>
+        <div class="subtitle">${label} between ${seg.a} → ${seg.b}</div>
+        <div class="meta">${startStr}<br>${endStr}</div>
+      `;
+      break;
     }
-
-    if (seg.distanceMi) {
-      driveInfoHTML = `<div class="drive-info">🚗 ${seg.distanceMi} mi • ${seg.durationMin} min</div>`;
-    }
-
-    card.innerHTML = `
-      <div class="title">${title}</div>
-      <div class="subtitle">
-      ${seg.type}${seg.name ? ' • ' + seg.name : ''}${driveInfoHTML}
-    </div>
-      <div class="meta">${metaHTML}</div>
-      <div class="card-footer">
-        <button class="fill-forward-btn">⏩ Fill Forward</button>
-        <button class="fill-backward-btn">⏪ Fill Backward</button>
-        <button class="edit-btn">Edit</button>
-        <button class="del-btn">Delete</button>
-      </div>`;
-
-    card.querySelector('.edit-btn').onclick = () => editSegment(seg, card);
-    card.querySelector('.del-btn').onclick = () => { deleteSegment(seg, card); renderTimeline(syncGlobal()); };
   }
 
-  // ───────────────────────────────
-  // Slack
-  // ───────────────────────────────
-  else if (seg.type === 'slack') {
-    const startStr = fmtDate(seg.start.utc);
-    const endStr = fmtDate(seg.end.utc);
-    metaHTML = `${startStr} → ${endStr}`;
-    const hours =
-      seg.duration?.val?.toFixed(2) ?? (seg.minutes / 60).toFixed(2);
-
-    card.innerHTML = `
-      <div class="title">Slack (${hours}h)</div>
-      <div class="subtitle">Gap between ${seg.a} → ${seg.b}</div>
-      <div class="meta">${metaHTML}</div>`;
+  if (!card.classList.contains('constrained')) attachCardDragHandlers(card);
+  if (card.querySelector('.card-footer')) {
+    attachButtons(card, buildFooter(seg, buttons));
   }
 
-    // ───────────────────────────────
-  // Overlap
-  // ───────────────────────────────
-  else if (seg.type === 'overlap') {
-    const startStr = fmtDate(seg.start.utc);
-    const endStr = fmtDate(seg.end.utc);
-    metaHTML = `${startStr} → ${endStr}`;
-    const hours =
-      seg.duration?.val?.toFixed(2) ?? (seg.minutes / 60).toFixed(2);
-
-    card.innerHTML = `
-      <div class="title">Overlap (${hours}h)</div>
-      <div class="subtitle">Conflict between ${seg.a} ↔ ${seg.b}</div>
-      <div class="meta">${metaHTML}</div>`;
-  }
-
-  attachCardDragHandlers(card);
-
-  // Auto-open editor
-  if (seg.openEditor) {
-    console.log('openEditor');
-    // Avoid duplicates if already editing
-    if (!card.querySelector('.oncard-editor')) {
-      buildOnCardEditor(seg, card);
-    }
-  }
-
+  if (seg.openEditor && !card.querySelector('.oncard-editor'))
+    buildOnCardEditor(seg, card);
   return card;
 }
 
@@ -231,18 +229,47 @@ function renderDayDivider(day) {
   return div;
 }
 
+function buildFooter(seg, buttons) {
+  const base = [
+    { cls: 'edit-btn', label: 'Edit', onClick: (c) => editSegment(seg, c) },
+    {
+      cls: 'del-btn',
+      label: 'Delete',
+      onClick: (c) => {
+        deleteSegment(seg, c);
+        renderTimeline(syncGlobal());
+      }
+    }
+  ];
+  return [...buttons, ...base];
+}
 
+function attachButtons(card, buttons) {
+  let footer = card.querySelector('.card-footer');
 
+  footer.innerHTML = buttons
+    .map((b) => `<button class="${b.cls}">${b.label}</button>`)
+    .join('');
 
+  buttons.forEach((b) => {
+    const btn = card.querySelector(`.${b.cls}`);
+    if (btn) btn.onclick = () => b.onClick(card);
+  });
+}
 
+function lockIcons(field) {
+  if (!field) return '';
+  const { lock, emitsBackward, emitsForward } = field;
 
+  let faIcon;
+  if (lock === 'hard') faIcon = 'fa-lock';
+  else if (lock === 'soft') faIcon = 'fa-gear';
+  else faIcon = 'fa-unlock';
 
+  const up = emitsBackward ? '<i class="fa-solid fa-arrow-up"></i>' : '';
+  const down = emitsForward ? '<i class="fa-solid fa-arrow-down"></i>' : '';
 
-
-
-
-
-
-
-
-
+  return `<span class="lock-icons">
+    <i class="fa-solid ${faIcon}"></i>${up}${down}
+  </span>`;
+}

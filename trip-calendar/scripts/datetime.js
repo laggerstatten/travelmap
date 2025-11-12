@@ -84,6 +84,22 @@ function fmtDate(dateStr, timeZone) {
   return new Intl.DateTimeFormat('en-US', opts).format(d);
 }
 
+function formatDurationMin(min) {
+  if (!min && min !== 0) return '';
+  const h = Math.floor(min / 60);
+  const m = Math.round(min % 60);
+  return h ? `${h}h ${m}m` : `${m} min`;
+}
+
+function formatDurationHr(hr) {
+  if (!hr && hr !== 0) return '';
+  const totalMin = hr * 60;
+  const h = Math.floor(totalMin / 60);
+  const m = Math.round(totalMin % 60);
+  return h ? `${h}h ${m}m` : `${m} min`;
+}
+
+
 function durationFromStartEnd(startUTC, endUTC) {
   const s = new Date(startUTC),
     e = new Date(endUTC);

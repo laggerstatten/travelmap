@@ -20,7 +20,7 @@ async function initTrip() {
   renderTimeline(segs);
 
   segs = annotateEmitters(segs);
-  segs = determineEmitterDirections(segs, { priority: 'forward' }); // or 'backward'
+  segs = determineEmitterDirections(segs, { priority: PLANNING_DIRECTION }); 
   segs = propagateTimes(segs);
 
   saveSegments(segs);

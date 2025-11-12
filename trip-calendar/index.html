@@ -18,8 +18,8 @@
 
     <!-- Icons & Flatpickr -->
     <link
-      rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+      rel="stylesheet"
     />
 
     <link
@@ -28,18 +28,16 @@
 
     />
 
-
-
     <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
     <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.1.0/mapbox-gl-geocoder.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+
 
     <!-- Scripts Unlikely to Need Refactoring -->
-
     <script src="scripts/datetime.js" defer></script>
     <script src="scripts/externaldata.js" defer></script>
     <script src="scripts/newId.js" defer></script>
-
 
     <!-- Scripts -->
     <script src="scripts/timeline.js" defer></script>
@@ -49,19 +47,6 @@
     <script src="scripts/prop_new.js" defer></script>
     <script src="scripts/tripAddingSequence.js" defer></script>
 
-
-
-
-
-    <!--
-
-    <script src="scripts/creation.js" defer></script>
-    <script src="scripts/mono.js" defer></script>
-    <script src="scripts/helper.js" defer></script>
-    <script src="scripts/cardactions.js" defer></script>
-    <script src="scripts/routing.js" defer></script>
-    <script src="scripts/timing.js" defer></script>-->
-
     <script>
       //let segments = JSON.parse(localStorage.getItem('tripSegments')) || [];
       mapboxgl.accessToken =
@@ -69,6 +54,8 @@
       const TIMEZONE_TOKEN = '9QEU1A5823HR';
 
       const SEG_KEY = 'tripSegments';
+
+      const PLANNING_DIRECTION = 'backward'; // or 'forward'
 
       function loadSegments() {
         return JSON.parse(localStorage.getItem(SEG_KEY)) || [];
@@ -87,31 +74,12 @@
 
     </script>
 
+
     <script>
       window.addEventListener('DOMContentLoaded', () => {
         document.getElementById('mode-timeline').onclick = () => renderTimeline(syncGlobal());
         document.getElementById('init-trip').onclick = () => initTrip();
         document.getElementById('add-stop').onclick = () => queueStop();
-
-        document.getElementById('clear-unlocked-times').onclick = () => {
-          let segs = loadSegments();
-          segs = removeSlackAndOverlap(segs);
-          segs = clearTimesAndDurations(segs);
-          saveSegments(segs);
-          renderTimeline(syncGlobal());
-        }
-
-        document.getElementById('fill-times').onclick = () => {
-          let segs = loadSegments();
-          segs = removeSlackAndOverlap(segs);
-          segs = annotateEmitters(segs);
-          //segs = determineEmitterDirections(segs, { priority: 'forward' }); // or 'backward'
-          segs = determineEmitterDirections(segs, { priority: 'backward' }); // or 'backward'
-          segs = propagateTimes(segs);
-          segs = computeSlackAndOverlap(segs); //test
-          saveSegments(segs);
-          renderTimeline(syncGlobal());
-        }
 
         document.getElementById('clear-auto').onclick = () => {
           let segs = loadSegments();
@@ -142,25 +110,82 @@
           renderTimeline(syncGlobal());
         };
 
+        document.getElementById('clear-unlocked-times').onclick = () => {
+          let segs = loadSegments();
+          segs = removeSlackAndOverlap(segs);
+          segs = clearTimesAndDurations(segs);
+          saveSegments(segs);
+          renderTimeline(syncGlobal());
+        }
+
+        document.getElementById('fill-times').onclick = () => {
+          let segs = loadSegments();
+          segs = removeSlackAndOverlap(segs);
+          segs = annotateEmitters(segs);
+          segs = determineEmitterDirections(segs, { priority: PLANNING_DIRECTION });
+          segs = propagateTimes(segs);
+          segs = computeSlackAndOverlap(segs); //test
+          saveSegments(segs);
+          renderTimeline(syncGlobal());
+        }
+
+
+        document.getElementById('clear-slack').onclick = () => {
+          let segs = loadSegments();
+          segs = removeSlackAndOverlap(segs);
+          saveSegments(segs);
+          renderTimeline(syncGlobal());
+        }
+
+        document.getElementById('show-slack').onclick = () => {
+          let segs = loadSegments();
+          segs = removeSlackAndOverlap(segs);
+          segs = computeSlackAndOverlap(segs); //test
+          saveSegments(segs);
+          renderTimeline(syncGlobal());
+        }
+
+              // === Export ===
+        document.getElementById('export-data').onclick = () => {
+          const data = loadSegments();
+          const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'tripSegments.json';
+          a.click();
+          URL.revokeObjectURL(url);
+        };
+
+        // === Import ===
+        document.getElementById('import-data').onclick = () => {
+          document.getElementById('import-file').click();
+        };
+
+        document.getElementById('import-file').addEventListener('change', (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = () => {
+            try {
+              const parsed = JSON.parse(reader.result);
+              if (!Array.isArray(parsed)) throw new Error('File does not contain an array');
+              saveSegments(parsed);
+              alert('Trip data imported successfully.');
+              renderTimeline(syncGlobal());
+            } catch (err) {
+              alert('Import failed: ' + err.message);
+            }
+          };
+          reader.readAsText(file);
+      });
+
+
         renderTimeline(syncGlobal());
       });
     </script>
   </head>
   <body>
-    <!--<div id="toolbar">
-      <button id="mode-timeline">Timeline</button>
-      <button id="init-trip">Start Trip</button>
-      <button id="add-stop">Add Segment</button>
-      <button id="clear-unlocked-times">Clear Unlocked Times</button>
-      <button id="fill-times">Fill Times</button>
-      <button id="clear-slack">Clear Slack</button>
-      <button id="show-slack">Show Slack</button>
-      <button id="clear-auto">Clear Auto Drives</button>
-      <button id="insert-drives">Insert Drives</button>
-      <button id="gen-routes">Generate Routes</button>
-      <button id="validate-btn">Validate & Repair Routing</button>
-    </div>-->
-
     <div id="toolbar" class="toolbar">
       <!-- === Modes & Trip Setup === -->
       <div class="toolbar-group">
@@ -190,10 +215,14 @@
         <button id="show-slack">Show Slack</button>
       </div>
 
-
+      <!-- === Import / Export === -->
+      <div class="toolbar-group">
+        <button id="export-data">Export Data</button>
+        <input type="file" id="import-file" accept="application/json" style="display:none;">
+        <button id="import-data">Import Data</button>
+      </div>
 
     </div>
-
 
     <div id="calendar" class="timeline"></div>
   </body>

@@ -7,8 +7,6 @@ function canWrite(ep) {
 }
 
 function addMinutes(isoUtc, minutes) {
-  console.log(isoUtc);
-  console.log(minutes);
 
   const t = new Date(isoUtc).getTime() + minutes * 60000;
   return new Date(t).toISOString();
@@ -18,7 +16,7 @@ function segDurationMinutes(seg) {
   if (!seg) return 0;
 
   if (seg.type === 'drive') {
-    if (seg.durationMin) return Number(seg.durationMin);
+    //if (seg.durationMin) return Number(seg.durationMin);
     if (seg.duration?.val) return Math.round(Number(seg.duration.val) * 60);
   }
   if (seg.durationMin) return Number(seg.durationMin);
@@ -63,7 +61,11 @@ function annotateEmitters(list) {
 
   for (const s of segs) {
     s.start.meta = endpointMeta(s.start);
+    s.start.emitsForward = s.start.meta.emitsForward;
+    s.start.emitsBackward = s.start.meta.emitsBackward;
     s.end.meta   = endpointMeta(s.end);
+    s.end.emitsForward = s.end.meta.emitsForward;
+    s.end.emitsBackward = s.end.meta.emitsBackward;
   }
   return segs;
 }
@@ -202,194 +204,114 @@ function logEmitterDirections(segments) {
 
 /**
  * propagateTimes
- * Uses willEmitForward / willEmitBackward flags to fill UTCs.
- * Preserves all .meta attributes.
- * Returns a cloned array with updated UTCs.
  */
 function propagateTimes(segments) {
   const segs = segments.map(s => ({
     ...s,
-    start: { ...(s.start || {}) },
-    end: { ...(s.end || {}) },
+    start: { ...(s.start || {}), meta: { ...(s.start?.meta || {}) } },
+    end: { ...(s.end || {}), meta: { ...(s.end?.meta || {}) } }
   }));
   normalizeSegments(segs);
-
-  // ----------- Forward pass -----------
-  console.log('Forward pass');
-  for (let i = 0; i < segs.length; i++) {
-    const s = segs[i];
-    if (!s.start?.meta || !s.end?.meta) continue;
-
-    // === Emit from START forward ===
-    if (s.start.meta.willEmitForward && s.start.meta.pinned) {
-      let cursor = s.start.utc;
-
-      // fill own end if possible
-      if (canWrite(s.end)) {
-        const dur = segDurationMinutes(s);
-        const newEnd = addMinutes(cursor, dur);
-        s.end.utc = newEnd;
-        cursor = newEnd;
-      }
-
-      // continue forward until hitting a stronger/equal pin
-      for (let j = i + 1; j < segs.length; j++) {
-        const next = segs[j];
-        if (!next.start || !next.end) continue;
-
-        // barrier check
-        const nextHasBarrier =
-        (next.start.meta?.pinned && next.start.meta.rank >= s.start.meta.rank) ||
-        (next.end.meta?.pinned && next.end.meta.rank >= s.start.meta.rank);
-        if (nextHasBarrier) {
-          break;
-        }
-
-        // fill next start if writable
-        if ((!next.start.utc || next.start.utc === '') && j > 0) {
-          const prev = segs[j - 1];
-          if (prev?.end?.utc) next.start.utc = prev.end.utc;
-        }
-
-        if (canWrite(next.start) && !next.start.utc && cursor)
-          next.start.utc = cursor;
-
-        // fill next end
-        const dur = segDurationMinutes(next);
-        if (canWrite(next.end) && next.start.utc) {
-          const newEnd = addMinutes(next.start.utc, dur);
-          next.end.utc = newEnd;
-          cursor = newEnd;
-        } else {
-        cursor = next.end.utc;
-        }
-      }
-    }
-
-    // === Emit from END forward ===
-    if (s.end.meta.willEmitForward && s.end.meta.pinned) {
-      let cursor = s.end.utc;
-
-      for (let j = i + 1; j < segs.length; j++) {
-        const next = segs[j];
-        if (!next.start || !next.end) continue;
-
-        const nextHasBarrier =
-        (next.start.meta?.pinned && next.start.meta.rank >= s.end.meta.rank) ||
-        (next.end.meta?.pinned && next.end.meta.rank >= s.end.meta.rank);
-        if (nextHasBarrier) {
-          break;
-        }
-
-        if ((!next.start.utc || next.start.utc === '') && j > 0) {
-          const prev = segs[j - 1];
-          if (prev?.end?.utc) next.start.utc = prev.end.utc;
-        }
-
-        if (canWrite(next.start) && !next.start.utc && cursor) {
-          next.start.utc = cursor;
-        }
-
-        const dur = segDurationMinutes(next);
-        if (canWrite(next.end) && next.start.utc) {
-          const newEnd = addMinutes(next.start.utc, dur);
-          next.end.utc = newEnd;
-          cursor = newEnd;
-        } else {
-        cursor = next.start.utc || next.end.utc || cursor;
-        }
-      }
-    }
-  }
-
-
-  // ----------- Backward pass -----------
-  console.log('Backward pass');
-  for (let i = segs.length - 1; i >= 0; i--) {
-    const s = segs[i];
-    if (!s.start?.meta || !s.end?.meta) continue;
-
-    // === Emit from END backward ===
-    if (s.end.meta.willEmitBackward && s.end.meta.pinned) {
-      let cursor = s.end.utc;
-
-      // fill own start if possible
-      if (canWrite(s.start)) {
-        const dur = segDurationMinutes(s);
-        const newStart = addMinutes(cursor, -dur);
-        s.start.utc = newStart;
-        cursor = newStart;
-      }
-
-      // continue backward until hitting stronger/equal pin
-      for (let j = i - 1; j >= 0; j--) {
-        const prev = segs[j];
-        if (!prev.start || !prev.end) continue;
-
-        const prevHasBarrier =
-          (prev.end.meta?.pinned && prev.end.meta.rank >= s.end.meta.rank) ||
-          (prev.start.meta?.pinned && prev.start.meta.rank >= s.end.meta.rank);
-        if (prevHasBarrier) {
-          break;
-        }
-
-        // inherit missing end
-        if ((!prev.end.utc || prev.end.utc === '') && j < segs.length - 1) {
-          const after = segs[j + 1];
-          if (after?.start?.utc) prev.end.utc = after.start.utc;
-        }
-
-        if (canWrite(prev.end) && !prev.end.utc && cursor) {
-          prev.end.utc = cursor;
-        }
-
-        // fill next end
-        const dur = segDurationMinutes(prev);
-        if (canWrite(prev.start) && prev.end.utc) {
-          const newStart = addMinutes(prev.end.utc, -dur);
-          prev.start.utc = newStart;
-          cursor = newStart;
-        } else {
-          cursor = prev.start.utc || prev.end.utc || cursor;
-        }
-      }
-    }
-
-    // === Emit from START backward ===
-    if (s.start.meta.willEmitBackward && s.start.meta.pinned) {
-      let cursor = s.start.utc;
-
-      for (let j = i - 1; j >= 0; j--) {
-        const prev = segs[j];
-        if (!prev.start || !prev.end) continue;
-
-        const prevHasBarrier =
-          (prev.end.meta?.pinned && prev.end.meta.rank >= s.start.meta.rank) ||
-          (prev.start.meta?.pinned && prev.start.meta.rank >= s.start.meta.rank);
-        if (prevHasBarrier) {
-          break;
-        }
-
-        if ((!prev.end.utc || prev.end.utc === '') && j < segs.length - 1) {
-          const after = segs[j + 1];
-          if (after?.start?.utc) prev.end.utc = after.start.utc;
-        }
-
-        if (canWrite(prev.end) && !prev.end.utc && cursor) {
-          prev.end.utc = cursor;
-        }
-
-        const dur = segDurationMinutes(prev);
-        if (canWrite(prev.start) && prev.end.utc) {
-          const newStart = addMinutes(prev.end.utc, -dur);
-          prev.start.utc = newStart;
-          cursor = newStart;
-        } else {
-          cursor = prev.start.utc || prev.end.utc || cursor;
-        }
-      }
-    }
-  }
+  propagateForward(segs);
+  propagateBackward(segs);
 
   return segs;
+}
+
+/* ----------------------------- FORWARD PASS ----------------------------- */
+function propagateForward(segs) {
+  for (let i = 0; i < segs.length; i++) {
+    const s = segs[i];
+
+    const emitFromStart = s.start?.meta?.willEmitForward && s.start?.meta?.pinned;
+    const emitFromEnd   = s.end?.meta?.willEmitForward && s.end?.meta?.pinned;
+    if (!emitFromStart && !emitFromEnd) continue;
+
+
+    const cursorField = emitFromStart ? "start" : "end";
+    let cursor = s[cursorField].utc;
+    const rank = s[cursorField].meta.rank;
+
+    // fill own end if starting from start
+    const dur = segDurationMinutes(s);
+    if (emitFromStart && canWrite(s.end) && cursor) {
+      s.end.utc = addMinutes(cursor, dur);
+      cursor = s.end.utc;
+    }
+
+    // fill wave forward
+    for (let j = i + 1; j < segs.length; j++) {
+      const next = segs[j];
+      if (!next.start || !next.end) continue;
+
+      const barrier =
+        (next.start.meta?.pinned && next.start.meta.rank >= rank) ||
+        (next.end.meta?.pinned && next.end.meta.rank >= rank) ||
+        next.start.meta?.willEmitBackward ||
+        next.end.meta?.willEmitBackward;
+
+      if (barrier) {
+        break;
+      }
+
+      const durNext = segDurationMinutes(next);
+      if (canWrite(next.start) && cursor) {
+        next.start.utc = cursor;
+      }
+      if (canWrite(next.end) && next.start.utc) {
+        const newEnd = addMinutes(next.start.utc, durNext);
+        next.end.utc = newEnd;
+        cursor = newEnd;
+      }
+    }
+  }
+}
+
+/* ----------------------------- BACKWARD PASS ----------------------------- */
+function propagateBackward(segs) {
+  for (let i = segs.length - 1; i >= 0; i--) {
+    const s = segs[i];
+
+    const emitFromEnd   = s.end?.meta?.willEmitBackward && s.end?.meta?.pinned;
+    const emitFromStart = s.start?.meta?.willEmitBackward && s.start?.meta?.pinned;
+    if (!emitFromEnd && !emitFromStart) continue;
+
+
+    const cursorField = emitFromEnd ? "end" : "start";
+    let cursor = s[cursorField].utc;
+    const rank = s[cursorField].meta.rank;
+
+    const dur = segDurationMinutes(s);
+    if (emitFromEnd && canWrite(s.start) && cursor) {
+      const newStart = addMinutes(cursor, -dur);
+      s.start.utc = newStart;
+      cursor = newStart;
+    }
+
+    // fill wave backward
+    for (let j = i - 1; j >= 0; j--) {
+      const prev = segs[j];
+      if (!prev.start || !prev.end) continue;
+
+      const barrier =
+        (prev.start.meta?.pinned && prev.start.meta.rank >= rank) ||
+        (prev.end.meta?.pinned && prev.end.meta.rank >= rank) ||
+        prev.start.meta?.willEmitForward ||
+        prev.end.meta?.willEmitForward;
+
+      if (barrier) {
+        break;
+      }
+
+      const durPrev = segDurationMinutes(prev);
+      if (canWrite(prev.end) && cursor) {
+        prev.end.utc = cursor;
+      }
+      if (canWrite(prev.start) && prev.end.utc) {
+        const newStart = addMinutes(prev.end.utc, -durPrev);
+        prev.start.utc = newStart;
+        cursor = newStart;
+      }
+    }
+  }
 }

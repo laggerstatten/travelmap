@@ -7,6 +7,9 @@ function queueStop() {
     id: newId(),
     name: '(untitled)',
     type: 'stop',
+    start: { utc: "", lock: "unlocked" },
+    end: { utc: "", lock: "unlocked" },
+    duration: { val: null, lock: "unlocked" },
     isQueued: true,
     openEditor: true
   };
@@ -27,7 +30,7 @@ async function insertQueuedSegment(seg, card) {
   segs = removeSlackAndOverlap(segs);
   segs = await validateAndRepair(segs);
   segs = annotateEmitters(segs);
-  segs = determineEmitterDirections(segs, { priority: 'forward' }); // or 'backward'
+  segs = determineEmitterDirections(segs, { priority: PLANNING_DIRECTION });
   segs = propagateTimes(segs);
   segs = computeSlackAndOverlap(segs);
   //TEST

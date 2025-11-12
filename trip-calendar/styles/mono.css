@@ -274,3 +274,43 @@ body {
   padding-right: 1rem;
 }
 
+.lock-icons {
+  margin-left: 4px;
+  font-size: 0.9em;
+  color: #888;
+}
+.lock-icons .fa-arrow-up { color: #5cb85c; }   /* forward/back hints */
+.lock-icons .fa-arrow-down { color: #5bc0de; }
+
+
+.sublist { border: 1px solid #ccc; border-radius: 6px; margin-top: 0.5em; padding: 0.25em; }
+.sublist.collapsed .sublist-items, .sublist.collapsed .add-item { display: none; }
+.sublist-header { display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
+.sublist-items { list-style: none; margin: 0.25em 0; padding: 0; }
+.sublist-items li { display: flex; align-items: center; gap: 0.5em; margin: 0.25em 0; }
+.sublist-items input { flex: 1; }
+.add-item { margin-left: 0.25em; }
+
+
+.drag-handle {
+  cursor: grab;
+  color: #aaa;
+  padding: 0 4px;
+}
+.drag-handle:active {
+  cursor: grabbing;
+  color: #666;
+}
+.sublist-items li {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+}
+
+.sublist-items { pointer-events: auto; }
+
+.oncard-editor { overflow: visible; z-index: 1000; }
+
+.sublist-items li { display: flex; align-items: center; gap: .4em; }
+.sublist-items .item-name { flex: 2; }
+.sublist-items .item-dur { width: 4em; text-align: right; }
