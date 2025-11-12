@@ -144,10 +144,6 @@ function createEditorForm(seg) {
   return form;
 }
 
-
-
-
-
 /* ===============================
    Time / Lock / Clear Helpers
    =============================== */

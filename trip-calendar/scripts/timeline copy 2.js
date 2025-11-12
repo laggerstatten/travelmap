@@ -185,29 +185,18 @@ function renderCard(seg, segments) {
     case 'slack': {
       const idx = segments.findIndex((s) => s.id === seg.id);
       const prev = idx > 0 ? segments[idx - 1] : null;
-      const next = idx < segments.length - 1 ? segments[idx + 1] : null;
-      const tz =
-        prev?.timeZone ||
-        (prev?.type === 'drive' && segments.find(s => s.id === prev.destinationId)?.timeZone) ||
-        (next?.type === 'drive' && segments.find(s => s.id === next.originId)?.timeZone) ||
-        next?.timeZone ||
-        seg.timeZone;
+      const tz = prev?.timeZone || seg.timeZone;
       const hours = seg.duration?.val?.toFixed(2) ?? (seg.minutes / 60).toFixed(2);
       const startStr = fmtDate(seg.start?.utc, tz);
       const endStr = fmtDate(seg.end?.utc, tz);
 
-      const segA = segments.find(s => s.id === seg.a);
-      const segB = segments.find(s => s.id === seg.b);
-      const aLabel = segLabel(segA, segments);
-      const bLabel = segLabel(segB, segments);
-
       card.innerHTML = `
         <div class="title">Slack (${hours}h)</div>
-        <div class="subtitle">Gap between ${aLabel} → ${bLabel}</div>
+        <div class="subtitle">Gap between ${seg.a} → ${seg.b}</div>
         <div class="meta">${startStr}<br>${endStr}</div>
       `;
       break;
-    }
+      }
 
     case 'overlap': {
       const idx = segments.findIndex(s => s.id === seg.id);
@@ -218,17 +207,12 @@ function renderCard(seg, segments) {
       const startStr = fmtDate(seg.start?.utc, tz);
       const endStr   = fmtDate(seg.end?.utc, tz);
 
-      const segA = segments.find(s => s.id === seg.a);
-      const segB = segments.find(s => s.id === seg.b);
-      const aLabel = segLabel(segA, segments);
-      const bLabel = segLabel(segB, segments);
-
       const leftTxt  = left  ? `${left.seg.name || '(unnamed)'} • ${left.kind} ${lockIcons(left.field)}` : '—';
       const rightTxt = right ? `${right.seg.name || '(unnamed)'} • ${right.kind} ${lockIcons(right.field)}`: '—';
 
       card.innerHTML = `
         <div class="title">Overlap (${hours}h)</div>
-        <div class="subtitle">Conflict between ${aLabel} ↔ ${bLabel}</div>
+        <div class="subtitle">Conflict between ${seg.a} ↔ ${seg.b}</div>
         <div class="meta">${startStr}<br>${endStr}</div>
         <div class="details">
           <div><strong>Left anchor:</strong> ${leftTxt}</div>
@@ -309,6 +293,10 @@ function lockIcons(field) {
   </span>`;
 }
 
+
+
+
+
 function boundaryLocked(f) { return !!(f && f.lock && f.lock !== 'unlocked'); }
 function isEmitter(f, dir) {
   if (!boundaryLocked(f)) return false;
@@ -335,16 +323,7 @@ function findNearestEmitterRight(idx, segments) {
   return null;
 }
 
-function segLabel(seg, segments) {
-  if (!seg) return '(unknown)';
-  if (seg.name) return seg.name;
-  if (seg.type === 'drive') {
-    const origin = segments.find(s => s.id === seg.originId);
-    const dest   = segments.find(s => s.id === seg.destinationId);
-    return `Drive: ${origin?.name || '?'} → ${dest?.name || '?'}`;
-  }
-  return seg.id;
-}
+
 
 
 
