@@ -179,8 +179,7 @@ function renderCard(seg, segments) {
         <div class="card-footer"></div>`;
       break;
 
-    case 'slack':
-    case 'overlap': {
+    case 'slack': {
       const label = type === 'slack' ? 'Gap' : 'Conflict';
       const hours =
         seg.duration?.val?.toFixed(2) ?? (seg.minutes / 60).toFixed(2);
@@ -201,7 +200,35 @@ function renderCard(seg, segments) {
         <div class="meta">${startStr}<br>${endStr}</div>
       `;
       break;
+      }
+
+    case 'overlap': {
+      const idx = segments.findIndex(s => s.id === seg.id);
+      const left  = findNearestEmitterLeft(idx, segments);
+      const right = findNearestEmitterRight(idx, segments);
+
+      const tz = (left?.seg?.timeZone) || (right?.seg?.timeZone) || seg.timeZone;
+      const hours = seg.duration?.val?.toFixed(2) ?? (seg.minutes / 60).toFixed(2);
+
+      const startStr = fmtDate(seg.start?.utc, tz);
+      const endStr   = fmtDate(seg.end?.utc, tz);
+
+      const leftTxt  = left  ? `${left.seg.name || '(unnamed)'} • ${left.kind} ${lockIcons(left.field)}` : '—';
+      const rightTxt = right ? `${right.seg.name || '(unnamed)'} • ${right.kind} ${lockIcons(right.field)}`: '—';
+
+      card.innerHTML = `
+        <div class="title">Overlap (${hours}h)</div>
+        <div class="subtitle">Conflict between ${seg.a} ↔ ${seg.b}</div>
+        <div class="meta">${startStr}<br>${endStr}</div>
+        <div class="details">
+          <div><strong>Left anchor:</strong> ${leftTxt}</div>
+          <div><strong>Right anchor:</strong> ${rightTxt}</div>
+        </div>
+        <div class="card-footer"></div>
+      `;
+      break;
     }
+
   }
 
   if (!card.classList.contains('constrained')) attachCardDragHandlers(card);
@@ -273,3 +300,38 @@ function lockIcons(field) {
     <i class="fa-solid ${faIcon}"></i>${up}${down}
   </span>`;
 }
+
+
+
+
+
+function boundaryLocked(f) { return !!(f && f.lock && f.lock !== 'unlocked'); }
+function isEmitter(f, dir) {
+  if (!boundaryLocked(f)) return false;
+  return dir === 'forward' ? !!f.emitsForward : !!f.emitsBackward;
+}
+
+function findNearestEmitterLeft(idx, segments) {
+  for (let i = idx - 1; i >= 0; i--) {
+    const s = segments[i];
+    if (isEmitter(s.end, 'forward'))     return { seg: s, kind: 'end',   field: s.end };
+    if (isEmitter(s.start, 'forward'))   return { seg: s, kind: 'start', field: s.start };
+    if (isEmitter(s.duration, 'forward'))return { seg: s, kind: 'duration', field: s.duration };
+  }
+  return null;
+}
+
+function findNearestEmitterRight(idx, segments) {
+  for (let i = idx + 1; i < segments.length; i++) {
+    const s = segments[i];
+    if (isEmitter(s.start, 'backward'))    return { seg: s, kind: 'start', field: s.start };
+    if (isEmitter(s.end, 'backward'))      return { seg: s, kind: 'end',   field: s.end };
+    if (isEmitter(s.duration, 'backward')) return { seg: s, kind: 'duration', field: s.duration };
+  }
+  return null;
+}
+
+
+
+
+
