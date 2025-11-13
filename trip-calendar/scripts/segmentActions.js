@@ -554,13 +554,47 @@ async function resolveOverlapAction(seg, opt) {
     }
   }
 
+    if (opt.action === 'unlockAndClear') {
+      seg.start.utc = '';
+      seg.end.utc = '';
+      //seg.duration.val = null;
+      seg.start.lock = 'unlocked';
+      seg.end.lock = 'unlocked';
+      seg.duration.lock = 'unlocked';
+      seg.isQueued = false;
+    }
+
+    if (opt.action === 'unlockAndQueue') {
+      seg.start.utc = '';
+      seg.end.utc = '';
+      //seg.duration.val = null;
+      seg.start.lock = 'soft';
+      seg.end.lock = 'soft';
+      seg.duration.lock = 'soft';
+      seg.isQueued = true;
+    }
+
+
+
+
+
   // Apply via your central logic
-  updateSegmentTiming(seg, formData);
+  if (Object.keys(formData).length > 0) {
+    updateSegmentTiming(seg, formData);
+  }
 
   // Persist + recompute
   let list = loadSegments();
   const idx = list.findIndex(s => s.id === seg.id);
   if (idx !== -1) list[idx] = seg;
+
+  if (opt.action === 'unlockAndQueue') {
+    const qIdx = list.findIndex(s => s.id === seg.id);
+    if (qIdx > -1) {
+      const [item] = list.splice(qIdx, 1);
+      list.unshift(item); // put at top
+    }
+  }
 
   list = removeSlackAndOverlap(list);
   list = await validateAndRepair(list);

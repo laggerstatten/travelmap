@@ -422,3 +422,33 @@ function getOverlapResolutionOptions(seg, role) {
 }
 
 
+function getUnlockAndQueueOptions(seg) {
+  const opts = [];
+
+  // Only show if any lock is hard
+  const anyLocked =
+    seg.start?.lock === 'hard' ||
+    seg.end?.lock === 'hard' ||
+    seg.duration?.lock === 'hard';
+
+  if (anyLocked) {
+    opts.push({
+      action: 'unlockAndClear',
+      label: '🔓 Unlock & Clear Times',
+      feasibility: 'ok',
+      reason: 'Removes start/end so card becomes draggable'
+    });
+  }
+
+  // Only show if not already queued
+  if (!seg.isQueued) {
+    opts.push({
+      action: 'unlockAndQueue',
+      label: '⬆ Send to Top of Timeline (Requeue)',
+      feasibility: 'ok',
+      reason: 'Unlock and move to planning queue'
+    });
+  }
+
+  return opts;
+}

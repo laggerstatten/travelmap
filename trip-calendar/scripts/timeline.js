@@ -247,26 +247,12 @@ function renderCard(seg, segments) {
     const actionsDiv = indicator.querySelector('.overlap-actions');
 
     // Collect all dynamic options based on each emitter
-    const allOptions = seg.overlapEmitters.flatMap(e =>
-      getOverlapResolutionOptions(seg, e.role)
-    );
+    const allOptions = [
+      ...seg.overlapEmitters.flatMap(e => getOverlapResolutionOptions(seg, e.role)),
+      ...getUnlockAndQueueOptions(seg)
+    ];
 
     // Render buttons dynamically
-    /**
-      allOptions.forEach(opt => {
-        const btn = document.createElement('button');
-        btn.textContent = opt.label;
-        btn.classList.add('resolve-btn', `resolve-${opt.action}`);
-  
-        if (opt.feasibility === 'unlock') {
-          btn.classList.add('needs-unlock');
-          btn.title = opt.reason || 'Locked field prevents direct adjustment';
-        }
-        btn.addEventListener('click', () => resolveOverlapAction(seg, opt));
-        actionsDiv.appendChild(btn);
-      });
-    */
-
     allOptions.forEach(opt => {
       const btn = document.createElement('button');
       btn.textContent = opt.label;
