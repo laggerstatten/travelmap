@@ -607,3 +607,252 @@ async function resolveOverlapAction(seg, opt) {
   renderTimeline(list);
 }
 
+/**
+  function attachConstraintEditor(form, seg) {
+    const listEl = form.querySelector('.constraint-list');
+    const addBtn = form.querySelector('.add-constraint');
+  
+    function renderList() {
+      listEl.innerHTML = '';
+      seg.constraints = seg.constraints || [];
+  
+      seg.constraints.forEach((c, i) => {
+        const def = constraintTypes[c.type];
+        const modeDef = def.modes[c.mode];
+  
+        const li = document.createElement('li');
+        li.className = 'constraint-item';
+        li.innerHTML = `
+          <div class="flex justify-between items-center mb-1">
+            <span class="font-semibold">${def.label}</span>
+            <button type="button" data-remove="${i}" class="text-red-500 small">✕</button>
+          </div>
+          <div class="param-fields space-y-1">
+            ${modeDef.params.map(p => `
+              <label class="block text-xs">
+                ${p}: <input type="text" class="param-input border rounded px-1 w-full" 
+                data-index="${i}" data-param="${p}" value="${c.params[p] || ''}">
+              </label>
+            `).join('')}
+          </div>`;
+  
+        listEl.appendChild(li);
+  
+        // Flatpickr for date/time params
+        li.querySelectorAll('.param-input').forEach(inp => {
+          const pname = inp.dataset.param.toLowerCase();
+          if (pname.includes('time') || pname.includes('date')) {
+            flatpickr(inp, {
+              enableTime: pname.includes('time'),
+              noCalendar: !pname.includes('date'),
+              dateFormat: pname.includes('date') ? 'Y-m-d H:i' : 'H:i',
+              time_24hr: true,
+              defaultDate: inp.value || null
+            });
+          }
+        });
+      });
+  
+      // Wire up removes
+      listEl.querySelectorAll('[data-remove]').forEach(btn => {
+        btn.onclick = () => {
+          seg.constraints.splice(+btn.dataset.remove, 1);
+          renderList();
+        };
+      });
+  
+      // Update param values
+      listEl.querySelectorAll('.param-input').forEach(inp => {
+        inp.onchange = e => {
+          const idx = +e.target.dataset.index;
+          const param = e.target.dataset.param;
+          seg.constraints[idx].params[param] = e.target.value;
+        };
+      });
+  
+      // Re-sortable (optional)
+      new Sortable(listEl, {
+        animation: 150,
+        onEnd: evt => {
+          const moved = seg.constraints.splice(evt.oldIndex, 1)[0];
+          seg.constraints.splice(evt.newIndex, 0, moved);
+          seg.constraints.forEach((c, i) => c.priority = i);
+        }
+      });
+    }
+  
+    addBtn.onclick = () => {
+      // Simple picker via prompt (replace with dropdown UI later)
+      const typeKeys = Object.keys(constraintTypes);
+      const chosen = prompt('Constraint type:\n' + typeKeys.join(', '));
+      if (!constraintTypes[chosen]) return alert('Invalid type');
+  
+      const def = constraintTypes[chosen];
+      const firstMode = Object.keys(def.modes)[0];
+      const params = Object.fromEntries(def.modes[firstMode].params.map(p => [p, '']));
+  
+      seg.constraints.push({
+        cid: crypto.randomUUID(),
+        type: chosen,
+        mode: firstMode,
+        enabled: true,
+        priority: seg.constraints.length,
+        params
+      });
+      renderList();
+    };
+  
+    renderList();
+  }
+*/
+
+
+function attachConstraintEditor(form, seg) {
+  seg.constraints = seg.constraints || [];
+
+  const typeSelect = form.querySelector('.constraint-type-select');
+  const addBtn = form.querySelector('.add-constraint');
+  const listEl = form.querySelector('.constraint-list');
+
+  if (!typeSelect || !addBtn || !listEl) return; // safety
+
+  // Populate type dropdown
+  Object.entries(constraintTypes).forEach(([key, def]) => {
+    const opt = document.createElement('option');
+    opt.value = key;
+    opt.textContent = def.label;
+    typeSelect.appendChild(opt);
+  });
+
+  // Add constraint instance
+  addBtn.onclick = () => {
+    const type = typeSelect.value;
+    const def = constraintTypes[type];
+    const firstMode = Object.keys(def.modes)[0];
+
+    const params = Object.fromEntries(
+      def.modes[firstMode].params.map(p => [p, ""])
+    );
+
+    seg.constraints.push({
+      cid: crypto.randomUUID(),
+      type,
+      mode: firstMode,
+      priority: seg.constraints.length,
+      params
+    });
+
+    renderConstraintList();
+  };
+
+  // --- Rendering the actual list ---
+  function renderConstraintList() {
+    listEl.innerHTML = '';
+
+    seg.constraints.sort((a,b)=>a.priority - b.priority);
+
+    seg.constraints.forEach((c, index) => {
+      const def = constraintTypes[c.type];
+      const modeDef = def.modes[c.mode];
+
+      const li = document.createElement('li');
+      li.className = 'constraint-item';
+
+      li.innerHTML = `
+        <div class="constraint-item-header">
+          <span class="label">${def.label}</span>
+
+          <select class="mode-select" data-cid="${c.cid}">
+            ${Object.keys(def.modes).map(m =>
+              `<option value="${m}" ${c.mode === m ? "selected" : ""}>${m}</option>`
+            ).join("")}
+          </select>
+
+          <button class="remove-constraint small" data-cid="${c.cid}">✕</button>
+        </div>
+
+        <div class="constraint-params">
+          ${modeDef.params.map(p => `
+            <label class="param-row">
+              ${p}: <input class="param-input"
+                data-cid="${c.cid}" data-param="${p}" value="${c.params[p] || ''}">
+            </label>
+          `).join("")}
+        </div>
+      `;
+
+      listEl.appendChild(li);
+
+      // Flatpickr for time/date params
+      li.querySelectorAll('.param-input').forEach(inp => {
+        const pname = inp.dataset.param.toLowerCase();
+        if (pname.includes('time') || pname.includes('date')) {
+          flatpickr(inp, {
+            enableTime: pname.includes('time'),
+            noCalendar: !pname.includes('date'),
+            dateFormat: pname.includes('date') ? 'Y-m-d H:i' : 'H:i',
+            time_24hr: true
+          });
+        }
+      });
+    });
+
+    wireEvents();
+    enableSorting();
+  }
+
+  // --- Events for mode changes, param edits, removal ---
+  function wireEvents() {
+
+    // Change mode
+    listEl.querySelectorAll('.mode-select').forEach(sel => {
+      sel.onchange = e => {
+        const cid = e.target.dataset.cid;
+        const c = seg.constraints.find(x => x.cid === cid);
+        c.mode = sel.value;
+
+        const def = constraintTypes[c.type];
+        const modeDef = def.modes[c.mode];
+
+        // reset params to match new mode
+        c.params = Object.fromEntries(modeDef.params.map(p => [p, ""]));
+        renderConstraintList();
+      };
+    });
+
+    // Update param values
+    listEl.querySelectorAll('.param-input').forEach(inp => {
+      inp.onchange = e => {
+        const cid = inp.dataset.cid;
+        const param = inp.dataset.param;
+        const c = seg.constraints.find(x => x.cid === cid);
+        c.params[param] = inp.value;
+      };
+    });
+
+    // Remove constraint
+    listEl.querySelectorAll('.remove-constraint').forEach(btn => {
+      btn.onclick = () => {
+        seg.constraints = seg.constraints.filter(
+          c => c.cid !== btn.dataset.cid
+        );
+        renderConstraintList();
+      };
+    });
+  }
+
+  // --- Sorting ---
+  function enableSorting() {
+    new Sortable(listEl, {
+      animation: 150,
+      handle: '.constraint-item-header',
+      onEnd(evt) {
+        const moved = seg.constraints.splice(evt.oldIndex, 1)[0];
+        seg.constraints.splice(evt.newIndex, 0, moved);
+        seg.constraints.forEach((c,i)=>c.priority = i);
+      }
+    });
+  }
+
+  renderConstraintList();
+}

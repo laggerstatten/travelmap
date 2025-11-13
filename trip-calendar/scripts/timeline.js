@@ -268,11 +268,6 @@ function renderCard(seg, segments) {
 
   }
 
-
-
-
-
-
   if (seg.openEditor && !card.querySelector('.oncard-editor'))
     buildOnCardEditor(seg, card);
   return card;

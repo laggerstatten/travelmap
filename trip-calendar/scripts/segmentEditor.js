@@ -100,6 +100,39 @@ function createEditorForm(seg) {
       </label>
       ${createTimeField('End', 'end', localEnd, 'end.lock', seg.end)}` : '';
 
+    /**
+      const constraintSection = `
+        <div class="constraint-section">
+          <div class="constraint-header">
+            <span>Constraints</span>
+            <button type="button" class="add-constraint small">+ Add</button>
+          </div>
+          <ul class="constraint-list"></ul>
+        </div>`;
+    */
+
+    const constraintSection = `
+      <div class="constraint-section">
+        <div class="constraint-header">
+          <span>Constraints</span>
+          <div class="constraint-controls">
+            <select class="constraint-type-select"></select>
+            <button type="button" class="add-constraint small">Add</button>
+          </div>
+        </div>
+        <ul class="constraint-list"></ul>
+      </div>`;
+
+
+
+
+
+
+
+
+
+
+
     form.innerHTML = `
       ${seg.type === 'stop' ? `
         <label>Name 
@@ -109,6 +142,7 @@ function createEditorForm(seg) {
         <div id="geocoder-${id}" class="geocoder-container"></div>
         </label>` : ''}
       ${timeFields}
+      ${constraintSection}
       <div class="sublist ${collapsed}">
         <div class="sublist-header">
           <span>Notes / Subitems</span>
@@ -141,6 +175,11 @@ function createEditorForm(seg) {
   }, 0);
 
   attachSublistHandlers(form, seg);
+  if (seg.type === 'stop') {
+    attachConstraintEditor(form, seg);
+  }
+
+
   return form;
 }
 
@@ -153,8 +192,6 @@ function createTimeField(label, name, value, lockField, timeElement) {
   console.log(value);
   console.log(lockField);
   console.log(timeElement);
-
-
 
   return `
     <label class="time-field">

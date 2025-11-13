@@ -41,6 +41,7 @@
 
     <!-- Scripts -->
     <script src="scripts/timeline.js" defer></script>
+    <script src="scripts/constraintTypes.js" defer></script>
     <script src="scripts/segmentActions.js" defer></script>
     <script src="scripts/tripInitiationSequence.js" defer></script>
     <script src="scripts/segmentEditor.js" defer></script>
@@ -84,28 +85,34 @@
         document.getElementById('clear-auto').onclick = () => {
           let segs = loadSegments();
           segs = removeSlackAndOverlap(segs);
+
           segs = clearAutoDrives(segs);
+
           saveSegments(segs);
           renderTimeline(syncGlobal());
         };
 
-        document.getElementById('insert-drives').onclick = () => {
-          let segs = loadSegments();
-          segs = insertDriveSegments(segs);
-          saveSegments(segs);
-          renderTimeline(syncGlobal());
-        };
-
-        document.getElementById('gen-routes').onclick = async () => {
-          let segs = loadSegments();
-          segs = await generateRoutes(segs);
-          saveSegments(segs);
-          renderTimeline(syncGlobal());
-        };
+        /**
+          document.getElementById('insert-drives').onclick = () => {
+            let segs = loadSegments();
+            segs = insertDriveSegments(segs);
+            saveSegments(segs);
+            renderTimeline(syncGlobal());
+          };
+  
+          document.getElementById('gen-routes').onclick = async () => {
+            let segs = loadSegments();
+            segs = await generateRoutes(segs);
+            saveSegments(segs);
+            renderTimeline(syncGlobal());
+          };
+        */
 
         document.getElementById('validate-btn').onclick = async () => {
           let segs = loadSegments();
-          segs = await validateAndRepair(segs);
+          
+          segs = await validateAndRepair(segs); // do we need to remove slack/overlap first?
+
           saveSegments(segs);
           renderTimeline(syncGlobal());
         };
@@ -113,7 +120,9 @@
         document.getElementById('clear-unlocked-times').onclick = () => {
           let segs = loadSegments();
           segs = removeSlackAndOverlap(segs);
+
           segs = clearTimesAndDurations(segs);
+
           saveSegments(segs);
           renderTimeline(syncGlobal());
         }
@@ -121,29 +130,33 @@
         document.getElementById('fill-times').onclick = () => {
           let segs = loadSegments();
           segs = removeSlackAndOverlap(segs);
+
           segs = annotateEmitters(segs);
           segs = determineEmitterDirections(segs, { priority: PLANNING_DIRECTION });
           segs = propagateTimes(segs);
           segs = computeSlackAndOverlap(segs); //test
+
           saveSegments(segs);
           renderTimeline(syncGlobal());
         }
 
 
-        document.getElementById('clear-slack').onclick = () => {
-          let segs = loadSegments();
-          segs = removeSlackAndOverlap(segs);
-          saveSegments(segs);
-          renderTimeline(syncGlobal());
-        }
-
-        document.getElementById('show-slack').onclick = () => {
-          let segs = loadSegments();
-          segs = removeSlackAndOverlap(segs);
-          segs = computeSlackAndOverlap(segs); //test // this does not work as expected unless times are filled first -- which would make it identical to document.getElementById('fill-times').onclick
-          saveSegments(segs);
-          renderTimeline(syncGlobal());
-        }
+        /**
+          document.getElementById('clear-slack').onclick = () => {
+            let segs = loadSegments();
+            segs = removeSlackAndOverlap(segs);
+            saveSegments(segs);
+            renderTimeline(syncGlobal());
+          }
+  
+          document.getElementById('show-slack').onclick = () => {
+            let segs = loadSegments();
+            segs = removeSlackAndOverlap(segs);
+            segs = computeSlackAndOverlap(segs); //test // this does not work as expected unless times are filled first -- which would make it identical to document.getElementById('fill-times').onclick
+            saveSegments(segs);
+            renderTimeline(syncGlobal());
+          }
+        */
 
               // === Export ===
         document.getElementById('export-data').onclick = () => {
@@ -197,8 +210,8 @@
       <!-- === Route Generation === -->
       <div class="toolbar-group">
         <button id="clear-auto">Clear Auto Drives</button>
-        <button id="insert-drives">Insert Drives</button>
-        <button id="gen-routes">Generate Routes</button>
+        <!--<button id="insert-drives">Insert Drives</button>
+        <button id="gen-routes">Generate Routes</button>-->
         <button id="validate-btn">Validate & Repair Routing</button>
       </div>
 
@@ -210,10 +223,10 @@
       </div>
 
       <!-- === Slack & Overlap === -->
-      <div class="toolbar-group">
+      <!--<div class="toolbar-group">
         <button id="clear-slack">Clear Slack</button>
         <button id="show-slack">Show Slack</button>
-      </div>
+      </div>-->
 
       <!-- === Import / Export === -->
       <div class="toolbar-group">

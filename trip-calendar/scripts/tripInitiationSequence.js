@@ -97,7 +97,7 @@ async function validateAndRepair(list) {
     const dest = segments.find((x) => x.id === seg.destinationId);
     return origin && dest;
   });
-
+  // do we need to sort by date here
   segments = insertDriveSegments(segments);
   segments = await generateRoutes(segments);
 
