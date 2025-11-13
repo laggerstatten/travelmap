@@ -314,3 +314,25 @@ body {
 .sublist-items li { display: flex; align-items: center; gap: .4em; }
 .sublist-items .item-name { flex: 2; }
 .sublist-items .item-dur { width: 4em; text-align: right; }
+
+.overlap-indicator {
+  border-top: 1px solid #e0b400;
+  background: #fffbea;
+  padding: 6px 8px;
+  margin-top: 4px;
+  border-radius: 0 0 6px 6px;
+  font-size: 0.85em;
+}
+
+.overlap-banner {
+  font-weight: bold;
+  color: #7a4f00;
+  margin-bottom: 4px;
+}
+
+.overlap-actions button {
+  margin-right: 4px;
+  padding: 2px 6px;
+  font-size: 0.8em;
+  cursor: pointer;
+}

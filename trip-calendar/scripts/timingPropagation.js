@@ -49,7 +49,6 @@ function annotateEmitters(list) {
   return segs;
 }
 
-
 /**
  * Determine whether each emitter will actually emit forward/backward
  * based on the relative rank of the nearest upstream and downstream emitters.
@@ -134,7 +133,6 @@ function determineEmitterDirections(segments, { priority = 'forward' } = {}) {
 
   return segs;
 }
-
 
 /**
  * propagateTimes
@@ -248,4 +246,18 @@ function propagateBackward(segs) {
       }
     }
   }
+}
+
+function segDurationMinutes(seg) {
+  if (!seg) return 0;
+
+  if (seg.type === 'drive') {
+    //if (seg.durationMin) return Number(seg.durationMin);
+    if (seg.duration?.val) return Math.round(Number(seg.duration.val) * 60);
+  }
+  if (seg.durationMin) return Number(seg.durationMin);
+  if (seg.duration?.minutes) return Number(seg.duration.minutes);
+  if (seg.duration?.val) return Math.round(Number(seg.duration.val) * 60);
+
+  return 0;
 }

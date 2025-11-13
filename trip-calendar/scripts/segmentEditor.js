@@ -131,7 +131,7 @@ function createEditorForm(seg) {
       flatpickr(el, {
         enableTime: true,
         dateFormat: 'Y-m-d\\TH:i',
-        time_24hr: true,
+        time_24hr: false, // changed
         minuteIncrement: 15,
         allowInput: true,
         defaultDate: el.value || null,
@@ -148,6 +148,14 @@ function createEditorForm(seg) {
    Time / Lock / Clear Helpers
    =============================== */
 function createTimeField(label, name, value, lockField, timeElement) {
+  console.log(label);
+  console.log(name);
+  console.log(value);
+  console.log(lockField);
+  console.log(timeElement);
+
+
+
   return `
     <label class="time-field">
       <span>${label}</span>

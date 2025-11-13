@@ -11,7 +11,8 @@ function renderTimeline(segments) {
   let lastDay = '';
   for (let i = 0; i < segments.length; i++) {
     const seg = segments[i];
-    const day = seg.start?.utc ? dayStr(seg.start.utc) : '';
+    //const day = seg.start?.utc ? dayStr(seg.start.utc) : '';
+    const day = seg.start?.utc ? fmtDay(seg.start.utc) : '';
     if (day && day !== lastDay) {
       cal.appendChild(renderDayDivider(day));
       lastDay = day;
@@ -64,6 +65,9 @@ function renderCard(seg, segments) {
     // Trip start
     // ───────────────────────────────
     case 'trip_start':
+      console.log('seg.end?.utc & timeZone');
+      console.log(seg.end?.utc);
+      console.log(seg.timeZone);
       meta = `  ${showDate(seg.end?.utc, seg.timeZone)} ${lockIcons(seg.end)}`;
 
       card.innerHTML = `
@@ -167,13 +171,8 @@ function renderCard(seg, segments) {
       // ───────────────────────────────
       // Drive
       // ───────────────────────────────
-      //const origin = segments.find((s) => s.id === seg.originId);
-      //const dest = segments.find((s) => s.id === seg.destinationId);
-      //const startStr = showDate(seg.start?.utc, origin?.timeZone);
-      //const endStr = showDate(seg.end?.utc, dest?.timeZone);
       const startStr = showDate(seg.start?.utc, seg.originTz);
       const endStr = showDate(seg.end?.utc, seg.destinationTz);      
-      //title = `Drive: ${origin?.name || '?'} → ${dest?.name || '?'}`;
       title = segLabel(seg, segments)
       let durText = seg.durationMin ? formatDurationMin(seg.durationMin) : '';
       meta = `${startStr}<br>${seg.distanceMi} mi • ${durText}<br>${endStr}`;
@@ -187,25 +186,9 @@ function renderCard(seg, segments) {
       break;
 
     case 'slack': {
-      //const idx = segments.findIndex((s) => s.id === seg.id);
-      //const prev = idx > 0 ? segments[idx - 1] : null;
-      //const next = idx < segments.length - 1 ? segments[idx + 1] : null;
-      /**
-        const tz =
-          prev?.timeZone ||
-          (prev?.type === 'drive' && segments.find(s => s.id === prev.destinationId)?.timeZone) ||
-          (next?.type === 'drive' && segments.find(s => s.id === next.originId)?.timeZone) ||
-          next?.timeZone ||
-          seg.timeZone;
-      */
       const hours = seg.duration?.val?.toFixed(2) ?? (seg.minutes / 60).toFixed(2);
       const startStr = fmtDate(seg.start?.utc, seg.slackInfo.tz);
       const endStr = fmtDate(seg.end?.utc, seg.slackInfo.tz);
-
-      //const segA = segments.find(s => s.id === seg.a);
-      //const segB = segments.find(s => s.id === seg.b);
-      //const aLabel = segLabel(segA, segments);
-      //const bLabel = segLabel(segB, segments);
 
       card.innerHTML = `
         <div class="title">Slack (${hours}h)</div>
@@ -216,18 +199,9 @@ function renderCard(seg, segments) {
     }
 
     case 'overlap': {
-      //const idx = segments.findIndex(s => s.id === seg.id);
-      //const left  = findNearestEmitterLeft(idx, segments);
-      //const right = findNearestEmitterRight(idx, segments);
-      //const tz = (left?.seg?.timeZone) || (right?.seg?.timeZone) || seg.timeZone;
       const hours = seg.duration?.val?.toFixed(2) ?? (seg.minutes / 60).toFixed(2);
       const startStr = fmtDate(seg.start?.utc, seg.overlapInfo.tz);
       const endStr   = fmtDate(seg.end?.utc, seg.overlapInfo.tz);
-
-      //const segA = segments.find(s => s.id === seg.a);
-      //const segB = segments.find(s => s.id === seg.b);
-      //const aLabel = segLabel(segA, segments);
-      //const bLabel = segLabel(segB, segments);
 
       const leftTxt  = seg.overlapInfo.leftAnchor  ? `${seg.overlapInfo.leftAnchor.seg.name || '(unnamed)'} • ${seg.overlapInfo.leftAnchor.kind} ${lockIcons(seg.overlapInfo.leftAnchor.field)}` : '—';
       const rightTxt = seg.overlapInfo.rightAnchor ? `${seg.overlapInfo.rightAnchor.seg.name || '(unnamed)'} • ${seg.overlapInfo.rightAnchor.kind} ${lockIcons(seg.overlapInfo.rightAnchor.field)}`: '—';
@@ -248,6 +222,27 @@ function renderCard(seg, segments) {
 
   if (card.querySelector('.card-footer')) {
     attachButtons(card, buildFooter(seg, buttons));
+  }
+
+  // --- Overlap indicators ---
+  if (seg.overlapEmitters && seg.overlapEmitters.length > 0) {
+    console.log('indicators');
+    const indicator = document.createElement('div');
+    indicator.className = 'overlap-indicator';
+
+    const roles = seg.overlapEmitters.join(', ');
+    indicator.innerHTML = `
+      <div class="overlap-banner">
+        ⚠️ Overlap contributor (${roles})
+      </div>
+      <div class="overlap-actions">
+        <button class="resolve-left">Resolve Left</button>
+        <button class="resolve-right">Resolve Right</button>
+        <button class="resolve-both">Auto Resolve</button>
+      </div>
+    `;
+
+    card.appendChild(indicator);
   }
 
   if (seg.openEditor && !card.querySelector('.oncard-editor'))
