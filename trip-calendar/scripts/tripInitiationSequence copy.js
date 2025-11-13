@@ -283,53 +283,29 @@ function computeSlackAndOverlap(list) {
                 const s = segments.find(x => x.id === anchor.seg.id);
                 if (s) {
                   s.overlapEmitters = s.overlapEmitters || [];
-
-                  // Add role if not already present
-                  if (!s.overlapEmitters.some(e => e.role === role && e.overlapId === overlap?.id)) {
-                    s.overlapEmitters.push({
-                      role,
-                      overlapId: null,       // fill in once overlap is created
-                      overlapMinutes: overlapMin,
-                      overlapHours: (overlapMin / 60).toFixed(2),
-                      affectedField: anchor.kind, // "start", "end", "duration"
-                    });
-                  }
+                  if (!s.overlapEmitters.includes(role)) s.overlapEmitters.push(role);
                 }
               }
             }
 
-
             const overlap = {
-              id: newId(),
-              type: 'overlap',
-              name: 'Overlap',
-              a: cur.id,
-              b: next.id,
-              start: { utc: nextStart },
-              end: { utc: curEnd },
-              duration: { val: overlapMin / 60 },
-              minutes: overlapMin,
-              overlapInfo: {
-                tz,
-                aLabel,
-                bLabel,
-                leftAnchor,
-                rightAnchor
-              }
-            };
-
-            // backfill overlapId into emitters
-            for (const role of ['left', 'right']) {
-              const anchor = role === 'left' ? leftAnchor : rightAnchor;
-              if (anchor?.seg?.id) {
-                const s = segments.find(x => x.id === anchor.seg.id);
-                if (s?.overlapEmitters) {
-                  s.overlapEmitters.forEach(e => {
-                    if (e.role === role && e.overlapId === null) e.overlapId = overlap.id;
-                  });
+                id: newId(),
+                type: 'overlap',
+                name: 'Overlap',
+                a: cur.id,
+                b: next.id,
+                start: { utc: nextStart },
+                end: { utc: curEnd },
+                duration: { val: overlapMin / 60 },
+                minutes: overlapMin,
+                overlapInfo: {
+                    tz,
+                    aLabel,
+                    bLabel,
+                    leftAnchor,
+                    rightAnchor
                 }
-              }
-}
+            };
 
             const insertIndex = segments.findIndex((s) => s.id === next.id);
             segments.splice(insertIndex, 0, overlap);

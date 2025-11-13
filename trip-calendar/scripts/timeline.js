@@ -11,7 +11,6 @@ function renderTimeline(segments) {
   let lastDay = '';
   for (let i = 0; i < segments.length; i++) {
     const seg = segments[i];
-    //const day = seg.start?.utc ? dayStr(seg.start.utc) : '';
     const day = seg.start?.utc ? fmtDay(seg.start.utc) : '';
     if (day && day !== lastDay) {
       cal.appendChild(renderDayDivider(day));
@@ -65,9 +64,6 @@ function renderCard(seg, segments) {
     // Trip start
     // ───────────────────────────────
     case 'trip_start':
-      console.log('seg.end?.utc & timeZone');
-      console.log(seg.end?.utc);
-      console.log(seg.timeZone);
       meta = `  ${showDate(seg.end?.utc, seg.timeZone)} ${lockIcons(seg.end)}`;
 
       card.innerHTML = `
@@ -225,15 +221,24 @@ function renderCard(seg, segments) {
   }
 
   // --- Overlap indicators ---
-  if (seg.overlapEmitters && seg.overlapEmitters.length > 0) {
+  if (Array.isArray(seg.overlapEmitters) && seg.overlapEmitters.length > 0) {
     console.log('indicators');
     const indicator = document.createElement('div');
     indicator.className = 'overlap-indicator';
 
-    const roles = seg.overlapEmitters.join(', ');
+    // Summarize emitters
+    const details = seg.overlapEmitters
+      .map(e => {
+        const mins = e.overlapMinutes?.toFixed?.(0) ?? '?';
+        const hrs = (e.overlapMinutes / 60).toFixed(2);
+        return `${e.role} (${mins} min / ${hrs} h via ${e.affectedField})`;
+      })
+      .join(', ');
+
     indicator.innerHTML = `
       <div class="overlap-banner">
-        ⚠️ Overlap contributor (${roles})
+        ⚠️ Overlap contributor<br>
+        <small>${details}</small>
       </div>
       <div class="overlap-actions">
         <button class="resolve-left">Resolve Left</button>
@@ -241,6 +246,14 @@ function renderCard(seg, segments) {
         <button class="resolve-both">Auto Resolve</button>
       </div>
     `;
+
+    // Attach placeholder listeners (for later)
+    indicator.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('click', e => {
+        console.log(`Clicked ${e.target.className} for ${seg.name} (${seg.id})`);
+        // future: resolveOverlap(seg, e.target.className)
+      });
+    });
 
     card.appendChild(indicator);
   }

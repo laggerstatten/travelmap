@@ -336,3 +336,24 @@ body {
   font-size: 0.8em;
   cursor: pointer;
 }
+
+.overlap-indicator {
+  background: #fff8e1;
+  border-top: 1px solid #e0b400;
+  padding: 6px 8px;
+  margin-top: 6px;
+  border-radius: 0 0 8px 8px;
+  font-size: 0.85em;
+}
+
+.overlap-banner small {
+  color: #6b4f00;
+  display: block;
+  margin-top: 2px;
+}
+
+.overlap-actions button {
+  margin-right: 4px;
+  font-size: 0.8em;
+  padding: 2px 6px;
+}

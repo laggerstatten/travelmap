@@ -11,7 +11,7 @@ function renderTimeline(segments) {
   let lastDay = '';
   for (let i = 0; i < segments.length; i++) {
     const seg = segments[i];
-    const day = seg.start?.utc ? dayStr(seg.start.utc) : '';
+    const day = seg.start?.utc ? fmtDay(seg.start.utc) : '';
     if (day && day !== lastDay) {
       cal.appendChild(renderDayDivider(day));
       lastDay = day;
@@ -218,6 +218,27 @@ function renderCard(seg, segments) {
 
   if (card.querySelector('.card-footer')) {
     attachButtons(card, buildFooter(seg, buttons));
+  }
+
+  // --- Overlap indicators ---
+  if (seg.overlapEmitters && seg.overlapEmitters.length > 0) {
+    console.log('indicators');
+    const indicator = document.createElement('div');
+    indicator.className = 'overlap-indicator';
+
+    const roles = seg.overlapEmitters.join(', ');
+    indicator.innerHTML = `
+      <div class="overlap-banner">
+        ⚠️ Overlap contributor (${roles})
+      </div>
+      <div class="overlap-actions">
+        <button class="resolve-left">Resolve Left</button>
+        <button class="resolve-right">Resolve Right</button>
+        <button class="resolve-both">Auto Resolve</button>
+      </div>
+    `;
+
+    card.appendChild(indicator);
   }
 
   if (seg.openEditor && !card.querySelector('.oncard-editor'))
