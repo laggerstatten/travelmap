@@ -283,29 +283,53 @@ function computeSlackAndOverlap(list) {
                 const s = segments.find(x => x.id === anchor.seg.id);
                 if (s) {
                   s.overlapEmitters = s.overlapEmitters || [];
-                  if (!s.overlapEmitters.includes(role)) s.overlapEmitters.push(role);
+
+                  // Add role if not already present
+                  if (!s.overlapEmitters.some(e => e.role === role && e.overlapId === overlap?.id)) {
+                    s.overlapEmitters.push({
+                      role,
+                      overlapId: null,       // fill in once overlap is created
+                      overlapMinutes: overlapMin,
+                      overlapHours: (overlapMin / 60).toFixed(2),
+                      affectedField: anchor.kind, // "start", "end", "duration"
+                    });
+                  }
                 }
               }
             }
 
+
             const overlap = {
-                id: newId(),
-                type: 'overlap',
-                name: 'Overlap',
-                a: cur.id,
-                b: next.id,
-                start: { utc: nextStart },
-                end: { utc: curEnd },
-                duration: { val: overlapMin / 60 },
-                minutes: overlapMin,
-                overlapInfo: {
-                    tz,
-                    aLabel,
-                    bLabel,
-                    leftAnchor,
-                    rightAnchor
-                }
+              id: newId(),
+              type: 'overlap',
+              name: 'Overlap',
+              a: cur.id,
+              b: next.id,
+              start: { utc: nextStart },
+              end: { utc: curEnd },
+              duration: { val: overlapMin / 60 },
+              minutes: overlapMin,
+              overlapInfo: {
+                tz,
+                aLabel,
+                bLabel,
+                leftAnchor,
+                rightAnchor
+              }
             };
+
+            // backfill overlapId into emitters
+            for (const role of ['left', 'right']) {
+              const anchor = role === 'left' ? leftAnchor : rightAnchor;
+              if (anchor?.seg?.id) {
+                const s = segments.find(x => x.id === anchor.seg.id);
+                if (s?.overlapEmitters) {
+                  s.overlapEmitters.forEach(e => {
+                    if (e.role === role && e.overlapId === null) e.overlapId = overlap.id;
+                  });
+                }
+              }
+}
 
             const insertIndex = segments.findIndex((s) => s.id === next.id);
             segments.splice(insertIndex, 0, overlap);
@@ -344,3 +368,75 @@ function isEmitter(f, dir) {
 function boundaryLocked(f) { 
   return !!(f && f.lock && f.lock !== 'unlocked'); 
 }
+
+function getOverlapResolutionOptions(seg, role) {
+  const options = [];
+  const overlap = seg.overlapEmitters?.find(e => e.role === role);
+  if (!overlap) return options;
+
+  const overlapMin = overlap.overlapMinutes;
+  const overlapHr = overlapMin / 60;
+  const roundedHr = Math.ceil(overlapHr * 4) / 4;
+
+  const durMin = segDurationMinutes(seg);
+  const canShrink = durMin > 0 && overlapMin < durMin * 0.75;
+
+  // Field locks
+  const startLocked = seg.start?.lock === 'hard';
+  const endLocked   = seg.end?.lock === 'hard';
+  const durLocked   = seg.duration?.lock === 'hard';
+
+  const addOption = (action, label, feasibility = 'ok', reason = '') => {
+    options.push({ action, label, feasibility, reason });
+  };
+
+  switch (seg.type) {
+    case 'trip_start':
+    case 'trip_end': {
+      const moveAction = role === 'left' ? 'moveEarlier' : 'moveLater';
+      const locked = role === 'left' ? startLocked : endLocked;
+      if (locked)
+        addOption(moveAction, `🔒 Unlock & ${moveAction} (~${roundedHr}h)`, 'unlock', 'Hard lock prevents move');
+      else
+        addOption(moveAction, `${role === 'left' ? '⬅' : '➡'} Move (~${roundedHr}h)`);
+      break;
+    }
+
+    case 'stop': {
+      if (role === 'left') {
+        const locked = endLocked; // earlier adjustment touches end
+        if (locked)
+          addOption('moveEarlier', '🔒 Unlock & Move Earlier', 'unlock', 'End locked');
+        else
+          addOption('moveEarlier', `⬅ Nudge Earlier (~${roundedHr}h)`);
+
+        if (canShrink) {
+          const durHard = durLocked;
+          if (durHard)
+            addOption('shrink', '🔒 Unlock & Shorten', 'unlock', 'Duration locked');
+          else
+            addOption('shrink', `↔ Shorten (~${roundedHr}h)`);
+        }
+      } else {
+        const locked = startLocked; // later adjustment touches start
+        if (locked)
+          addOption('moveLater', '🔒 Unlock & Move Later', 'unlock', 'Start locked');
+        else
+          addOption('moveLater', `➡ Nudge Later (~${roundedHr}h)`);
+
+        if (canShrink) {
+          const durHard = durLocked;
+          if (durHard)
+            addOption('shrink', '🔒 Unlock & Shorten', 'unlock', 'Duration locked');
+          else
+            addOption('shrink', `↔ Shorten (~${roundedHr}h)`);
+        }
+      }
+      break;
+    }
+
+  }
+
+  return options;
+}
+

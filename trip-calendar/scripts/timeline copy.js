@@ -221,15 +221,24 @@ function renderCard(seg, segments) {
   }
 
   // --- Overlap indicators ---
-  if (seg.overlapEmitters && seg.overlapEmitters.length > 0) {
+  if (Array.isArray(seg.overlapEmitters) && seg.overlapEmitters.length > 0) {
     console.log('indicators');
     const indicator = document.createElement('div');
     indicator.className = 'overlap-indicator';
 
-    const roles = seg.overlapEmitters.join(', ');
+    // Summarize emitters
+    const details = seg.overlapEmitters
+      .map(e => {
+        const mins = e.overlapMinutes?.toFixed?.(0) ?? '?';
+        const hrs = (e.overlapMinutes / 60).toFixed(2);
+        return `${e.role} (${mins} min / ${hrs} h via ${e.affectedField})`;
+      })
+      .join(', ');
+
     indicator.innerHTML = `
       <div class="overlap-banner">
-        ⚠️ Overlap contributor (${roles})
+        ⚠️ Overlap contributor<br>
+        <small>${details}</small>
       </div>
       <div class="overlap-actions">
         <button class="resolve-left">Resolve Left</button>
@@ -237,6 +246,14 @@ function renderCard(seg, segments) {
         <button class="resolve-both">Auto Resolve</button>
       </div>
     `;
+
+    // Attach placeholder listeners (for later)
+    indicator.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('click', e => {
+        console.log(`Clicked ${e.target.className} for ${seg.name} (${seg.id})`);
+        // future: resolveOverlap(seg, e.target.className)
+      });
+    });
 
     card.appendChild(indicator);
   }

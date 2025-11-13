@@ -222,11 +222,11 @@ function renderCard(seg, segments) {
 
   // --- Overlap indicators ---
   if (Array.isArray(seg.overlapEmitters) && seg.overlapEmitters.length > 0) {
-    console.log('indicators');
+    //console.log('indicators');
     const indicator = document.createElement('div');
     indicator.className = 'overlap-indicator';
 
-    // Summarize emitters
+    // Summarize emitters (for banner text)
     const details = seg.overlapEmitters
       .map(e => {
         const mins = e.overlapMinutes?.toFixed?.(0) ?? '?';
@@ -235,28 +235,57 @@ function renderCard(seg, segments) {
       })
       .join(', ');
 
+    // Build base structure
     indicator.innerHTML = `
       <div class="overlap-banner">
         ⚠️ Overlap contributor<br>
         <small>${details}</small>
       </div>
-      <div class="overlap-actions">
-        <button class="resolve-left">Resolve Left</button>
-        <button class="resolve-right">Resolve Right</button>
-        <button class="resolve-both">Auto Resolve</button>
-      </div>
+      <div class="overlap-actions"></div>
     `;
 
-    // Attach placeholder listeners (for later)
-    indicator.querySelectorAll('button').forEach(btn => {
-      btn.addEventListener('click', e => {
-        console.log(`Clicked ${e.target.className} for ${seg.name} (${seg.id})`);
-        // future: resolveOverlap(seg, e.target.className)
+    const actionsDiv = indicator.querySelector('.overlap-actions');
+
+    // Collect all dynamic options based on each emitter
+    const allOptions = seg.overlapEmitters.flatMap(e =>
+      getOverlapResolutionOptions(seg, e.role)
+    );
+
+    // Render buttons dynamically
+    /**
+      allOptions.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.textContent = opt.label;
+        btn.classList.add('resolve-btn', `resolve-${opt.action}`);
+  
+        if (opt.feasibility === 'unlock') {
+          btn.classList.add('needs-unlock');
+          btn.title = opt.reason || 'Locked field prevents direct adjustment';
+        }
+        btn.addEventListener('click', () => resolveOverlapAction(seg, opt));
+        actionsDiv.appendChild(btn);
       });
+    */
+
+    allOptions.forEach(opt => {
+      const btn = document.createElement('button');
+      btn.textContent = opt.label;
+      btn.classList.add('resolve-btn', `resolve-${opt.action}`);
+
+      if (opt.feasibility === 'unlock') btn.classList.add('needs-unlock');
+      btn.addEventListener('click', () => resolveOverlapAction(seg, opt));
+      actionsDiv.appendChild(btn);
     });
 
     card.appendChild(indicator);
+
+
   }
+
+
+
+
+
 
   if (seg.openEditor && !card.querySelector('.oncard-editor'))
     buildOnCardEditor(seg, card);

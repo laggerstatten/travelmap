@@ -207,7 +207,7 @@ async function generateRoutes(list) {
 */
 
 function computeSlackAndOverlap(list) {
-    console.log('computeSlackAndOverlap');
+    //console.log('computeSlackAndOverlap');
     let segments = [...list];
 
     for (const s of segments) {
@@ -335,7 +335,7 @@ function computeSlackAndOverlap(list) {
             segments.splice(insertIndex, 0, overlap);
         }
     }
-    console.log('Segments after recompute:', segments);
+    //console.log('Segments after recompute:', segments);
     return segments;
 }
 
@@ -368,3 +368,57 @@ function isEmitter(f, dir) {
 function boundaryLocked(f) { 
   return !!(f && f.lock && f.lock !== 'unlocked'); 
 }
+
+function getOverlapResolutionOptions(seg, role) {
+  const options = [];
+  const overlap = seg.overlapEmitters?.find(e => e.role === role);
+  if (!overlap) return options;
+
+  const overlapMin = overlap.overlapMinutes;
+  const roundedMin = Math.ceil(overlapMin / 15) * 15;
+  const roundedHr  = roundedMin / 60;
+
+  const durMin = segDurationMinutes(seg);
+  const canShrink = durMin > 0 && overlapMin < durMin * 0.75;
+
+  const add = (action, label, feasibility='ok', reason='') =>
+    options.push({ action, label, feasibility, reason, role, roundedMin, roundedHr });
+
+  switch (seg.type) {
+    case 'trip_start':
+    case 'trip_end': {
+      const move = role === 'left' ? 'moveEarlier' : 'moveLater';
+      const locked = role === 'left' ? (seg.start?.lock === 'hard') : (seg.end?.lock === 'hard');
+      if (locked) add(move, `🔒 Unlock & ${move} (~${roundedHr}h)`, 'unlock', 'Boundary locked');
+      else add(move, `${role==='left'?'⬅':'➡'} Move (~${roundedHr}h)`);
+      break;
+    }
+    case 'stop': {
+      if (role === 'left') {
+        const locked = seg.end?.lock === 'hard';
+        if (locked) add('moveEarlier','🔒 Unlock & Nudge Earlier', 'unlock', 'End locked');
+        else add('moveEarlier', `⬅ Nudge Earlier (~${roundedHr}h)`);
+        if (canShrink) {
+          const dLocked = seg.duration?.lock === 'hard';
+          if (dLocked) add('shrink','🔒 Unlock & Shorten','unlock','Duration locked');
+          else add('shrink', `↔ Shorten (~${roundedHr}h)`);
+        }
+      } else {
+        const locked = seg.start?.lock === 'hard';
+        if (locked) add('moveLater','🔒 Unlock & Nudge Later','unlock','Start locked');
+        else add('moveLater', `➡ Nudge Later (~${roundedHr}h)`);
+        if (canShrink) {
+          const dLocked = seg.duration?.lock === 'hard';
+          if (dLocked) add('shrink','🔒 Unlock & Shorten','unlock','Duration locked');
+          else add('shrink', `↔ Shorten (~${roundedHr}h)`);
+        }
+      }
+      break;
+    }
+
+  }
+
+  return options;
+}
+
+

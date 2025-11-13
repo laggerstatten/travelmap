@@ -123,7 +123,6 @@ function attachClearButtons(editor, seg) {
 
 function attachGeocoder(editor, seg) {
   const container = editor.querySelector(`#geocoder-${seg.id}`);
-  console.log(container);
   if (!container) return;
 
   const geocoder = new MapboxGeocoder({

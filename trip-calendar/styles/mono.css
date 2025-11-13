@@ -357,3 +357,8 @@ body {
   font-size: 0.8em;
   padding: 2px 6px;
 }
+
+button.needs-unlock {
+  background: #fff2f2;
+  border-color: #cc6666;
+}

@@ -502,74 +502,68 @@ function attachSublistHandlers(editor, seg) {
   }
 }
 
-async function resolveOverlapAction(seg, opt) {
-  console.log(`Resolving ${opt.action} (${opt.role}) for`, seg.name);
+function resolveOverlapAction(seg, opt) {
+  console.log(`Resolving ${opt.action} for`, seg.name);
 
-  // minutes/hours are precomputed on opt
-  const roundedMin = opt.roundedMin ?? 0;
-  const roundedHr  = opt.roundedHr  ?? 0;
+  // 1️⃣ Determine how much to adjust
+  // Find the related overlap info on this segment
+  const emitter = seg.overlapEmitters?.find(e => e.role === (opt.role || 'left'));
+  const minutes = emitter ? emitter.overlapMinutes : 0;
+  const hours = (minutes / 60).toFixed(2);
 
-  // Unlock if needed
+  // Round to nearest 15 min for user-friendly adjustments
+  const roundedMin = Math.ceil(minutes / 15) * 15;
+  console.log(roundedMin);
+  const roundedHr  = roundedMin / 60;
+
+  // 2️⃣ If locked but "unlock" feasible, unlock
   if (opt.feasibility === 'unlock') {
+    console.warn(`Unlocking fields to resolve ${opt.action} on ${seg.name}`);
     if (opt.action === 'moveEarlier' || opt.action === 'moveLater') {
       seg.start.lock = 'unlocked';
-      seg.end.lock   = 'unlocked';
+      seg.end.lock = 'unlocked';
     } else if (opt.action === 'shrink') {
       seg.duration.lock = 'unlocked';
-      // also unlock the boundary we’ll recompute below
-      if (opt.role === 'left') seg.end.lock = 'unlocked';
-      else seg.start.lock = 'unlocked';
     }
   }
 
+  // 3️⃣ Compute the new timing formData depending on the action
   const formData = {};
 
   if (opt.action === 'moveEarlier') {
+    // Shift entire segment earlier
     formData.start = utcToLocalInput(addMinutes(seg.start.utc, -roundedMin), seg.timeZone);
     formData.end   = utcToLocalInput(addMinutes(seg.end.utc,   -roundedMin), seg.timeZone);
   }
 
   if (opt.action === 'moveLater') {
-    formData.start = utcToLocalInput(addMinutes(seg.start.utc,  roundedMin), seg.timeZone);
-    formData.end   = utcToLocalInput(addMinutes(seg.end.utc,    roundedMin), seg.timeZone);
+    // Shift entire segment later
+    formData.start = utcToLocalInput(addMinutes(seg.start.utc, roundedMin), seg.timeZone);
+    formData.end   = utcToLocalInput(addMinutes(seg.end.utc,   roundedMin), seg.timeZone);
   }
 
   if (opt.action === 'shrink') {
-    // Current duration (minutes) with your helper
-    const curDurMin = segDurationMinutes(seg);
-    const newDurMin = Math.max(0, curDurMin - roundedMin);
-    const newDurHr  = newDurMin / 60;
-
-    // Role determines which boundary stays anchored:
-    // left side shrink ⇒ keep START fixed, move END earlier
-    // right side shrink ⇒ keep END fixed, move START later
-    if (opt.role === 'left') {
-      formData.start    = utcToLocalInput(seg.start.utc, seg.timeZone);
-      formData.end      = utcToLocalInput(endFromDuration(seg.start.utc, newDurHr), seg.timeZone);
-      formData.duration = newDurHr.toFixed(2);
-    } else {
-      formData.end      = utcToLocalInput(seg.end.utc, seg.timeZone);
-      formData.start    = utcToLocalInput(startFromDuration(seg.end.utc, newDurHr), seg.timeZone);
-      formData.duration = newDurHr.toFixed(2);
-    }
+    // Decrease duration but keep start fixed (shorten end)
+    console.log(seg.duration.val );
+    console.log(roundedHr);
+    const newDurHr = Math.max(0, Number(seg.duration.val || 0) - roundedHr);
+    console.log(newDurHr);
+    formData.duration = newDurHr.toFixed(2);
+    formData.start = utcToLocalInput(seg.start.utc, seg.timeZone);
+    formData.end = utcToLocalInput(endFromDuration(seg.start.utc, newDurHr), seg.timeZone);
+    console.log(formData);
   }
 
-  // Apply via your central logic
+  // 4️⃣ Reuse your existing unified logic
   updateSegmentTiming(seg, formData);
 
-  // Persist + recompute
-  let list = loadSegments();
+  // 5️⃣ Persist + recompute overlaps
+  const list = loadSegments();
   const idx = list.findIndex(s => s.id === seg.id);
   if (idx !== -1) list[idx] = seg;
-
-  list = removeSlackAndOverlap(list);
-  list = await validateAndRepair(list);
-  list = annotateEmitters(list);
-  list = determineEmitterDirections(list, { priority: PLANNING_DIRECTION });
-  list = propagateTimes(list);
-  list = computeSlackAndOverlap(list);
-
   saveSegments(list);
-  renderTimeline(list);
+
+  const recomputed = computeSlackAndOverlap(list);
+  renderTimeline(syncGlobal(recomputed));
 }
 

@@ -3,9 +3,6 @@
 
 // Local → UTC ISO
 function localToUTC(localStr, timeZone) {
-  console.log('localToUTC(localStr, timeZone)');
-  console.log(localStr);
-  console.log(timeZone);
   if (!localStr) return '';
 
   // Split local input (YYYY-MM-DDTHH:mm)
