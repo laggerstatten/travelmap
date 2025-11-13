@@ -100,17 +100,6 @@ function createEditorForm(seg) {
       </label>
       ${createTimeField('End', 'end', localEnd, 'end.lock', seg.end)}` : '';
 
-    /**
-      const constraintSection = `
-        <div class="constraint-section">
-          <div class="constraint-header">
-            <span>Constraints</span>
-            <button type="button" class="add-constraint small">+ Add</button>
-          </div>
-          <ul class="constraint-list"></ul>
-        </div>`;
-    */
-
     const constraintSection = `
       <div class="constraint-section">
         <div class="constraint-header">
@@ -122,16 +111,6 @@ function createEditorForm(seg) {
         </div>
         <ul class="constraint-list"></ul>
       </div>`;
-
-
-
-
-
-
-
-
-
-
 
     form.innerHTML = `
       ${seg.type === 'stop' ? `
@@ -225,3 +204,176 @@ function clearButtonHTML(field) {
             <i class="fa-solid fa-xmark"></i>
           </button>`;
 }
+
+function renderParamField(seg, constraint, paramName) {
+  const cid = constraint.cid;
+  const ptype = detectParamType(paramName, constraint.type);
+  const value = constraint.params[paramName] || "";
+
+  /* ============================
+     1. OPERATOR SELECT
+     ============================ */
+  if (ptype === "operator") {
+    const cat = constraintTypes[constraint.type].operatorCategory;
+    const opts = operatorOptions[cat] || [];
+
+    return `
+      <label class="param-row">
+        ${paramName}:
+        <select class="param-operator" data-cid="${cid}" data-param="${paramName}">
+          ${opts.map(o =>
+            `<option value="${o.value}" ${value === o.value ? 'selected':''}>
+              ${o.label}
+            </option>`
+          ).join("")}
+        </select>
+      </label>`;
+  }
+
+  /* ============================
+     2. DAYS OF WEEK CHECKBOXES
+     ============================ */
+  if (ptype === "daysOfWeek") {
+    const days = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+    const selected = Array.isArray(value) ? value : [];
+
+    return `
+      <label class="param-row">
+        ${paramName}:
+        <div class="dow-checkboxes" data-cid="${cid}" data-param="${paramName}">
+          ${days.map(d => `
+            <label class="dow">
+              <input type="checkbox" value="${d}" ${selected.includes(d) ? 'checked':''}>
+              ${d}
+            </label>
+          `).join("")}
+        </div>
+      </label>`;
+  }
+
+  /* ============================
+     3. MULTIPLE DATES
+     ============================ */
+  if (ptype === "multiDate") {
+    return `
+      <label class="param-row">
+        ${paramName}:
+        <input class="param-input multi-date"
+               data-cid="${cid}" data-param="${paramName}"
+               value="${Array.isArray(value) ? value.join(", ") : value}">
+      </label>`;
+  }
+
+  /* ============================
+     4. DATE RANGE
+     ============================ */
+  if (ptype === "dateRangeSingle") {
+    return `
+      <label class="param-row">
+        ${paramName}:
+        <input class="param-input date-range"
+               data-cid="${cid}" data-param="${paramName}"
+               value="${value && value.startDate ? `${value.startDate} to ${value.endDate}` : ""}">
+      </label>`;
+  }
+
+  /* ============================
+     5. WINDOWS LIST (time windows)
+     ============================ */
+  if (ptype === "windowsList") {
+    const windows = Array.isArray(value) ? value : [];
+    return `
+      <div class="param-row windows-editor" data-cid="${cid}" data-param="${paramName}">
+        <div class="windows-list">
+          ${windows.map((w, i) => `
+            <div class="window-item" data-index="${i}">
+              <input class="window-start" value="${w.startTime || ''}" />
+              <span>→</span>
+              <input class="window-end" value="${w.endTime || ''}" />
+              <button type="button" class="remove-window" data-index="${i}">✕</button>
+            </div>
+          `).join("")}
+        </div>
+        <button type="button" class="add-window">+ Add Window</button>
+      </div>`;
+  }
+
+  /* ============================
+     6. DATETIME
+     ============================ */
+  if (ptype === "datetime") {
+    return `
+      <label class="param-row">
+        ${paramName}:
+        <input class="param-input datetime-input"
+               data-cid="${cid}" data-param="${paramName}"
+               value="${value}">
+      </label>`;
+  }
+
+  /* ============================
+     7. DATE
+     ============================ */
+  if (ptype === "date") {
+    return `
+      <label class="param-row">
+        ${paramName}:
+        <input class="param-input date-input"
+               data-cid="${cid}" data-param="${paramName}"
+               value="${value}">
+      </label>`;
+  }
+
+  /* ============================
+     8. TIME
+     ============================ */
+  if (ptype === "time") {
+    return `
+      <label class="param-row">
+        ${paramName}:
+        <input class="param-input time-input"
+               data-cid="${cid}" data-param="${paramName}"
+               value="${value}">
+      </label>`;
+  }
+
+  /* ============================
+     9. SEGMENT SELECTOR
+     ============================ */
+  if (ptype === "segmentSelector") {
+    return `
+      <label class="param-row">
+        ${paramName}:
+        <select class="param-other-seg"
+                data-cid="${cid}" data-param="${paramName}">
+          ${window.globalSegments.map(s =>
+            `<option value="${s.id}" ${s.id === value ? "selected":""}>
+              ${s.name || s.id}
+            </option>`
+          ).join("")}
+        </select>
+      </label>`;
+  }
+
+  /* ============================
+     10. DEFAULT TEXT FIELD
+     ============================ */
+  return `
+    <label class="param-row">
+      ${paramName}:
+      <input class="param-input"
+             data-cid="${cid}" data-param="${paramName}"
+             value="${value}">
+    </label>`;
+}
+
+
+
+
+
+
+
+
+
+
+

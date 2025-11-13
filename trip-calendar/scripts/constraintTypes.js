@@ -1,189 +1,181 @@
+const operatorOptions = {
+  // arrival/departure before/after
+  timeComparison: [
+    { value: "<", label: "Before" },
+    { value: ">", label: "After" }
+  ],
+
+  // duration comparisons
+  durationComparison: [
+    { value: "<", label: "Less than" },
+    { value: ">", label: "Greater than" }
+  ]
+};
+
 const constraintTypes = {
-  "arriveBetween": {
-    "label": "Arrive between",
-    "modes": {
-      "time": {
-        "params": ["startTime", "endTime"]
+  "visit": {
+    label: "Visit",
+    modes: {
+      timeRange: {
+        params: ["startTime", "endTime"]
       },
-      "datetime": {
-        "params": ["startDateTime", "endDateTime"]
-      }
-    }
-  },
-
-  "arriveBeforeAfter": {
-    "label": "Arrive before / after",
-    "modes": {
-      "time": {
-        "params": ["operator", "time"]
+      dateTimeRange: {
+        params: ["startDateTime", "endDateTime"]
       },
-      "datetime": {
-        "params": ["operator", "dateTime"]
+      dateRange: {
+        params: ["ranges"]
       }
     }
   },
 
-  "departBetween": {
-    "label": "Depart between",
-    "modes": {
-      "time": {
-        "params": ["startTime", "endTime"]
+  "duration": {
+    label: "Duration",
+    operatorCategory: "durationComparison",
+    modes: {
+      range: {
+        params: ["minHours", "maxHours"]
       },
-      "datetime": {
-        "params": ["startDateTime", "endDateTime"]
+      compare: {
+        params: ["operator", "hours"]
       }
     }
   },
 
-  "departBeforeAfter": {
-    "label": "Depart before / after",
-    "modes": {
-      "time": {
-        "params": ["operator", "time"]
+  "arrival": {
+    label: "Arrival",
+    operatorCategory: "timeComparison",
+    modes: {
+      timeRange: {
+        params: ["startTime", "endTime"]
       },
-      "datetime": {
-        "params": ["operator", "dateTime"]
-      }
-    }
-  },
-
-  "visitBetween": {
-    "label": "Visit between",
-    "modes": {
-      "time": {
-        "params": ["startTime", "endTime"]
+      dateTimeRange: {
+        params: ["startDateTime", "endDateTime"]
       },
-      "datetime": {
-        "params": ["startDateTime", "endDateTime"]
+      dateRange: {
+        params: ["ranges"]
+      },
+      compareTime: {
+        params: ["operator", "time"]
+      },
+      compareDateTime: {
+        params: ["operator", "dateTime"]
       }
     }
   },
 
-  "durationBetween": {
-    "label": "Duration between",
-    "modes": {
-      "hours": {
-        "params": ["minHours", "maxHours"]
-      }
-    }
-  },
-
-  "durationCompare": {
-    "label": "Duration comparison",
-    "modes": {
-      "hours": {
-        "params": ["operator", "hours"]
-      }
-    }
-  },
-
-  "minAfterOpen": {
-    "label": "Arrive at least X minutes after opening",
-    "modes": {
-      "minutes": {
-        "params": ["minutes"]
-      }
-    }
-  },
-
-  "maxBeforeClose": {
-    "label": "Depart no later than X minutes before closing",
-    "modes": {
-      "minutes": {
-        "params": ["minutes"]
-      }
-    }
-  },
-
-  "businessHours": {
-    "label": "Business hours",
-    "modes": {
-      "default": {
-        "params": ["openTime", "lastEntryTime", "closeTime", "daysOfWeek"]
-      }
-    }
-  },
-
-  "visitInsideBusinessHours": {
-    "label": "Visit must fit inside business hours",
-    "modes": {
-      "default": {
-        "params": []
+  "departure": {
+    label: "Departure",
+    operatorCategory: "timeComparison",
+    modes: {
+      timeRange: {
+        params: ["startTime", "endTime"]
+      },
+      dateTimeRange: {
+        params: ["startDateTime", "endDateTime"]
+      },
+      dateRange: {
+        params: ["ranges"]
+      },
+      compareTime: {
+        params: ["operator", "time"]
+      },
+      compareDateTime: {
+        params: ["operator", "dateTime"]
       }
     }
   },
 
   "daysOfWeek": {
-    "label": "Allowed days of week",
-    "modes": {
+    label: "Allowed days of week",
+    modes: {
       "default": {
-        "params": ["days"]
+        params: ["days"]
       }
     }
   },
 
+  // need selector
   "holidays": {
-    "label": "Holiday rules",
-    "modes": {
+    label: "Holiday rules",
+    modes: {
       "default": {
-        "params": ["include", "exclude"]
+        params: ["include", "exclude"]
       }
     }
   },
 
-  "blackoutDates": {
-    "label": "Blackout dates",
-    "modes": {
-      "list": {
-        "params": ["dates"]
+  // need a way to populate this with WKT
+  "businessHours": {
+    label: "Business hours",
+    modes: {
+      "default": {
+        params: ["openTime", "lastEntryTime", "closeTime", "daysOfWeek"]
       }
     }
   },
 
-  "blackoutDateRanges": {
-    "label": "Blackout date ranges",
-    "modes": {
-      "ranges": {
-        "params": ["ranges"]
+  "visitInsideBusinessHours": {
+    label: "Visit must fit inside business hours",
+    modes: {
+      "default": {
+        params: []
       }
     }
   },
 
-  "dateRange": {
-    "label": "Date or date range",
-    "modes": {
-      "singleDate": {
-        "params": ["date"]
+  "minAfterOpen": {
+    label: "Arrive at least X minutes after opening",
+    modes: {
+      "minutes": {
+        params: ["minutes"]
+      }
+    }
+  },
+
+  "maxBeforeClose": {
+    label: "Depart no later than X minutes before closing",
+    modes: {
+      "minutes": {
+        params: ["minutes"]
+      }
+    }
+  },
+
+  "blackout": {
+    label: "Blackout dates",
+    modes: {
+      dates: {
+        params: ["dates"]
       },
-      "range": {
-        "params": ["startDate", "endDate"]
+      ranges: {
+        params: ["ranges"]
       }
     }
   },
 
   "avoidTimes": {
-    "label": "Avoid these times",
-    "modes": {
+    label: "Avoid these times",
+    modes: {
       "windows": {
-        "params": ["windows"]
+        params: ["windows"]
       }
     }
   },
 
   "mustPrecede": {
-    "label": "Must occur before",
-    "modes": {
+    label: "Must occur before",
+    modes: {
       "default": {
-        "params": ["otherSegmentId"]
+        params: ["otherSegmentId"]
       }
     }
   },
 
   "mustFollow": {
-    "label": "Must occur after",
-    "modes": {
+    label: "Must occur after",
+    modes: {
       "default": {
-        "params": ["otherSegmentId"]
+        params: ["otherSegmentId"]
       }
     }
   }

@@ -607,106 +607,6 @@ async function resolveOverlapAction(seg, opt) {
   renderTimeline(list);
 }
 
-/**
-  function attachConstraintEditor(form, seg) {
-    const listEl = form.querySelector('.constraint-list');
-    const addBtn = form.querySelector('.add-constraint');
-  
-    function renderList() {
-      listEl.innerHTML = '';
-      seg.constraints = seg.constraints || [];
-  
-      seg.constraints.forEach((c, i) => {
-        const def = constraintTypes[c.type];
-        const modeDef = def.modes[c.mode];
-  
-        const li = document.createElement('li');
-        li.className = 'constraint-item';
-        li.innerHTML = `
-          <div class="flex justify-between items-center mb-1">
-            <span class="font-semibold">${def.label}</span>
-            <button type="button" data-remove="${i}" class="text-red-500 small">✕</button>
-          </div>
-          <div class="param-fields space-y-1">
-            ${modeDef.params.map(p => `
-              <label class="block text-xs">
-                ${p}: <input type="text" class="param-input border rounded px-1 w-full" 
-                data-index="${i}" data-param="${p}" value="${c.params[p] || ''}">
-              </label>
-            `).join('')}
-          </div>`;
-  
-        listEl.appendChild(li);
-  
-        // Flatpickr for date/time params
-        li.querySelectorAll('.param-input').forEach(inp => {
-          const pname = inp.dataset.param.toLowerCase();
-          if (pname.includes('time') || pname.includes('date')) {
-            flatpickr(inp, {
-              enableTime: pname.includes('time'),
-              noCalendar: !pname.includes('date'),
-              dateFormat: pname.includes('date') ? 'Y-m-d H:i' : 'H:i',
-              time_24hr: true,
-              defaultDate: inp.value || null
-            });
-          }
-        });
-      });
-  
-      // Wire up removes
-      listEl.querySelectorAll('[data-remove]').forEach(btn => {
-        btn.onclick = () => {
-          seg.constraints.splice(+btn.dataset.remove, 1);
-          renderList();
-        };
-      });
-  
-      // Update param values
-      listEl.querySelectorAll('.param-input').forEach(inp => {
-        inp.onchange = e => {
-          const idx = +e.target.dataset.index;
-          const param = e.target.dataset.param;
-          seg.constraints[idx].params[param] = e.target.value;
-        };
-      });
-  
-      // Re-sortable (optional)
-      new Sortable(listEl, {
-        animation: 150,
-        onEnd: evt => {
-          const moved = seg.constraints.splice(evt.oldIndex, 1)[0];
-          seg.constraints.splice(evt.newIndex, 0, moved);
-          seg.constraints.forEach((c, i) => c.priority = i);
-        }
-      });
-    }
-  
-    addBtn.onclick = () => {
-      // Simple picker via prompt (replace with dropdown UI later)
-      const typeKeys = Object.keys(constraintTypes);
-      const chosen = prompt('Constraint type:\n' + typeKeys.join(', '));
-      if (!constraintTypes[chosen]) return alert('Invalid type');
-  
-      const def = constraintTypes[chosen];
-      const firstMode = Object.keys(def.modes)[0];
-      const params = Object.fromEntries(def.modes[firstMode].params.map(p => [p, '']));
-  
-      seg.constraints.push({
-        cid: crypto.randomUUID(),
-        type: chosen,
-        mode: firstMode,
-        enabled: true,
-        priority: seg.constraints.length,
-        params
-      });
-      renderList();
-    };
-  
-    renderList();
-  }
-*/
-
-
 function attachConstraintEditor(form, seg) {
   seg.constraints = seg.constraints || [];
 
@@ -772,12 +672,8 @@ function attachConstraintEditor(form, seg) {
         </div>
 
         <div class="constraint-params">
-          ${modeDef.params.map(p => `
-            <label class="param-row">
-              ${p}: <input class="param-input"
-                data-cid="${c.cid}" data-param="${p}" value="${c.params[p] || ''}">
-            </label>
-          `).join("")}
+          ${modeDef.params.map(p => renderParamField(seg, c, p)).join("")}
+
         </div>
       `;
 
@@ -820,6 +716,15 @@ function attachConstraintEditor(form, seg) {
       };
     });
 
+    // operator selects
+    listEl.querySelectorAll('.param-operator').forEach(sel => {
+      sel.onchange = e => {
+        const cid = sel.dataset.cid;
+        const c = seg.constraints.find(x => x.cid === cid);
+        c.params.operator = sel.value;
+      };
+    });
+
     // Update param values
     listEl.querySelectorAll('.param-input').forEach(inp => {
       inp.onchange = e => {
@@ -839,6 +744,115 @@ function attachConstraintEditor(form, seg) {
         renderConstraintList();
       };
     });
+
+    // Add/remove multi-date editors
+    listEl.querySelectorAll('.multi-btn').forEach(btn => {
+      btn.onclick = () => openMultiEditor(seg, btn.dataset.cid, btn.dataset.param);
+    });
+
+    // Days-of-week checkboxes
+    listEl.querySelectorAll('.dow-checkboxes').forEach(box => {
+      box.onchange = () => {
+        const cid = box.dataset.cid;
+        const param = box.dataset.param;
+        const c = seg.constraints.find(x => x.cid === cid);
+        c.params[param] = [...box.querySelectorAll("input:checked")].map(i=>i.value);
+      };
+    });
+
+    // operator <select> handled separately
+    listEl.querySelectorAll('.param-operator').forEach(sel => {
+      sel.onchange = e => {
+        const cid = sel.dataset.cid;
+        const c = seg.constraints.find(x => x.cid === cid);
+        c.params.operator = sel.value;
+      };
+    });
+
+    // Other segment dropdown
+    listEl.querySelectorAll('.param-other-seg').forEach(sel => {
+      sel.onchange = e => {
+        const cid = sel.dataset.cid;
+        const param = sel.dataset.param;
+        const c = seg.constraints.find(x => x.cid === cid);
+        c.params[param] = sel.value;
+      };
+    });
+
+
+    // MULTIPLE DATES
+    listEl.querySelectorAll('.multi-date').forEach(inp => {
+      flatpickr(inp, {
+        mode: "multiple",
+        dateFormat: "Y-m-d",
+        defaultDate: (inp.value || "").split(",").map(s => s.trim()).filter(Boolean),
+        onChange: (dates, str) => {
+          const cid = inp.dataset.cid;
+          const param = inp.dataset.param;
+          const c = seg.constraints.find(x => x.cid === cid);
+          c.params[param] = dates.map(d => d.toISOString().slice(0,10));
+        }
+      });
+    });
+
+    // SINGLE RANGE
+    listEl.querySelectorAll('.date-range').forEach(inp => {
+      flatpickr(inp, {
+        mode: "range",
+        dateFormat: "Y-m-d",
+        onChange: (dates, str) => {
+          const cid = inp.dataset.cid;
+          const param = inp.dataset.param;
+          const c = seg.constraints.find(x => x.cid === cid);
+          if (dates.length === 2) {
+            c.params[param] = {
+              startDate: dates[0].toISOString().slice(0,10),
+              endDate:   dates[1].toISOString().slice(0,10)
+            };
+          }
+        }
+      });
+    });
+
+    // DATETIME
+    listEl.querySelectorAll('.datetime-input').forEach(inp => {
+      flatpickr(inp, {
+        enableTime: true,
+        dateFormat: "Y-m-d H:i",
+        onChange: (dates, str) => {
+          const cid = inp.dataset.cid;
+          const param = inp.dataset.param;
+          const c = seg.constraints.find(x => x.cid === cid);
+          c.params[param] = str;
+        }
+      });
+    });
+
+    // DATE ONLY
+    listEl.querySelectorAll('.date-input').forEach(inp => {
+      flatpickr(inp, {
+        dateFormat: "Y-m-d",
+        onChange: (dates, str) => {
+          const c = seg.constraints.find(x => x.cid === inp.dataset.cid);
+          c.params[inp.dataset.param] = str;
+        }
+      });
+    });
+
+    // TIME ONLY
+    listEl.querySelectorAll('.time-input').forEach(inp => {
+      flatpickr(inp, {
+        enableTime: true,
+        noCalendar: true,
+        dateFormat: "H:i",
+        onChange: (dates, str) => {
+          const c = seg.constraints.find(x => x.cid === inp.dataset.cid);
+          c.params[inp.dataset.param] = str;
+        }
+      });
+    });
+
+
   }
 
   // --- Sorting ---
@@ -855,4 +869,54 @@ function attachConstraintEditor(form, seg) {
   }
 
   renderConstraintList();
+}
+
+function openMultiEditor(seg, cid, paramName) {
+  alert(`TODO: open multi-editor for ${paramName}`);
+}
+
+
+/* =====================================
+   Param Type Detection Helpers
+   ===================================== */
+
+function detectParamType(paramName, constraintType) {
+  const name = paramName.toLowerCase();
+
+  // Operators
+  if (paramName === "operator") return "operator";
+
+  // Days / DOW
+  if (paramName === "days" || paramName === "daysofweek") return "daysOfWeek";
+
+  // Multiple dates
+  if (paramName === "dates" || paramName === "include" || paramName === "exclude")
+    return "multiDate";
+
+  // Ranges (single range)
+  if (paramName === "ranges")
+    return "dateRangeSingle";
+
+  // Time windows
+  if (paramName === "windows")
+    return "windowsList";
+
+  // Single datetime
+  if (name.endsWith("datetime"))
+    return "datetime";
+
+  // Single date
+  if (name.endsWith("date"))
+    return "date";
+
+  // Single time
+  if (name.endsWith("time"))
+    return "time";
+
+  // Segment selector
+  if (paramName === "otherSegmentId")
+    return "segmentSelector";
+
+  // fallback
+  return "text";
 }
