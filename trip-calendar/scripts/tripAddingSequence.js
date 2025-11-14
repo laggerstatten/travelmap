@@ -177,7 +177,7 @@ function getSegmentsInTimeWindow(stop, segments) {
 }
 
 function removeSlackAndOverlap(list) {
-  console.log('removeSlackAndOverlap');
+  //console.log('removeSlackAndOverlap');
   let segments = [...list];
 
   // Build a working copy excluding derived types
@@ -185,12 +185,12 @@ function removeSlackAndOverlap(list) {
     (s) => s.type !== 'slack' && s.type !== 'overlap'
   );
 
-  console.log('Segments after recompute:', baseSegments);
+  //console.log('Segments after recompute:', baseSegments);
   return baseSegments;
 }
 
 function clearTimesAndDurations(list, opts = {}) {
-  console.log('clearTimesAndDurations');
+  //console.log('clearTimesAndDurations');
   let segments = [...list];
   const { onlyUnlocked = true } = opts;
 

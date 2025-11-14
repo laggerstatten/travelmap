@@ -47,6 +47,9 @@
     <script src="scripts/segmentEditor.js" defer></script>
     <script src="scripts/timingPropagation.js" defer></script>
     <script src="scripts/tripAddingSequence.js" defer></script>
+    <script src="scripts/constraintValidation.js" defer></script>
+    <script src="scripts/constraintFunctions.js" defer></script>
+
 
     <script>
       //let segments = JSON.parse(localStorage.getItem('tripSegments')) || [];
@@ -158,7 +161,16 @@
           }
         */
 
-              // === Export ===
+          document.getElementById('validate-constraints').onclick = () => {
+            let segs = loadSegments();
+            validateTrip(segs);
+            console.log("VALIDATION RESULTS:", validateTrip(segs));
+          }
+
+
+
+
+        // === Export ===
         document.getElementById('export-data').onclick = () => {
           const data = loadSegments();
           const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -233,6 +245,10 @@
         <button id="export-data">Export Data</button>
         <input type="file" id="import-file" accept="application/json" style="display:none;">
         <button id="import-data">Import Data</button>
+      </div>
+
+      <div class="toolbar-group">
+        <button id="validate-constraints">Validate</button>
       </div>
 
     </div>

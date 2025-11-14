@@ -339,7 +339,6 @@ function computeSlackAndOverlap(list) {
     return segments;
 }
 
-
 function findNearestEmitterLeft(idx, segments) {
   for (let i = idx - 1; i >= 0; i--) {
     const s = segments[i];
@@ -420,7 +419,6 @@ function getOverlapResolutionOptions(seg, role) {
 
   return options;
 }
-
 
 function getUnlockAndQueueOptions(seg) {
   const opts = [];
