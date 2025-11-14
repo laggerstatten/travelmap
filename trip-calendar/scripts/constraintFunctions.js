@@ -14,7 +14,6 @@ function detectParamType(paramName) {
   )
     return 'multiDate';
   if (paramName === 'ranges') return 'dateRange';
-  if (paramName === 'windows') return 'windowsList';
   if (n.endsWith('datetime')) return 'datetime';
   if (n.endsWith('date')) return 'date';
   if (n.endsWith('time')) return 'time';
@@ -80,61 +79,25 @@ function renderParamField(seg, constraint, paramName) {
 
   // --- 3. MULTIPLE DATES ---
   if (ptype === 'multiDate') {
-    const valStr = Array.isArray(value) ? value.join(', ') : '';
-    /**
-        return `
-          <label class="param-row">
-            ${paramName}:
-            <input class="param-input multi-date"
-              data-cid="${cid}" data-param="${paramName}"
-              value="${valStr}">
-          </label>`;
-    */
-
+    //const valStr = Array.isArray(value) ? value.join(', ') : '';
     return `
       <label class="param-row">
         ${paramName}:
         <input class="param-input multi-date"
           data-cid="${cid}" data-param="${paramName}">
       </label>`;
-
   }
-
-
-
-
-
 
   // --- 4. DATE RANGE ---
   if (ptype === 'dateRange') {
-    /**
-        const display =
-          Array.isArray(value) && value.length === 2
-            ? `${value[0]} to ${value[1]}`
-            : '';
-    
-        return `
-          <label class="param-row">
+    return `
+        <label class="param-row">
             ${paramName}:
             <input class="param-input date-range"
-              data-cid="${cid}" data-param="${paramName}"
-              value="${display}">
-          </label>`;
-      }
-    */
-
-        return `
-            <label class="param-row">
-                ${paramName}:
-                <input class="param-input date-range"
-                data-cid="${cid}" data-param="${paramName}">
-            </label>
-            `;
-
-      }
-
-
-
+            data-cid="${cid}" data-param="${paramName}">
+        </label>
+        `;
+  }
 
   // --- 5. OTHER TYPES ---
   if (ptype === 'datetime') {
@@ -229,7 +192,7 @@ function attachConstraintEditor(form, seg) {
     });
 
     seg.constraints.push({
-      cid: crypto.randomUUID(),
+      cid: newID(),
       type,
       mode,
       priority: seg.constraints.length,
@@ -370,87 +333,103 @@ function attachConstraintEditor(form, seg) {
       const cid = inp.dataset.cid;
       const param = inp.dataset.param;
       const c = seg.constraints.find((x) => x.cid === cid);
+      const value = c.params[param];
 
-      flatpickr(inp, {
+      const fp = flatpickr(inp, {
         mode: 'multiple',
         dateFormat: 'Y-m-d',
-        defaultDate: Array.isArray(c.params[param]) ? c.params[param] : [],
-        onChange: (dates) => {
-          c.params[param] = dates.map((d) => d.toISOString().slice(0, 10));
+        onChange(dates, str) {
+          c.params[param] = str; // store exactly the flatpickr string
         }
       });
+
+      if (typeof value === 'string' && value.trim() !== '') {
+        // Split by comma and let flatpickr parse the actual strings
+        const dates = value.split(',').map((s) => s.trim());
+        fp.setDate(dates, true);
+      }
     });
 
-    // DATE RANGE
+    // DATE-RANGE (two dates)
     listEl.querySelectorAll('.date-range').forEach((inp) => {
       const cid = inp.dataset.cid;
       const param = inp.dataset.param;
       const c = seg.constraints.find((x) => x.cid === cid);
+      const value = c.params[param];
 
-      flatpickr(inp, {
+      const fp = flatpickr(inp, {
         mode: 'range',
         dateFormat: 'Y-m-d',
-        defaultDate: Array.isArray(c.params[param]) ? c.params[param] : [],
-        onChange: (dates) => {
-          if (dates.length === 2) {
-            c.params[param] = [
-              dates[0].toISOString().slice(0, 10),
-              dates[1].toISOString().slice(0, 10)
-            ];
-          } else {
-            c.params[param] = [];
-          }
+        onChange(dates, str) {
+          c.params[param] = str; // store exactly the flatpickr string
         }
       });
+
+      let defaultDates = [];
+      if (typeof value === 'string' && value.includes(' to ')) {
+        const parts = value.split(' to ').map((s) => s.trim());
+        if (parts.length === 2) defaultDates = parts; // let flatpickr parse them
+      }
+
+      if (defaultDates.length > 0) {
+        fp.setDate(defaultDates, true);
+      }
     });
 
-    // DATE-TIME
+    // DATETIME (single)
     listEl.querySelectorAll('.datetime-input').forEach((inp) => {
       const cid = inp.dataset.cid;
       const param = inp.dataset.param;
       const c = seg.constraints.find((x) => x.cid === cid);
+      const value = c.params[param];
 
-      flatpickr(inp, {
+      const fp = flatpickr(inp, {
         enableTime: true,
         dateFormat: 'Y-m-d H:i',
-        defaultDate: c.params[param] || null,
-        onChange: (_, str) => {
+        onChange(dates, str) {
           c.params[param] = str;
         }
       });
+
+      if (value) fp.setDate(value, true);
     });
 
-    // DATE ONLY
+    // DATE-ONLY
     listEl.querySelectorAll('.date-input').forEach((inp) => {
       const cid = inp.dataset.cid;
       const param = inp.dataset.param;
       const c = seg.constraints.find((x) => x.cid === cid);
+      const value = c.params[param];
 
-      flatpickr(inp, {
+      const fp = flatpickr(inp, {
         dateFormat: 'Y-m-d',
-        defaultDate: c.params[param] || null,
-        onChange: (_, str) => {
+        onChange(dates, str) {
           c.params[param] = str;
         }
       });
+
+      if (value) fp.setDate(value, true);
     });
 
-    // TIME ONLY
+    // TIME-ONLY
     listEl.querySelectorAll('.time-input').forEach((inp) => {
       const cid = inp.dataset.cid;
       const param = inp.dataset.param;
       const c = seg.constraints.find((x) => x.cid === cid);
+      const value = c.params[param];
 
-      flatpickr(inp, {
+      const fp = flatpickr(inp, {
         enableTime: true,
         noCalendar: true,
         dateFormat: 'H:i',
-        defaultDate: c.params[param] || null,
-        onChange: (_, str) => {
+        onChange(dates, str) {
           c.params[param] = str;
         }
       });
+
+      if (value) fp.setDate(value, true);
     });
+
   }
 
   ///////////////////////////////////////////////////////////////

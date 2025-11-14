@@ -1,3 +1,23 @@
+// Parse "YYYY-MM-DD to YYYY-MM-DD"
+function parseFlatpickrRange(str) {
+  if (!str || typeof str !== 'string') return null;
+  if (!str.includes('to')) return null;
+
+  const [start, end] = str.split('to').map((s) => s.trim());
+  if (!start || !end) return null;
+
+  return { startDate: start, endDate: end };
+}
+
+// Parse "YYYY-MM-DD, YYYY-MM-DD, ... "
+function parseFlatpickrMulti(str) {
+  if (!str || typeof str !== 'string') return [];
+  return str
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
 function validateTrip(segments) {
   const results = [];
 
@@ -79,21 +99,45 @@ function validate_visit(seg, segments, c) {
   if (!seg.start?.utc) return vwarn(seg, c, 'Segment missing start time');
 
   const start = new Date(seg.start.utc);
+  const dateOnly = seg.start.utc.slice(0, 10);
+
+  // DATE RANGE (YYYY-MM-DD to YYYY-MM-DD)
+  if (mode === 'dateRange') {
+    const r = parseFlatpickrRange(params.ranges);
+    if (!r) return vwarn(seg, c, 'Date range not fully specified');
+
+    const { startDate, endDate } = r;
+
+    if (dateOnly < startDate || dateOnly > endDate)
+      return verror(seg, c, `Visit must be between ${startDate}–${endDate}`);
+
+    return vok(seg, c, 'Visit date is within allowed range');
+  }
+
+  // MULTIPLE DATES
+  if (mode === 'dates') {
+    const arr = parseFlatpickrMulti(params.dates);
+
+    if (arr.length === 0) return vwarn(seg, c, 'No dates provided');
+
+    if (!arr.includes(dateOnly))
+      return verror(seg, c, `Visit date ${dateOnly} is not in allowed dates`);
+
+    return vok(seg, c, 'Visit date is in allowed date list');
+  }
 
   // TIME RANGE
   if (mode === 'timeRange') {
-    const { startTime: tl, endTime: tr } = params;
-    if (!tl || !tr) return vwarn(seg, c, 'Time range not fully specified');
+    const { startTime, endTime } = params;
+    if (!startTime || !endTime)
+      return vwarn(seg, c, 'Time range not fully specified');
 
-    const segTimeNum = start.getHours() * 60 + start.getMinutes();
-    const minNum = Number(tl.slice(0, 2)) * 60 + Number(tl.slice(3, 5));
-    const maxNum = Number(tr.slice(0, 2)) * 60 + Number(tr.slice(3, 5));
+    const localTime = fmtLocalTime(seg.start.utc, seg.timeZone);
 
-    if (segTimeNum < minNum || segTimeNum > maxNum) {
-      return verror(seg, c, `Visit must be between ${tl}–${tr}`);
-    }
+    if (localTime < startTime || localTime > endTime)
+      return verror(seg, c, `Visit must be between ${startTime}–${endTime}`);
 
-    return vok(seg, c, `Visit time is within ${tl}–${tr}`);
+    return vok(seg, c, 'Visit satisfies timeRange');
   }
 
   // DATETIME RANGE
@@ -108,20 +152,7 @@ function validate_visit(seg, segments, c) {
         `Visit must be between ${params.startDateTime}–${params.endDateTime}`
       );
 
-    return vok(seg, c, 'Visit is within allowed datetime range');
-  }
-
-  // DATE RANGE
-  if (mode === 'dateRange') {
-    const { startDate, endDate } = params.ranges || {};
-    if (!startDate || !endDate)
-      return vwarn(seg, c, 'Date range not fully specified');
-
-    const segDate = seg.start.utc.slice(0, 10);
-    if (segDate < startDate || segDate > endDate)
-      return verror(seg, c, `Visit must be between ${startDate}–${endDate}`);
-
-    return vok(seg, c, 'Visit date is within allowed range');
+    return vok(seg, c, 'Visit satisfies datetime range');
   }
 
   return vwarn(seg, c, 'Unknown visit mode');
@@ -204,9 +235,10 @@ function validate_arrival(seg, segments, c) {
 
   // DATE ONLY RANGE
   if (mode === 'dateRange') {
-    const r = params.ranges;
-    if (!r?.startDate || !r?.endDate)
-      return vwarn(seg, c, 'Date range missing');
+    const r = parseFlatpickrRange(params.ranges);
+    if (!r) return vwarn(seg, c, 'Date range missing');
+
+    const { startDate, endDate } = r;
 
     if (dateOnly < r.startDate || dateOnly > r.endDate)
       return verror(
@@ -263,7 +295,11 @@ function validate_departure(seg, segments, c) {
     if (!startTime || !endTime) return vwarn(seg, c, 'Time range missing');
 
     if (localTime < startTime || localTime > endTime)
-      return verror(seg, c, `Departure must be between ${startTime}–${endTime}`);
+      return verror(
+        seg,
+        c,
+        `Departure must be between ${startTime}–${endTime}`
+      );
 
     return vok(seg, c, 'Departure time satisfies timeRange');
   }
@@ -285,9 +321,10 @@ function validate_departure(seg, segments, c) {
 
   // DATE ONLY RANGE
   if (mode === 'dateRange') {
-    const r = params.ranges;
-    if (!r?.startDate || !r?.endDate)
-      return vwarn(seg, c, 'Date range missing');
+    const r = parseFlatpickrRange(params.ranges);
+    if (!r) return vwarn(seg, c, 'Date range missing');
+
+    const { startDate, endDate } = r;
 
     if (dateOnly < r.startDate || dateOnly > r.endDate)
       return verror(
@@ -354,19 +391,28 @@ function validate_blackout(seg, segments, c) {
   if (!startDate && !endDate)
     return vwarn(seg, c, 'Segment has no dates to compare');
 
-  const check = (date) => {
+  // Checker for a single date
+  const checkDate = (date) => {
     if (!date) return false;
-    if (mode === 'dates') return (params.dates || []).includes(date);
-    if (mode === 'ranges') {
-      const { startDate: s, endDate: e } = params;
-      if (!s || !e) return false;
-      return date >= s && date <= e;
+
+    // MULTIPLE DATES
+    if (mode === 'dates') {
+      const arr = parseFlatpickrMulti(params.dates);
+      return arr.includes(date);
     }
+
+    // DATE RANGE
+    if (mode === 'dateRange') {
+      const r = parseFlatpickrRange(params.ranges);
+      if (!r) return false;
+      return date >= r.startDate && date <= r.endDate;
+    }
+
     return false;
   };
 
-  const startHit = check(startDate);
-  const endHit = check(endDate);
+  const startHit = checkDate(startDate);
+  const endHit = checkDate(endDate);
 
   if (startHit && endHit)
     return verror(

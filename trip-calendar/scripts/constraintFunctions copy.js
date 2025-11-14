@@ -1,11 +1,38 @@
+///////////////////////////////////////////////////////////////
+// PARAM TYPE DETECTOR
+///////////////////////////////////////////////////////////////
+
+function detectParamType(paramName) {
+  const n = paramName.toLowerCase();
+
+  if (paramName === 'operator') return 'operator';
+  if (paramName === 'days' || paramName === 'daysofweek') return 'daysOfWeek';
+  if (
+    paramName === 'dates' ||
+    paramName === 'include' ||
+    paramName === 'exclude'
+  )
+    return 'multiDate';
+  if (paramName === 'ranges') return 'dateRange';
+  if (paramName === 'windows') return 'windowsList';
+  if (n.endsWith('datetime')) return 'datetime';
+  if (n.endsWith('date')) return 'date';
+  if (n.endsWith('time')) return 'time';
+  if (paramName === 'otherSegmentId') return 'segmentSelector';
+
+  return 'text';
+}
+
+///////////////////////////////////////////////////////////////
+// RENDER PARAM FIELDS
+///////////////////////////////////////////////////////////////
+
 function renderParamField(seg, constraint, paramName) {
   const cid = constraint.cid;
-  const ptype = detectParamType(paramName, constraint.type);
-  const value = constraint.params[paramName] || '';
+  const ptype = detectParamType(paramName);
+  const value = constraint.params[paramName];
 
-  /* ============================
-     1. OPERATOR SELECT
-     ============================ */
+  // --- 1. OPERATOR ---
   if (ptype === 'operator') {
     const cat = constraintTypes[constraint.type].operatorCategory;
     const opts = operatorOptions[cat] || [];
@@ -18,19 +45,16 @@ function renderParamField(seg, constraint, paramName) {
             .map(
               (o) =>
                 `<option value="${o.value}" ${
-                  value === o.value ? 'selected' : ''
-                }>
-              ${o.label}
-            </option>`
+                  o.value === value ? 'selected' : ''
+                }>${o.label}</option>`
             )
             .join('')}
         </select>
-      </label>`;
+      </label>
+    `;
   }
 
-  /* ============================
-     2. DAYS OF WEEK CHECKBOXES
-     ============================ */
+  // --- 2. DAYS OF WEEK ---
   if (ptype === 'daysOfWeek') {
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     const selected = Array.isArray(value) ? value : [];
@@ -45,8 +69,7 @@ function renderParamField(seg, constraint, paramName) {
             <label class="dow">
               <input type="checkbox" value="${d}" ${
                 selected.includes(d) ? 'checked' : ''
-              }>
-              ${d}
+              }> ${d}
             </label>
           `
             )
@@ -55,132 +78,127 @@ function renderParamField(seg, constraint, paramName) {
       </label>`;
   }
 
-  /* ============================
-     3. MULTIPLE DATES
-     ============================ */
+  // --- 3. MULTIPLE DATES ---
   if (ptype === 'multiDate') {
+    const valStr = Array.isArray(value) ? value.join(', ') : '';
+    /**
+        return `
+          <label class="param-row">
+            ${paramName}:
+            <input class="param-input multi-date"
+              data-cid="${cid}" data-param="${paramName}"
+              value="${valStr}">
+          </label>`;
+    */
+
     return `
       <label class="param-row">
         ${paramName}:
         <input class="param-input multi-date"
-               data-cid="${cid}" data-param="${paramName}"
-               value="${Array.isArray(value) ? value.join(', ') : value}">
+          data-cid="${cid}" data-param="${paramName}">
       </label>`;
+
   }
 
-  /* ============================
-     4. DATE RANGE
-     ============================ */
-  if (ptype === 'dateRangeSingle') {
-    return `
-      <label class="param-row">
-        ${paramName}:
-        <input class="param-input date-range"
-               data-cid="${cid}" data-param="${paramName}"
-               value="${
-                 value && value.startDate
-                   ? `${value.startDate} to ${value.endDate}`
-                   : ''
-               }">
-      </label>`;
-  }
 
-  /* ============================
-     5. WINDOWS LIST (time windows)
-     ============================ */
-  if (ptype === 'windowsList') {
-    const windows = Array.isArray(value) ? value : [];
-    return `
-      <div class="param-row windows-editor" data-cid="${cid}" data-param="${paramName}">
-        <div class="windows-list">
-          ${windows
-            .map(
-              (w, i) => `
-            <div class="window-item" data-index="${i}">
-              <input class="window-start" value="${w.startTime || ''}" />
-              <span>→</span>
-              <input class="window-end" value="${w.endTime || ''}" />
-              <button type="button" class="remove-window" data-index="${i}">✕</button>
-            </div>
-          `
-            )
-            .join('')}
-        </div>
-        <button type="button" class="add-window">+ Add Window</button>
-      </div>`;
-  }
 
-  /* ============================
-     6. DATETIME
-     ============================ */
+
+
+
+  // --- 4. DATE RANGE ---
+  if (ptype === 'dateRange') {
+    /**
+        const display =
+          Array.isArray(value) && value.length === 2
+            ? `${value[0]} to ${value[1]}`
+            : '';
+    
+        return `
+          <label class="param-row">
+            ${paramName}:
+            <input class="param-input date-range"
+              data-cid="${cid}" data-param="${paramName}"
+              value="${display}">
+          </label>`;
+      }
+    */
+
+        return `
+            <label class="param-row">
+                ${paramName}:
+                <input class="param-input date-range"
+                data-cid="${cid}" data-param="${paramName}">
+            </label>
+            `;
+
+      }
+
+
+
+
+  // --- 5. OTHER TYPES ---
   if (ptype === 'datetime') {
     return `
       <label class="param-row">
         ${paramName}:
         <input class="param-input datetime-input"
-               data-cid="${cid}" data-param="${paramName}"
-               value="${value}">
+          data-cid="${cid}" data-param="${paramName}"
+          value="${value || ''}">
       </label>`;
   }
 
-  /* ============================
-     7. DATE
-     ============================ */
   if (ptype === 'date') {
     return `
       <label class="param-row">
         ${paramName}:
         <input class="param-input date-input"
-               data-cid="${cid}" data-param="${paramName}"
-               value="${value}">
+          data-cid="${cid}" data-param="${paramName}"
+          value="${value || ''}">
       </label>`;
   }
 
-  /* ============================
-     8. TIME
-     ============================ */
   if (ptype === 'time') {
     return `
       <label class="param-row">
         ${paramName}:
         <input class="param-input time-input"
-               data-cid="${cid}" data-param="${paramName}"
-               value="${value}">
+          data-cid="${cid}" data-param="${paramName}"
+          value="${value || ''}">
       </label>`;
   }
 
-  /* ============================
-     9. SEGMENT SELECTOR
-     ============================ */
   if (ptype === 'segmentSelector') {
     return `
       <label class="param-row">
         ${paramName}:
         <select class="param-other-seg"
-                data-cid="${cid}" data-param="${paramName}">
+          data-cid="${cid}" data-param="${paramName}">
           ${window.globalSegments
             .map(
               (s) =>
-                `<option value="${s.id}" ${s.id === value ? 'selected' : ''}>
-              ${s.name || s.id}
-            </option>`
+                `<option value="${s.id}" ${value === s.id ? 'selected' : ''}>${
+                  s.name || s.id
+                }</option>`
             )
             .join('')}
         </select>
-      </label>`;
+      </label>
+    `;
   }
 
-  /* ============================
-     10. DEFAULT TEXT FIELD
-     ============================ */
+  // --- FALLBACK ---
   return `
     <label class="param-row">
       ${paramName}:
       <input class="param-input"
-             data-cid="${cid}" data-param="${paramName}"
-             value="${value}">
+        data-cid="${cid}" data-param="${paramName}"
+        value="${value || ''}">
     </label>`;
 }
+
+///////////////////////////////////////////////////////////////
+// MAIN EDITOR
+///////////////////////////////////////////////////////////////
 
 function attachConstraintEditor(form, seg) {
   seg.constraints = seg.constraints || [];
@@ -189,9 +207,7 @@ function attachConstraintEditor(form, seg) {
   const addBtn = form.querySelector('.add-constraint');
   const listEl = form.querySelector('.constraint-list');
 
-  if (!typeSelect || !addBtn || !listEl) return; // safety
-
-  // Populate type dropdown
+  // populate dropdown
   Object.entries(constraintTypes).forEach(([key, def]) => {
     const opt = document.createElement('option');
     opt.value = key;
@@ -199,20 +215,23 @@ function attachConstraintEditor(form, seg) {
     typeSelect.appendChild(opt);
   });
 
-  // Add constraint instance
   addBtn.onclick = () => {
     const type = typeSelect.value;
     const def = constraintTypes[type];
-    const firstMode = Object.keys(def.modes)[0];
+    const mode = Object.keys(def.modes)[0];
 
-    const params = Object.fromEntries(
-      def.modes[firstMode].params.map((p) => [p, ''])
-    );
+    const params = {};
+    def.modes[mode].params.forEach((p) => {
+      const ptype = detectParamType(p);
+      if (ptype === 'dateRange') params[p] = [];
+      else if (ptype === 'multiDate') params[p] = [];
+      else params[p] = '';
+    });
 
     seg.constraints.push({
       cid: crypto.randomUUID(),
       type,
-      mode: firstMode,
+      mode,
       priority: seg.constraints.length,
       params
     });
@@ -220,13 +239,12 @@ function attachConstraintEditor(form, seg) {
     renderConstraintList();
   };
 
-  // --- Rendering the actual list ---
   function renderConstraintList() {
     listEl.innerHTML = '';
 
     seg.constraints.sort((a, b) => a.priority - b.priority);
 
-    seg.constraints.forEach((c, index) => {
+    seg.constraints.forEach((c) => {
       const def = constraintTypes[c.type];
       const modeDef = def.modes[c.mode];
 
@@ -248,7 +266,7 @@ function attachConstraintEditor(form, seg) {
               .join('')}
           </select>
 
-          <button class="remove-constraint small" data-cid="${c.cid}">✕</button>
+          <button class="remove-constraint" data-cid="${c.cid}">✕</button>
         </div>
 
         <div class="constraint-params">
@@ -258,63 +276,39 @@ function attachConstraintEditor(form, seg) {
       `;
 
       listEl.appendChild(li);
-
-      // Flatpickr for time/date params
-      li.querySelectorAll('.param-input').forEach((inp) => {
-        const pname = inp.dataset.param.toLowerCase();
-        if (pname.includes('time') || pname.includes('date')) {
-          flatpickr(inp, {
-            enableTime: pname.includes('time'),
-            noCalendar: !pname.includes('date'),
-            dateFormat: pname.includes('date') ? 'Y-m-d H:i' : 'H:i',
-            time_24hr: true
-          });
-        }
-      });
     });
 
     wireEvents();
     enableSorting();
+    initFlatpickr();
   }
 
-  // --- Events for mode changes, param edits, removal ---
+  ///////////////////////////////////////////////////////////////
+  // EVENTS
+  ///////////////////////////////////////////////////////////////
+
   function wireEvents() {
-    // Change mode
+    // MODE CHANGES
     listEl.querySelectorAll('.mode-select').forEach((sel) => {
-      sel.onchange = (e) => {
-        const cid = e.target.dataset.cid;
+      sel.onchange = () => {
+        const cid = sel.dataset.cid;
         const c = seg.constraints.find((x) => x.cid === cid);
         c.mode = sel.value;
 
-        const def = constraintTypes[c.type];
-        const modeDef = def.modes[c.mode];
+        const modeDef = constraintTypes[c.type].modes[c.mode];
 
-        // reset params to match new mode
-        c.params = Object.fromEntries(modeDef.params.map((p) => [p, '']));
+        c.params = {};
+        modeDef.params.forEach((p) => {
+          const t = detectParamType(p);
+          if (t === 'dateRange' || t === 'multiDate') c.params[p] = [];
+          else c.params[p] = '';
+        });
+
         renderConstraintList();
       };
     });
 
-    // operator selects
-    listEl.querySelectorAll('.param-operator').forEach((sel) => {
-      sel.onchange = (e) => {
-        const cid = sel.dataset.cid;
-        const c = seg.constraints.find((x) => x.cid === cid);
-        c.params.operator = sel.value;
-      };
-    });
-
-    // Update param values
-    listEl.querySelectorAll('.param-input').forEach((inp) => {
-      inp.onchange = (e) => {
-        const cid = inp.dataset.cid;
-        const param = inp.dataset.param;
-        const c = seg.constraints.find((x) => x.cid === cid);
-        c.params[param] = inp.value;
-      };
-    });
-
-    // Remove constraint
+    // REMOVE
     listEl.querySelectorAll('.remove-constraint').forEach((btn) => {
       btn.onclick = () => {
         seg.constraints = seg.constraints.filter(
@@ -324,13 +318,26 @@ function attachConstraintEditor(form, seg) {
       };
     });
 
-    // Add/remove multi-date editors
-    listEl.querySelectorAll('.multi-btn').forEach((btn) => {
-      btn.onclick = () =>
-        openMultiEditor(seg, btn.dataset.cid, btn.dataset.param);
+    // TEXT INPUTS
+    listEl.querySelectorAll('.param-input').forEach((inp) => {
+      inp.onchange = () => {
+        const cid = inp.dataset.cid;
+        const param = inp.dataset.param;
+        const c = seg.constraints.find((x) => x.cid === cid);
+        c.params[param] = inp.value;
+      };
     });
 
-    // Days-of-week checkboxes
+    // OPERATOR
+    listEl.querySelectorAll('.param-operator').forEach((sel) => {
+      sel.onchange = () => {
+        const cid = sel.dataset.cid;
+        const c = seg.constraints.find((x) => x.cid === cid);
+        c.params.operator = sel.value;
+      };
+    });
+
+    // DAYS
     listEl.querySelectorAll('.dow-checkboxes').forEach((box) => {
       box.onchange = () => {
         const cid = box.dataset.cid;
@@ -342,71 +349,72 @@ function attachConstraintEditor(form, seg) {
       };
     });
 
-    // operator <select> handled separately
-    listEl.querySelectorAll('.param-operator').forEach((sel) => {
-      sel.onchange = (e) => {
-        const cid = sel.dataset.cid;
-        const c = seg.constraints.find((x) => x.cid === cid);
-        c.params.operator = sel.value;
-      };
-    });
-
-    // Other segment dropdown
+    // SEGMENT SELECT
     listEl.querySelectorAll('.param-other-seg').forEach((sel) => {
-      sel.onchange = (e) => {
+      sel.onchange = () => {
         const cid = sel.dataset.cid;
         const param = sel.dataset.param;
         const c = seg.constraints.find((x) => x.cid === cid);
         c.params[param] = sel.value;
       };
     });
+  }
 
-    // MULTIPLE DATES
+  ///////////////////////////////////////////////////////////////
+  // FLATPICKR INITIALIZATION
+  ///////////////////////////////////////////////////////////////
+
+  function initFlatpickr() {
+    // MULTI-DATE
     listEl.querySelectorAll('.multi-date').forEach((inp) => {
+      const cid = inp.dataset.cid;
+      const param = inp.dataset.param;
+      const c = seg.constraints.find((x) => x.cid === cid);
+
       flatpickr(inp, {
         mode: 'multiple',
         dateFormat: 'Y-m-d',
-        defaultDate: (inp.value || '')
-          .split(',')
-          .map((s) => s.trim())
-          .filter(Boolean),
-        onChange: (dates, str) => {
-          const cid = inp.dataset.cid;
-          const param = inp.dataset.param;
-          const c = seg.constraints.find((x) => x.cid === cid);
+        defaultDate: Array.isArray(c.params[param]) ? c.params[param] : [],
+        onChange: (dates) => {
           c.params[param] = dates.map((d) => d.toISOString().slice(0, 10));
         }
       });
     });
 
-    // SINGLE RANGE
+    // DATE RANGE
     listEl.querySelectorAll('.date-range').forEach((inp) => {
+      const cid = inp.dataset.cid;
+      const param = inp.dataset.param;
+      const c = seg.constraints.find((x) => x.cid === cid);
+
       flatpickr(inp, {
         mode: 'range',
         dateFormat: 'Y-m-d',
-        onChange: (dates, str) => {
-          const cid = inp.dataset.cid;
-          const param = inp.dataset.param;
-          const c = seg.constraints.find((x) => x.cid === cid);
+        defaultDate: Array.isArray(c.params[param]) ? c.params[param] : [],
+        onChange: (dates) => {
           if (dates.length === 2) {
-            c.params[param] = {
-              startDate: dates[0].toISOString().slice(0, 10),
-              endDate: dates[1].toISOString().slice(0, 10)
-            };
+            c.params[param] = [
+              dates[0].toISOString().slice(0, 10),
+              dates[1].toISOString().slice(0, 10)
+            ];
+          } else {
+            c.params[param] = [];
           }
         }
       });
     });
 
-    // DATETIME
+    // DATE-TIME
     listEl.querySelectorAll('.datetime-input').forEach((inp) => {
+      const cid = inp.dataset.cid;
+      const param = inp.dataset.param;
+      const c = seg.constraints.find((x) => x.cid === cid);
+
       flatpickr(inp, {
         enableTime: true,
         dateFormat: 'Y-m-d H:i',
-        onChange: (dates, str) => {
-          const cid = inp.dataset.cid;
-          const param = inp.dataset.param;
-          const c = seg.constraints.find((x) => x.cid === cid);
+        defaultDate: c.params[param] || null,
+        onChange: (_, str) => {
           c.params[param] = str;
         }
       });
@@ -414,30 +422,41 @@ function attachConstraintEditor(form, seg) {
 
     // DATE ONLY
     listEl.querySelectorAll('.date-input').forEach((inp) => {
+      const cid = inp.dataset.cid;
+      const param = inp.dataset.param;
+      const c = seg.constraints.find((x) => x.cid === cid);
+
       flatpickr(inp, {
         dateFormat: 'Y-m-d',
-        onChange: (dates, str) => {
-          const c = seg.constraints.find((x) => x.cid === inp.dataset.cid);
-          c.params[inp.dataset.param] = str;
+        defaultDate: c.params[param] || null,
+        onChange: (_, str) => {
+          c.params[param] = str;
         }
       });
     });
 
     // TIME ONLY
     listEl.querySelectorAll('.time-input').forEach((inp) => {
+      const cid = inp.dataset.cid;
+      const param = inp.dataset.param;
+      const c = seg.constraints.find((x) => x.cid === cid);
+
       flatpickr(inp, {
         enableTime: true,
         noCalendar: true,
         dateFormat: 'H:i',
-        onChange: (dates, str) => {
-          const c = seg.constraints.find((x) => x.cid === inp.dataset.cid);
-          c.params[inp.dataset.param] = str;
+        defaultDate: c.params[param] || null,
+        onChange: (_, str) => {
+          c.params[param] = str;
         }
       });
     });
   }
 
-  // --- Sorting ---
+  ///////////////////////////////////////////////////////////////
+  // SORTING
+  ///////////////////////////////////////////////////////////////
+
   function enableSorting() {
     new Sortable(listEl, {
       animation: 150,
@@ -453,49 +472,10 @@ function attachConstraintEditor(form, seg) {
   renderConstraintList();
 }
 
-function openMultiEditor(seg, cid, paramName) {
-  alert(`TODO: open multi-editor for ${paramName}`);
-}
+///////////////////////////////////////////////////////////////
+// MULTI EDITOR (not used yet)
+///////////////////////////////////////////////////////////////
 
-/* =====================================
-   Param Type Detection Helpers
-   ===================================== */
-
-function detectParamType(paramName, constraintType) {
-  const name = paramName.toLowerCase();
-
-  // Operators
-  if (paramName === 'operator') return 'operator';
-
-  // Days / DOW
-  if (paramName === 'days' || paramName === 'daysofweek') return 'daysOfWeek';
-
-  // Multiple dates
-  if (
-    paramName === 'dates' ||
-    paramName === 'include' ||
-    paramName === 'exclude'
-  )
-    return 'multiDate';
-
-  // Ranges (single range)
-  if (paramName === 'ranges') return 'dateRangeSingle';
-
-  // Time windows
-  if (paramName === 'windows') return 'windowsList';
-
-  // Single datetime
-  if (name.endsWith('datetime')) return 'datetime';
-
-  // Single date
-  if (name.endsWith('date')) return 'date';
-
-  // Single time
-  if (name.endsWith('time')) return 'time';
-
-  // Segment selector
-  if (paramName === 'otherSegmentId') return 'segmentSelector';
-
-  // fallback
-  return 'text';
+function openMultiEditor() {
+  alert('TODO');
 }

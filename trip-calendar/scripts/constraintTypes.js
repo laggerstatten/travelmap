@@ -21,27 +21,37 @@ const constraintTypes = {
   visit: {
     label: 'Visit',
     modes: {
-      timeRange: { 
-        params: ['startTime', 'endTime']
-       },
-      dateTimeRange: { 
-        params: ['startDateTime', 'endDateTime'] 
+      dateRange: {
+        params: ['ranges']
       },
-      dateRange: { 
-        params: ['ranges'] 
+      dates: {
+        params: ['dates']
+      },
+      timeRange: {
+        params: ['startTime', 'endTime']
+      },
+      dateTimeRange: {
+        params: ['startDateTime', 'endDateTime']
       }
     }
   },
 
   blackout: {
-    label: 'Blackout dates',
+    label: 'Blackout',
     modes: {
-      dates: { 
-        params: ['dates']
-       },
-      ranges: { 
+      dateRange: {
+        // changed from ranges
         params: ['ranges']
-       }
+      },
+      dates: {
+        params: ['dates']
+      },
+      timeRange: {
+        params: ['startTime', 'endTime']
+      },
+      dateTimeRange: {
+        params: ['startDateTime', 'endDateTime']
+      }
     }
   },
 
@@ -49,11 +59,11 @@ const constraintTypes = {
     label: 'Duration',
     operatorCategory: 'durationComparison',
     modes: {
-      range: { 
-        params: ['minHours', 'maxHours'] 
+      range: {
+        params: ['minHours', 'maxHours']
       },
-      compare: { 
-        params: ['operator', 'hours'] 
+      compare: {
+        params: ['operator', 'hours']
       }
     }
   },
@@ -62,20 +72,20 @@ const constraintTypes = {
     label: 'Arrival',
     operatorCategory: 'timeComparison',
     modes: {
-      timeRange: { 
-        params: ['startTime', 'endTime'] 
+      compareTime: {
+        params: ['operator', 'time']
       },
-      dateTimeRange: { 
+      compareDateTime: {
+        params: ['operator', 'dateTime']
+      },
+      timeRange: {
+        params: ['startTime', 'endTime']
+      },
+      dateTimeRange: {
         params: ['startDateTime', 'endDateTime']
-       },
-      dateRange: { 
-        params: ['ranges'] 
       },
-      compareTime: { 
-        params: ['operator', 'time'] 
-      },
-      compareDateTime: { 
-        params: ['operator', 'dateTime'] 
+      dateRange: {
+        params: ['ranges']
       }
     }
   },
@@ -84,40 +94,40 @@ const constraintTypes = {
     label: 'Departure',
     operatorCategory: 'timeComparison',
     modes: {
-      timeRange: { 
-        params: ['startTime', 'endTime'] 
+      compareTime: {
+        params: ['operator', 'time']
       },
-      dateTimeRange: { 
-        params: ['startDateTime', 'endDateTime']
-       },
-      dateRange: { 
-        params: ['ranges'] 
-      },
-      compareTime: { 
-        params: ['operator', 'time'] 
-      },
-      compareDateTime: { 
+      compareDateTime: {
         params: ['operator', 'dateTime']
-       }
+      },
+      timeRange: {
+        params: ['startTime', 'endTime']
+      },
+      dateTimeRange: {
+        params: ['startDateTime', 'endDateTime']
+      },
+      dateRange: {
+        params: ['ranges']
+      }
     }
   },
 
   daysOfWeek: {
     label: 'Allowed days of week',
-    modes: { 
-      default: { 
-      params: ['days'] 
-    } 
-  }
+    modes: {
+      default: {
+        params: ['days']
+      }
+    }
   },
 
   holidays: {
     label: 'Holiday rules',
-    modes: { 
-      default: { 
-      params: ['include', 'exclude'] 
-    } 
-  }
+    modes: {
+      default: {
+        params: ['include', 'exclude']
+      }
+    }
   },
 
   businessHours: {
@@ -131,55 +141,46 @@ const constraintTypes = {
 
   visitInsideBusinessHours: {
     label: 'Visit must fit inside business hours',
-    modes: { 
-      default: { 
-      params: [] 
-    } 
-  }
+    modes: {
+      default: {
+        params: []
+      }
+    }
   },
 
   minAfterOpen: {
     label: 'Arrive at least X minutes after opening',
-    modes: { 
-      minutes: { 
+    modes: {
+      minutes: {
         params: ['minutes']
-       }
-       }
+      }
+    }
   },
 
   maxBeforeClose: {
     label: 'Depart no later than X minutes before closing',
-    modes: { 
-      minutes: { 
-      params: ['minutes'] 
-    } 
-  }
-  },
-
-  avoidTimes: {
-    label: 'Avoid these times',
-    modes: { 
-      windows: { 
-        params: ['windows']
-       }
-       }
+    modes: {
+      minutes: {
+        params: ['minutes']
+      }
+    }
   },
 
   mustPrecede: {
     label: 'Must occur before',
-    modes: { 
-      default: { 
-      params: ['otherSegmentId'] 
-    } 
-  }
+    modes: {
+      default: {
+        params: ['otherSegmentId']
+      }
+    }
   },
 
   mustFollow: {
     label: 'Must occur after',
-    modes: { 
-      default: { 
-      params: ['otherSegmentId'] 
-    } 
-  }
+    modes: {
+      default: {
+        params: ['otherSegmentId']
+      }
+    }
   }
 };
