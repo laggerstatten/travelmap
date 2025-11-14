@@ -429,3 +429,28 @@ button.needs-unlock {
   width: 70%;
   margin-left: 0.25rem;
 }
+
+.insolation-rail {
+  display: flex;
+  flex-direction: column;   /* stack slices vertically */
+  width: 6px;               /* narrow vertical bar */
+  min-height: 100%;         /* stretch full segment height */
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.insolation-block.day {
+  background: #ffeb3b;
+}
+
+.insolation-block.twilight {
+  background: #ffcc80;
+}
+
+.insolation-block.night {
+  background: #212121;
+}
+
+.insolation-rail.empty {
+  display: none;
+}

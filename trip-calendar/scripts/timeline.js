@@ -19,7 +19,7 @@ function renderTimeline(segments) {
 
     const wrapper = document.createElement('div');
     wrapper.className = 'rail-pair';
-    wrapper.appendChild(renderRails());
+    wrapper.appendChild(renderRails(seg));
     wrapper.appendChild(renderCard(seg, segments));
     cal.appendChild(wrapper);
   }
@@ -29,12 +29,16 @@ function renderTimeline(segments) {
 }
 
 // --- Build decorative rails ---
-function renderRails() {
+function renderRails(seg) {
   const rails = document.createElement('div');
   rails.className = 'rails';
-  rails.innerHTML = `
-    <div class="insolation-rail"></div>
-    <div class="weather-rail"></div>`;
+
+  rails.appendChild(buildInsolationRailForSegment(seg));
+
+  const weather = document.createElement('div');
+  weather.className = 'weather-rail';
+  rails.appendChild(weather);
+
   return rails;
 }
 
