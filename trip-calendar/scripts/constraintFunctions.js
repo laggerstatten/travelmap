@@ -17,6 +17,7 @@ function detectParamType(paramName) {
   if (n.endsWith('datetime')) return 'datetime';
   if (n.endsWith('date')) return 'date';
   if (n.endsWith('time')) return 'time';
+  if (paramName === 'openingHours') return 'openingHours';
   if (paramName === 'otherSegmentId') return 'segmentSelector';
 
   return 'text';
@@ -79,7 +80,6 @@ function renderParamField(seg, constraint, paramName) {
 
   // --- 3. MULTIPLE DATES ---
   if (ptype === 'multiDate') {
-    //const valStr = Array.isArray(value) ? value.join(', ') : '';
     return `
       <label class="param-row">
         ${paramName}:
@@ -149,6 +149,10 @@ function renderParamField(seg, constraint, paramName) {
     `;
   }
 
+  if (ptype === 'openingHours') {
+    return renderOpeningHoursEditor(seg, constraint);
+  }
+
   // --- FALLBACK ---
   return `
     <label class="param-row">
@@ -192,7 +196,7 @@ function attachConstraintEditor(form, seg) {
     });
 
     seg.constraints.push({
-      cid: newID(),
+      cid: crypto.randomUUID(),
       type,
       mode,
       priority: seg.constraints.length,
@@ -321,6 +325,50 @@ function attachConstraintEditor(form, seg) {
         c.params[param] = sel.value;
       };
     });
+
+    // OpeningHours textarea → store directly
+    listEl.querySelectorAll('.opening-hours-input').forEach((inp) => {
+      inp.oninput = () => {
+        const cid = inp.dataset.cid;
+        const c = seg.constraints.find((x) => x.cid === cid);
+        c.params.openingHours = inp.value;
+      };
+    });
+
+    // Builder behavior
+    listEl.querySelectorAll('.opening-hours-builder').forEach((builder) => {
+      const cid = builder.dataset.cid;
+      const c = seg.constraints.find((x) => x.cid === cid);
+
+
+      // Generate OSM string
+      builder.querySelector('.oh-generate').onclick = () => {
+        const rows = [...builder.querySelectorAll('.oh-row')];
+
+        const parts = rows
+          .map((row) => {
+            const day = row.dataset.day;
+            const checked = row.querySelector('.oh-enabled').checked;
+            const open = row.querySelector('.oh-open').value;
+            const close = row.querySelector('.oh-close').value;
+
+            if (!checked || !open || !close) return null;
+            return `${day} ${open}-${close}`;
+          })
+          .filter(Boolean);
+
+        const str = parts.join('; ');
+
+        // Update constraint params
+        c.params.openingHours = str;
+
+        // Push back into textarea
+        const textarea = listEl.querySelector(
+          `.opening-hours-input[data-cid="${cid}"]`
+        );
+        if (textarea) textarea.value = str;
+      };
+    });
   }
 
   ///////////////////////////////////////////////////////////////
@@ -350,7 +398,7 @@ function attachConstraintEditor(form, seg) {
       }
     });
 
-    // DATE-RANGE (two dates)
+    // DATE RANGE
     listEl.querySelectorAll('.date-range').forEach((inp) => {
       const cid = inp.dataset.cid;
       const param = inp.dataset.param;
@@ -376,7 +424,7 @@ function attachConstraintEditor(form, seg) {
       }
     });
 
-    // DATETIME (single)
+    // DATE-TIME
     listEl.querySelectorAll('.datetime-input').forEach((inp) => {
       const cid = inp.dataset.cid;
       const param = inp.dataset.param;
@@ -394,7 +442,7 @@ function attachConstraintEditor(form, seg) {
       if (value) fp.setDate(value, true);
     });
 
-    // DATE-ONLY
+    // DATE ONLY
     listEl.querySelectorAll('.date-input').forEach((inp) => {
       const cid = inp.dataset.cid;
       const param = inp.dataset.param;
@@ -411,7 +459,7 @@ function attachConstraintEditor(form, seg) {
       if (value) fp.setDate(value, true);
     });
 
-    // TIME-ONLY
+    // TIME ONLY
     listEl.querySelectorAll('.time-input').forEach((inp) => {
       const cid = inp.dataset.cid;
       const param = inp.dataset.param;
@@ -429,7 +477,6 @@ function attachConstraintEditor(form, seg) {
 
       if (value) fp.setDate(value, true);
     });
-
   }
 
   ///////////////////////////////////////////////////////////////
@@ -457,4 +504,51 @@ function attachConstraintEditor(form, seg) {
 
 function openMultiEditor() {
   alert('TODO');
+}
+
+function renderOpeningHoursEditor(seg, constraint) {
+  const cid = constraint.cid;
+  const value = constraint.params.openingHours || '';
+
+  const days = [
+    { key: 'Mo', label: 'Mon' },
+    { key: 'Tu', label: 'Tue' },
+    { key: 'We', label: 'Wed' },
+    { key: 'Th', label: 'Thu' },
+    { key: 'Fr', label: 'Fri' },
+    { key: 'Sa', label: 'Sat' },
+    { key: 'Su', label: 'Sun' }
+  ];
+
+  return `
+    <div class="param-row opening-hours-block" data-cid="${cid}">
+
+      <label>openingHours:</label>
+      <textarea class="opening-hours-input"
+        data-cid="${cid}"
+        placeholder="Mo-Fr 09:00-17:00; Sa 10:00-14:00"
+        style="width:100%; height:60px;">${value}</textarea>
+
+      <div class="opening-hours-builder" data-cid="${cid}">
+        <table class="oh-table">
+          <tr><th>Day</th><th>Open</th><th>Close</th><th>Open?</th></tr>
+
+          ${days
+            .map(
+              (d) => `
+            <tr class="oh-row" data-day="${d.key}">
+              <td>${d.label}</td>
+              <td><input class="oh-open" type="time" step="900" value="09:00"></td>
+              <td><input class="oh-close" type="time" step="900" value="17:00"></td>
+              <td><input type="checkbox" class="oh-enabled"></td>
+            </tr>
+          `
+            )
+            .join('')}
+        </table>
+
+        <button class="oh-generate">Generate</button>
+      </div>
+    </div>
+  `;
 }

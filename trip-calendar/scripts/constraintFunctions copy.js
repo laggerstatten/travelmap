@@ -14,10 +14,10 @@ function detectParamType(paramName) {
   )
     return 'multiDate';
   if (paramName === 'ranges') return 'dateRange';
-  if (paramName === 'windows') return 'windowsList';
   if (n.endsWith('datetime')) return 'datetime';
   if (n.endsWith('date')) return 'date';
   if (n.endsWith('time')) return 'time';
+  if (paramName === 'openingHours') return 'openingHours';
   if (paramName === 'otherSegmentId') return 'segmentSelector';
 
   return 'text';
@@ -80,61 +80,24 @@ function renderParamField(seg, constraint, paramName) {
 
   // --- 3. MULTIPLE DATES ---
   if (ptype === 'multiDate') {
-    const valStr = Array.isArray(value) ? value.join(', ') : '';
-    /**
-        return `
-          <label class="param-row">
-            ${paramName}:
-            <input class="param-input multi-date"
-              data-cid="${cid}" data-param="${paramName}"
-              value="${valStr}">
-          </label>`;
-    */
-
     return `
       <label class="param-row">
         ${paramName}:
         <input class="param-input multi-date"
           data-cid="${cid}" data-param="${paramName}">
       </label>`;
-
   }
-
-
-
-
-
 
   // --- 4. DATE RANGE ---
   if (ptype === 'dateRange') {
-    /**
-        const display =
-          Array.isArray(value) && value.length === 2
-            ? `${value[0]} to ${value[1]}`
-            : '';
-    
-        return `
-          <label class="param-row">
+    return `
+        <label class="param-row">
             ${paramName}:
             <input class="param-input date-range"
-              data-cid="${cid}" data-param="${paramName}"
-              value="${display}">
-          </label>`;
-      }
-    */
-
-        return `
-            <label class="param-row">
-                ${paramName}:
-                <input class="param-input date-range"
-                data-cid="${cid}" data-param="${paramName}">
-            </label>
-            `;
-
-      }
-
-
-
+            data-cid="${cid}" data-param="${paramName}">
+        </label>
+        `;
+  }
 
   // --- 5. OTHER TYPES ---
   if (ptype === 'datetime') {
@@ -184,6 +147,10 @@ function renderParamField(seg, constraint, paramName) {
         </select>
       </label>
     `;
+  }
+
+  if (ptype === 'openingHours') {
+    return renderOpeningHoursEditor(seg, constraint);
   }
 
   // --- FALLBACK ---
@@ -358,6 +325,59 @@ function attachConstraintEditor(form, seg) {
         c.params[param] = sel.value;
       };
     });
+
+    // OpeningHours textarea → store directly
+    listEl.querySelectorAll('.opening-hours-input').forEach((inp) => {
+      inp.oninput = () => {
+        const cid = inp.dataset.cid;
+        const c = seg.constraints.find((x) => x.cid === cid);
+        c.params.openingHours = inp.value;
+      };
+    });
+
+    // Builder behavior
+    listEl.querySelectorAll('.opening-hours-builder').forEach((builder) => {
+      const cid = builder.dataset.cid;
+      const c = seg.constraints.find((x) => x.cid === cid);
+
+      // Enable flatpickr for open/close fields
+      builder.querySelectorAll('.oh-open, .oh-close').forEach((inp) => {
+        flatpickr(inp, {
+          enableTime: true,
+          noCalendar: true,
+          dateFormat: 'H:i',
+          time_24hr: true
+        });
+      });
+
+      // Generate OSM string
+      builder.querySelector('.oh-generate').onclick = () => {
+        const rows = [...builder.querySelectorAll('.oh-row')];
+
+        const parts = rows
+          .map((row) => {
+            const day = row.dataset.day;
+            const checked = row.querySelector('.oh-enabled').checked;
+            const open = row.querySelector('.oh-open').value;
+            const close = row.querySelector('.oh-close').value;
+
+            if (!checked || !open || !close) return null;
+            return `${day} ${open}-${close}`;
+          })
+          .filter(Boolean);
+
+        const str = parts.join('; ');
+
+        // Update constraint params
+        c.params.openingHours = str;
+
+        // Push back into textarea
+        const textarea = listEl.querySelector(
+          `.opening-hours-input[data-cid="${cid}"]`
+        );
+        if (textarea) textarea.value = str;
+      };
+    });
   }
 
   ///////////////////////////////////////////////////////////////
@@ -370,15 +390,21 @@ function attachConstraintEditor(form, seg) {
       const cid = inp.dataset.cid;
       const param = inp.dataset.param;
       const c = seg.constraints.find((x) => x.cid === cid);
+      const value = c.params[param];
 
-      flatpickr(inp, {
+      const fp = flatpickr(inp, {
         mode: 'multiple',
         dateFormat: 'Y-m-d',
-        defaultDate: Array.isArray(c.params[param]) ? c.params[param] : [],
-        onChange: (dates) => {
-          c.params[param] = dates.map((d) => d.toISOString().slice(0, 10));
+        onChange(dates, str) {
+          c.params[param] = str; // store exactly the flatpickr string
         }
       });
+
+      if (typeof value === 'string' && value.trim() !== '') {
+        // Split by comma and let flatpickr parse the actual strings
+        const dates = value.split(',').map((s) => s.trim());
+        fp.setDate(dates, true);
+      }
     });
 
     // DATE RANGE
@@ -386,22 +412,25 @@ function attachConstraintEditor(form, seg) {
       const cid = inp.dataset.cid;
       const param = inp.dataset.param;
       const c = seg.constraints.find((x) => x.cid === cid);
+      const value = c.params[param];
 
-      flatpickr(inp, {
+      const fp = flatpickr(inp, {
         mode: 'range',
         dateFormat: 'Y-m-d',
-        defaultDate: Array.isArray(c.params[param]) ? c.params[param] : [],
-        onChange: (dates) => {
-          if (dates.length === 2) {
-            c.params[param] = [
-              dates[0].toISOString().slice(0, 10),
-              dates[1].toISOString().slice(0, 10)
-            ];
-          } else {
-            c.params[param] = [];
-          }
+        onChange(dates, str) {
+          c.params[param] = str; // store exactly the flatpickr string
         }
       });
+
+      let defaultDates = [];
+      if (typeof value === 'string' && value.includes(' to ')) {
+        const parts = value.split(' to ').map((s) => s.trim());
+        if (parts.length === 2) defaultDates = parts; // let flatpickr parse them
+      }
+
+      if (defaultDates.length > 0) {
+        fp.setDate(defaultDates, true);
+      }
     });
 
     // DATE-TIME
@@ -409,15 +438,17 @@ function attachConstraintEditor(form, seg) {
       const cid = inp.dataset.cid;
       const param = inp.dataset.param;
       const c = seg.constraints.find((x) => x.cid === cid);
+      const value = c.params[param];
 
-      flatpickr(inp, {
+      const fp = flatpickr(inp, {
         enableTime: true,
         dateFormat: 'Y-m-d H:i',
-        defaultDate: c.params[param] || null,
-        onChange: (_, str) => {
+        onChange(dates, str) {
           c.params[param] = str;
         }
       });
+
+      if (value) fp.setDate(value, true);
     });
 
     // DATE ONLY
@@ -425,14 +456,16 @@ function attachConstraintEditor(form, seg) {
       const cid = inp.dataset.cid;
       const param = inp.dataset.param;
       const c = seg.constraints.find((x) => x.cid === cid);
+      const value = c.params[param];
 
-      flatpickr(inp, {
+      const fp = flatpickr(inp, {
         dateFormat: 'Y-m-d',
-        defaultDate: c.params[param] || null,
-        onChange: (_, str) => {
+        onChange(dates, str) {
           c.params[param] = str;
         }
       });
+
+      if (value) fp.setDate(value, true);
     });
 
     // TIME ONLY
@@ -440,16 +473,18 @@ function attachConstraintEditor(form, seg) {
       const cid = inp.dataset.cid;
       const param = inp.dataset.param;
       const c = seg.constraints.find((x) => x.cid === cid);
+      const value = c.params[param];
 
-      flatpickr(inp, {
+      const fp = flatpickr(inp, {
         enableTime: true,
         noCalendar: true,
         dateFormat: 'H:i',
-        defaultDate: c.params[param] || null,
-        onChange: (_, str) => {
+        onChange(dates, str) {
           c.params[param] = str;
         }
       });
+
+      if (value) fp.setDate(value, true);
     });
   }
 
@@ -478,4 +513,52 @@ function attachConstraintEditor(form, seg) {
 
 function openMultiEditor() {
   alert('TODO');
+}
+
+function renderOpeningHoursEditor(seg, constraint) {
+  const cid = constraint.cid;
+  const value = constraint.params.openingHours || '';
+
+  const days = [
+    { key: 'Mo', label: 'Mon' },
+    { key: 'Tu', label: 'Tue' },
+    { key: 'We', label: 'Wed' },
+    { key: 'Th', label: 'Thu' },
+    { key: 'Fr', label: 'Fri' },
+    { key: 'Sa', label: 'Sat' },
+    { key: 'Su', label: 'Sun' }
+  ];
+
+  // BUILD THE UI
+  return `
+    <div class="param-row opening-hours-block" data-cid="${cid}">
+
+      <label>openingHours:</label>
+      <textarea class="opening-hours-input"
+        data-cid="${cid}"
+        placeholder="Mo-Fr 09:00-17:00; Sa 10:00-14:00"
+        style="width:100%; height:60px;">${value}</textarea>
+
+      <div class="opening-hours-builder" data-cid="${cid}">
+        <table class="oh-table">
+          <tr><th>Day</th><th>Open</th><th>Close</th><th>Open?</th></tr>
+
+          ${days
+            .map(
+              (d) => `
+            <tr class="oh-row" data-day="${d.key}">
+              <td>${d.label}</td>
+              <td><input class="oh-open" type="text" placeholder="09:00"></td>
+              <td><input class="oh-close" type="text" placeholder="17:00"></td>
+              <td><input type="checkbox" class="oh-enabled"></td>
+            </tr>
+          `
+            )
+            .join('')}
+        </table>
+
+        <button class="oh-generate">Generate</button>
+      </div>
+    </div>
+  `;
 }

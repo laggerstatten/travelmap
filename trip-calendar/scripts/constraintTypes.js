@@ -134,10 +134,11 @@ const constraintTypes = {
     label: 'Business hours',
     modes: {
       default: {
-        params: ['openTime', 'lastEntryTime', 'closeTime', 'daysOfWeek']
+        params: ['openingHours']   // <-- ONE param only
       }
     }
   },
+
 
   visitInsideBusinessHours: {
     label: 'Visit must fit inside business hours',
