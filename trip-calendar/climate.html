@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Meteostat Climate Normals Test</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+  body {
+    font-family: sans-serif;
+    margin: 20px;
+    max-width: 900px;
+  }
+  label {
+    display: block;
+    margin-top: 10px;
+  }
+  input {
+    padding: 6px;
+    width: 160px;
+    font-size: 14px;
+  }
+  button {
+    margin-top: 20px;
+    padding: 10px 16px;
+    font-size: 15px;
+  }
+  pre {
+    margin-top: 20px;
+    padding: 15px;
+    background: #111;
+    color: #0f0;
+    border-radius: 8px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 13px;
+  }
+</style>
+</head>
+
+<body>
+
+<h2>Meteostat Normals API — Test Client</h2>
+<p>Enter a location and fetch <strong>monthly climate normals</strong> from Meteostat.</p>
+
+<label>Latitude
+  <input id="lat" type="number" value="40.7128" step="0.0001">
+</label>
+
+<label>Longitude
+  <input id="lon" type="number" value="-74.0060" step="0.0001">
+</label>
+
+<label>Altitude (optional)
+  <input id="alt" type="number" value="10">
+</label>
+
+<label>Units
+  <select id="units">
+    <option value="metric">Metric</option>
+    <option value="imperial">Imperial</option>
+  </select>
+</label>
+
+<br>
+<button onclick="runQuery()">Fetch Meteostat Normals</button>
+
+<pre id="output">Awaiting request...</pre>
+
+<script>
+async function runQuery() {
+  const lat = document.getElementById("lat").value;
+  const lon = document.getElementById("lon").value;
+  const alt = document.getElementById("alt").value;
+  const units = document.getElementById("units").value;
+
+  const url = new URL("https://meteostat.p.rapidapi.com/point/normals");
+  url.searchParams.set("lat", lat);
+  url.searchParams.set("lon", lon);
+  if (alt) url.searchParams.set("alt", alt);
+  url.searchParams.set("units", units);
+
+  document.getElementById("output").textContent =
+    "Fetching...\n\n" + url.toString();
+
+  try {
+    const response = await fetch(url.toString(), {
+      method: "GET",
+      headers: {
+        "x-rapidapi-host": "meteostat.p.rapidapi.com",
+        "x-rapidapi-key": "41efece856msha18804fff77d091p15f4c4jsnf7838efabcd3"
+      }
+    });
+
+    const data = await response.json();
+
+    const result = {
+      requestURL: url.toString(),
+      status: response.status,
+      monthlyNormals: data.data || null,
+      raw: data
+    };
+
+    document.getElementById("output").textContent =
+      JSON.stringify(result, null, 2);
+
+  } catch (err) {
+    document.getElementById("output").textContent =
+      "ERROR:\n" + err.toString();
+  }
+}
+</script>
+
+</body>
+</html>

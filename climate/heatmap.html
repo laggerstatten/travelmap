@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang='en'>
+  <head>
+    <meta charset='UTF-8' />
+    <title>D3 Hourly Temperature Heatmap + Sunlight Overlay</title>
+    <script src='https://d3js.org/d3.v7.min.js'></script>
+
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+      }
+
+      .cell-temp {
+        stroke: none;
+      }
+      .cell-insolation {
+        stroke: none;
+        opacity: 0.35;
+      }
+
+      .ins-night {
+        fill: #000000;
+        opacity: 0.35;
+      }
+      .ins-twilight {
+        fill: #888888;
+        opacity: 0.25;
+      }
+      .ins-day {
+        fill: transparent;
+      }
+
+      .tooltip {
+        position: absolute;
+        background: rgba(0, 0, 0, 0.75);
+        color: white;
+        padding: 5px 8px;
+        border-radius: 3px;
+        font-size: 11px;
+        pointer-events: none;
+        display: none;
+      }
+    </style>
+  </head>
+
+  <body>
+    <h2>Hourly Temperature Heatmap + Day/Twilight/Night Overlay</h2>
+
+    <div id='chart'></div>
+    <div id='tooltip' class='tooltip'></div>
+
+    <script>
+      const width = 1100;
+      const height = 500;
+      const margin = { top: 30, right: 20, bottom: 50, left: 50 };
+
+      const csvTemp = 'hourly_temp.csv';
+      const csvInsolation = 'insolation_grid.csv';
+
+      // Tooltip fix
+      const tooltip = d3.select('#tooltip');
+
+      // Temperature categories
+      function tempCategory(t) {
+        if (t < 15) return 'frigid';
+        if (t < 32) return 'freezing';
+        if (t < 45) return 'very cold';
+        if (t < 55) return 'cold';
+        if (t < 65) return 'cool';
+        if (t < 75) return 'comfortable';
+        if (t < 85) return 'warm';
+        if (t < 95) return 'hot';
+        return 'sweltering';
+      }
+
+      const catColor = {
+        frigid: '#6bb5d8',
+        freezing: '#9ccde2',
+        'very cold': '#a3d9a5',
+        cold: '#7cbc65',
+        cool: '#b0cc85',
+        comfortable: '#ecdca0',
+        warm: '#d59a7d',
+        hot: '#c25c48',
+        sweltering: '#9e3d32'
+      };
+
+      Promise.all([
+        d3.csv(csvTemp),
+        d3.csv(csvInsolation)
+      ]).then(([rawTemp, rawIns]) => {
+
+        // TEMP DATA
+        const temps = rawTemp.map(d => ({
+          doy: +d.doy,
+          hour: +d.hour,
+          temp: +d.temp || +d['HLY-TEMP-NORMAL']
+        }));
+
+        // INSOLATION DATA
+        const insol = rawIns.map(d => ({
+          doy: +d.doy,
+          hour: +d.hour,
+          phase: d.phase
+        }));
+
+        // Set up domain ranges
+        const days = d3.range(1, 366);
+        const hours = d3.range(0, 24);
+
+        const x = d3
+          .scaleBand()
+          .domain(days)
+          .range([margin.left, width - margin.right]);
+
+        const y = d3
+          .scaleBand()
+          .domain(hours)
+          .range([margin.top, height - margin.bottom]);
+
+        const svg = d3
+          .select('#chart')
+          .append('svg')
+          .attr('width', width)
+          .attr('height', height);
+
+        // -----------------------
+        // TEMPERATURE HEATMAP
+        //------------------------
+        svg.selectAll('.cell-temp')
+          .data(temps)
+          .join('rect')
+          .attr('class', 'cell-temp')
+          .attr('x', d => x(d.doy))
+          .attr('y', d => y(d.hour))
+          .attr('width', x.bandwidth())
+          .attr('height', y.bandwidth())
+          .attr('fill', (d) => {
+            if (isNaN(d.temp)) return '#444';
+            return catColor[tempCategory(d.temp)];
+          })
+          .on('mousemove', (event, d) => {
+              const cat = tempCategory(d.temp);
+              tooltip
+                .style('display', 'block')
+                .style('left', event.pageX + 12 + 'px')
+                .style('top', event.pageY + 12 + 'px')
+                .html(
+                  `Day: ${d.doy}<br>
+                  Hour: ${d.hour}:00<br>
+                  Temp: ${d.temp?.toFixed(1)}°F<br>
+                  <b>${cat}</b>`
+                );
+          })
+          .on('mouseout', () => tooltip.style('display', 'none'));
+
+        // -----------------------
+        // INSOLATION OVERLAY
+        // -----------------------
+        svg.selectAll('.cell-insolation')
+          .data(insol)
+          .join('rect')
+          .attr('class', 'cell-insolation')
+          .attr('x', d => x(d.doy))
+          .attr('y', d => y(d.hour))
+          .attr('width', x.bandwidth())
+          .attr('height', y.bandwidth())
+          .attr('class', d => {
+            if (d.phase === 'night') return 'cell-insolation ins-night';
+            if (d.phase === 'twilight') return 'cell-insolation ins-twilight';
+            return 'cell-insolation ins-day'; // transparent
+          });
+
+        // -----------------------------------
+        // DISCRETE LEGEND (now works correctly)
+        // -----------------------------------
+        const legend = svg
+          .append('g')
+          .attr('class', 'legend')
+          .attr('transform', `translate(${margin.left}, ${height - 20})`);
+
+        const categories = [
+          'frigid',
+          'freezing',
+          'very cold',
+          'cold',
+          'cool',
+          'comfortable',
+          'warm',
+          'hot',
+          'sweltering'
+        ];
+
+        const boxSize = 12;
+
+        categories.forEach((cat, i) => {
+          const g = legend
+            .append('g')
+            .attr('transform', `translate(${i * 95}, 0)`);
+
+          g.append('rect')
+            .attr('width', boxSize)
+            .attr('height', boxSize)
+            .attr('fill', catColor[cat])
+            .attr('stroke', '#333');
+
+          g.append('text')
+            .attr('x', boxSize + 4)
+            .attr('y', boxSize - 2)
+            .style('font-size', '10px')
+            .text(cat);
+        });
+
+
+        // -----------------------
+        // AXES
+        // -----------------------        
+        const monthTicks = [
+          { doy: 1, label: 'Jan' },
+          { doy: 32, label: 'Feb' },
+          { doy: 60, label: 'Mar' },
+          { doy: 91, label: 'Apr' },
+          { doy: 121, label: 'May' },
+          { doy: 152, label: 'Jun' },
+          { doy: 182, label: 'Jul' },
+          { doy: 213, label: 'Aug' },
+          { doy: 244, label: 'Sep' },
+          { doy: 274, label: 'Oct' },
+          { doy: 305, label: 'Nov' },
+          { doy: 335, label: 'Dec' }
+        ];
+
+        svg
+          .append('g')
+          .attr('transform', `translate(0, ${height - margin.bottom})`)
+          .call(
+            d3
+              .axisBottom(x)
+              .tickValues(monthTicks.map((m) => m.doy))
+              .tickFormat((d, i) => monthTicks[i].label)
+          );
+
+        svg
+          .append('g')
+          .attr('transform', `translate(${margin.left}, 0)`)
+          .call(d3.axisLeft(y).tickValues([0, 6, 12, 18]));
+      });
+    </script>
+  </body>
+</html>

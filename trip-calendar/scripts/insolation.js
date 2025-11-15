@@ -122,7 +122,6 @@ function computeSegmentInsolation(seg, lat, lng) {
     duration_hours: (end - start) / 3600000
   });
 
-
   const { priorEvent, events } = getSunEventsAroundWindow(start, end, lat, lng);
 
   const slices = [];
@@ -138,10 +137,11 @@ function computeSegmentInsolation(seg, lat, lng) {
     if (to <= cursor) return;
     const phase = currentPhase();
     console.log('  addSlice', { from: cursor, to, phase, lastEvent });
-    slices.push({ 
-      start: cursor, 
-      end: to, 
-      phase });
+    slices.push({
+      start: cursor,
+      end: to,
+      phase
+    });
     cursor = to;
   }
 
@@ -169,8 +169,8 @@ function buildInsolationRailForSegment(seg) {
   rail.className = 'insolation-rail';
 
   // --- SUPPRESS FOR NON-STOPS & NON-DRIVES ---
-  if (seg.type !== "stop" && seg.type !== "drive") {
-    rail.classList.add("empty");
+  if (seg.type !== 'stop' && seg.type !== 'drive') {
+    rail.classList.add('empty');
     return rail;
   }
 
@@ -211,7 +211,11 @@ function buildInsolationRailForSegment(seg) {
   // -----------------------------------------------------
   // Continue as before
   // -----------------------------------------------------
-  const slices = computeSegmentInsolation(seg, lat, lng);
+  if (seg.type === 'drive') {
+    slices = computeDriveInsolation(seg);
+  } else {
+    slices = computeSegmentInsolation(seg, lat, lng);
+  }
 
   if (!slices) {
     console.warn('No slices computed → empty rail');
@@ -220,7 +224,7 @@ function buildInsolationRailForSegment(seg) {
   }
 
   const total = new Date(seg.end.utc) - new Date(seg.start.utc);
-  
+
   // Build vertical bar with proportional-height blocks
   for (const s of slices) {
     const div = document.createElement('div');
@@ -233,4 +237,81 @@ function buildInsolationRailForSegment(seg) {
   }
 
   return rail;
+}
+
+function computeDriveInsolation(seg) {
+  console.log('computeDriveInsolation');
+  const start = new Date(seg.start.utc);
+  const end = new Date(seg.end.utc);
+
+  const coords = seg.routeGeometry?.coordinates;
+  if (!coords || coords.length < 2) return null;
+
+  const durationMs = end - start;
+  const samples = Math.max(10, Math.floor(durationMs / (60 * 60 * 1000))); // 1 per hour, minimum 10
+  console.log(samples);
+  const points = [];
+
+  for (let i = 0; i <= samples; i++) {
+    const t = start.getTime() + durationMs * (i / samples);
+    const dt = new Date(t);
+
+    // interpolate index in the coordinates array
+    const f = i / samples;
+    const idx = f * (coords.length - 1);
+    const i0 = Math.floor(idx);
+    const i1 = Math.min(coords.length - 1, i0 + 1);
+    const alpha = idx - i0;
+
+    const [lng0, lat0] = coords[i0];
+    const [lng1, lat1] = coords[i1];
+
+    const lng = lng0 + (lng1 - lng0) * alpha;
+    const lat = lat0 + (lat1 - lat0) * alpha;
+
+    // get event times for this local day
+    points.push({ dt, lat, lng });
+  }
+
+  // Now convert sample points into slices by detecting phase changes
+  const slices = [];
+  let cursor = start;
+  let lastPhase = null;
+
+  const classify = (dt, lat, lng) => {
+    const t = SunCalc.getTimes(dt, lat, lng);
+
+    if (dt < t.dawn || dt > t.dusk) return 'night';
+    if (dt >= t.sunrise && dt <= t.sunset) return 'day';
+    return 'twilight';
+  };
+
+  for (let i = 0; i < points.length; i++) {
+    const p = points[i];
+    const phase = classify(p.dt, p.lat, p.lng);
+
+    if (lastPhase === null) {
+      lastPhase = phase;
+      continue;
+    }
+
+    if (phase !== lastPhase) {
+      slices.push({
+        start: cursor,
+        end: p.dt,
+        phase: lastPhase
+      });
+      cursor = p.dt;
+      lastPhase = phase;
+    }
+  }
+
+  // tail
+  slices.push({
+    start: cursor,
+    end,
+    phase: lastPhase
+  });
+
+  return slices;
 }

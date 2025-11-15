@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>D3 Hourly Temperature Heatmap</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+      }
+
+      .cell {
+        stroke: none;
+      }
+
+      .axis text {
+        font-size: 10px;
+      }
+
+      .tooltip {
+        position: absolute;
+        background: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 5px 8px;
+        border-radius: 3px;
+        font-size: 11px;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+
+  <body>
+    <h2>Hourly Temperature Heatmap</h2>
+    <div id="chart"></div>
+
+    <script>
+      const width = 1100;
+      const height = 500;
+      const margin = {
+        top: 30,
+        right: 20,
+        bottom: 30,
+        left: 50
+      };
+
+      // CSV location
+      const csvFile = 'hourly_temp.csv'; // CHANGE IF NEEDED
+
+      d3.csv(csvFile).then((raw) => {
+        // columns might be strings — convert
+        const data = raw.map((d) => ({
+          doy: +d.doy,
+          hour: +d.hour,
+          temp: +d.temp || +d['HLY-TEMP-NORMAL']
+        }));
+
+        // ranges
+        const days = d3.range(1, 366);
+        const hours = d3.range(0, 24);
+
+        // scales
+        const x = d3
+          .scaleBand()
+          .domain(days)
+          .range([margin.left, width - margin.right]);
+
+        const y = d3
+          .scaleBand()
+          .domain(hours)
+          .range([margin.top, height - margin.bottom]);
+
+        // color scale (WeatherSpark-like)
+        const color = d3
+          .scaleSequential()
+          .interpolator(d3.interpolateTurbo)
+          .domain(d3.extent(data, (d) => d.temp)); // min → max
+
+        // SVG
+        const svg = d3
+          .select('#chart')
+          .append('svg')
+          .attr('width', width)
+          .attr('height', height);
+
+
+
+        // heatmap cells
+        svg
+          .selectAll('rect')
+          .data(data)
+          .join('rect')
+          .attr('class', 'cell')
+          .attr('x', (d) => x(d.doy))
+          .attr('y', (d) => y(d.hour))
+          .attr('width', x.bandwidth())
+          .attr('height', y.bandwidth())
+          .attr('fill', (d) => color(d.temp));
+
+        // x-axis: months
+        const monthTicks = [
+          {
+            doy: 1,
+            label: 'Jan'
+          },
+          {
+            doy: 32,
+            label: 'Feb'
+          },
+          {
+            doy: 60,
+            label: 'Mar'
+          },
+          {
+            doy: 91,
+            label: 'Apr'
+          },
+          {
+            doy: 121,
+            label: 'May'
+          },
+          {
+            doy: 152,
+            label: 'Jun'
+          },
+          {
+            doy: 182,
+            label: 'Jul'
+          },
+          {
+            doy: 213,
+            label: 'Aug'
+          },
+          {
+            doy: 244,
+            label: 'Sep'
+          },
+          {
+            doy: 274,
+            label: 'Oct'
+          },
+          {
+            doy: 305,
+            label: 'Nov'
+          },
+          {
+            doy: 335,
+            label: 'Dec'
+          }
+        ];
+
+        svg
+          .append('g')
+          .attr('transform', `translate(0, ${height - margin.bottom})`)
+          .call(
+            d3
+              .axisBottom(x)
+              .tickValues(monthTicks.map((m) => m.doy))
+              .tickFormat((d, i) => monthTicks[i].label)
+          );
+
+        // y-axis: hours
+        svg
+          .append('g')
+          .attr('transform', `translate(${margin.left},0)`)
+          .call(d3.axisLeft(y).tickValues([0, 6, 12, 18]));
+      });
+    </script>
+  </body>
+</html>
