@@ -39,7 +39,7 @@ function phaseFromEventName(name) {
 ///////////////////////////////////////////////////////////////
 
 function getSunEventsAroundWindow(start, end, lat, lng) {
-  console.log('getSunEventsAroundWindow()', { start, end, lat, lng });
+  //console.log('getSunEventsAroundWindow()', { start, end, lat, lng });
 
   const EVENT_NAMES = [
     'nightEnd',
@@ -70,11 +70,11 @@ function getSunEventsAroundWindow(start, end, lat, lng) {
   toDay.setHours(0, 0, 0, 0);
   toDay.setDate(toDay.getDate() + 1);
 
-  console.log('  day range:', { fromDay, toDay });
+  //console.log('  day range:', { fromDay, toDay });
 
   for (let d = new Date(fromDay); d <= toDay; d.setDate(d.getDate() + 1)) {
     const times = SunCalc.getTimes(d, lat, lng);
-    console.log('  SunCalc.getTimes for day:', d, times);
+    //console.log('  SunCalc.getTimes for day:', d, times);
 
     EVENT_NAMES.forEach((name) => {
       const t = times[name];
@@ -86,7 +86,7 @@ function getSunEventsAroundWindow(start, end, lat, lng) {
 
   // Sort in ascending absolute time
   allEvents.sort((a, b) => a.time - b.time);
-  console.log('  allEvents (sorted):', allEvents);
+  //console.log('  allEvents (sorted):', allEvents);
 
   // Identify the last event BEFORE start, and all events within window
   let priorEvent = null;
@@ -101,8 +101,8 @@ function getSunEventsAroundWindow(start, end, lat, lng) {
     inWindow.push(ev);
   }
 
-  console.log('  priorEvent:', priorEvent);
-  console.log('  inWindow:', inWindow);
+  //console.log('  priorEvent:', priorEvent);
+  //console.log('  inWindow:', inWindow);
 
   return { priorEvent, events: inWindow };
 }
@@ -115,12 +115,14 @@ function computeSegmentInsolation(seg, lat, lng) {
   const start = new Date(seg.start.utc);
   const end = new Date(seg.end.utc);
 
-  console.log('computeSegmentInsolation()', {
-    seg,
-    start,
-    end,
-    duration_hours: (end - start) / 3600000
-  });
+  /**
+    console.log('computeSegmentInsolation()', {
+      seg,
+      start,
+      end,
+      duration_hours: (end - start) / 3600000
+    });
+  */
 
   const { priorEvent, events } = getSunEventsAroundWindow(start, end, lat, lng);
 
@@ -136,7 +138,7 @@ function computeSegmentInsolation(seg, lat, lng) {
   function addSlice(to) {
     if (to <= cursor) return;
     const phase = currentPhase();
-    console.log('  addSlice', { from: cursor, to, phase, lastEvent });
+    //console.log('  addSlice', { from: cursor, to, phase, lastEvent });
     slices.push({
       start: cursor,
       end: to,
@@ -154,7 +156,7 @@ function computeSegmentInsolation(seg, lat, lng) {
   // Final tail
   addSlice(end);
 
-  console.log('  → slices:', slices);
+  //console.log('  → slices:', slices);
   return slices;
 }
 
@@ -163,7 +165,7 @@ function computeSegmentInsolation(seg, lat, lng) {
 ///////////////////////////////////////////////////////////////
 
 function buildInsolationRailForSegment(seg) {
-  console.log('buildInsolationRailForSegment()', seg);
+  //console.log('buildInsolationRailForSegment()', seg);
 
   const rail = document.createElement('div');
   rail.className = 'insolation-rail';
@@ -176,7 +178,7 @@ function buildInsolationRailForSegment(seg) {
 
   // --- Extract UTC fields --------------------------------------------
   if (!seg?.start?.utc || !seg?.end?.utc) {
-    console.warn('Missing start/end utc → returning empty rail');
+    //console.warn('Missing start/end utc → returning empty rail');
     rail.classList.add('empty');
     return rail;
   }
@@ -201,12 +203,12 @@ function buildInsolationRailForSegment(seg) {
 
   // If still no lat/lng, give up gracefully
   if (!lat || !lng) {
-    console.warn('No lat/lng found → returning empty rail');
+    //console.warn('No lat/lng found → returning empty rail');
     rail.classList.add('empty');
     return rail;
   }
 
-  console.log('Using lat/lng:', lat, lng);
+  //console.log('Using lat/lng:', lat, lng);
 
   // -----------------------------------------------------
   // Continue as before
@@ -218,7 +220,7 @@ function buildInsolationRailForSegment(seg) {
   }
 
   if (!slices) {
-    console.warn('No slices computed → empty rail');
+    //console.warn('No slices computed → empty rail');
     rail.classList.add('empty');
     return rail;
   }
@@ -240,7 +242,7 @@ function buildInsolationRailForSegment(seg) {
 }
 
 function computeDriveInsolation(seg) {
-  console.log('computeDriveInsolation');
+  //console.log('computeDriveInsolation');
   const start = new Date(seg.start.utc);
   const end = new Date(seg.end.utc);
 
@@ -249,7 +251,7 @@ function computeDriveInsolation(seg) {
 
   const durationMs = end - start;
   const samples = Math.max(10, Math.floor(durationMs / (60 * 60 * 1000))); // 1 per hour, minimum 10
-  console.log(samples);
+  //console.log(samples);
   const points = [];
 
   for (let i = 0; i <= samples; i++) {
