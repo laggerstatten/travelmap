@@ -18,6 +18,7 @@ function queueStop() {
 
   saveSegments(segments);
   renderTimeline(segments);
+  renderMap(segments);
 }
 
 async function insertQueuedSegment(seg, card) {
@@ -35,6 +36,7 @@ async function insertQueuedSegment(seg, card) {
 
   saveSegments(segs);
   renderTimeline(segs);
+  renderMap(segs);
 }
 
 async function insertStopInNearestRoute(stop, list) {

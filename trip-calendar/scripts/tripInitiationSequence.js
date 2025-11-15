@@ -29,6 +29,7 @@ async function initTrip() {
   segs = computeSlackAndOverlap(segs);
   saveSegments(segs);
   renderTimeline(segs);
+  renderMap(syncGlobal());
 
   console.log('Trip initialization complete.');
 }
