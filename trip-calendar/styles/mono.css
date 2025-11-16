@@ -454,3 +454,62 @@ button.needs-unlock {
 .insolation-rail.empty {
   display: none;
 }
+
+/* Toolbar Container */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 10px;
+  background: #f6f6f6;
+  border-bottom: 1px solid #ccc;
+  font-family: sans-serif;
+}
+
+/* Groups */
+.toolbar-group {
+  position: relative;
+}
+
+/* Dropdown Button */
+.dropbtn {
+  background: #fff;
+  border: 1px solid #ccc;
+  padding: 6px 12px;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+/* Dropdown Menu */
+.dropdown-content {
+  display: none;
+  position: absolute;
+  background-color: #ffffff;
+  min-width: 180px;
+  box-shadow: 0px 4px 12px rgba(0,0,0,0.15);
+  z-index: 10;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin-top: 4px;
+}
+
+/* Dropdown Buttons */
+.dropdown-content button {
+  width: 100%;
+  padding: 8px 10px;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.dropdown-content button:hover {
+  background: #eee;
+}
+
+/* Hover to expand */
+.dropdown:hover .dropdown-content {
+  display: block;
+}

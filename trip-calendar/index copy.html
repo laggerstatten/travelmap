@@ -239,89 +239,49 @@
 
   <body>
     <div id="toolbar" class="toolbar">
-
-      <!-- === SELECT === -->
-      <div class="toolbar-group dropdown">
-        <button class="dropbtn">Select ▼</button>
-        <div class="dropdown-content">
-          <button id="mode-timeline">Show Timeline</button>
-          <button id="init-trip">Start Trip</button>
-          <button id="add-stop">Add Segment</button>
-        </div>
+      <!-- === Modes & Trip Setup === -->
+      <div class="toolbar-group">
+        <button id="mode-timeline">Timeline</button>
+        <button id="init-trip">Start Trip</button>
+        <button id="add-stop">Add Segment</button>
       </div>
 
-      <!-- === DEFINE (duration + constraints) === -->
-      <div class="toolbar-group dropdown">
-        <button class="dropbtn">Define ▼</button>
-        <div class="dropdown-content">
-          <button id="validate-constraints">Validate Constraints</button>
-          <!-- In future: Add “Default Duration”, “Opening Hours”, “Visit Constraints” -->
-        </div>
+      <!-- === Route Generation === -->
+      <div class="toolbar-group">
+        <button id="clear-auto">Clear Auto Drives</button>
+        <!--<button id="insert-drives">Insert Drives</button>
+        <button id="gen-routes">Generate Routes</button>-->
+        <button id="validate-btn">Validate & Repair Routing</button>
       </div>
 
-      <!-- === ORDER === -->
-      <div class="toolbar-group dropdown">
-        <button class="dropbtn">Order ▼</button>
-        <div class="dropdown-content">
-          <!-- You will add reorder tab or view modes here later -->
-          <button onclick="alert('Use drag & drop in the timeline.')">Reorder (Drag)</button>
-        </div>
+      <!-- === Time Management === -->
+      <div class="toolbar-group">
+        <button id="clear-unlocked-times">Clear Unlocked Times</button>
+        <button id="fill-times">Fill Times</button>
       </div>
 
-      <!-- === STRUCTURE === -->
-      <div class="toolbar-group dropdown">
-        <button class="dropbtn">Structure ▼</button>
-        <div class="dropdown-content">
-          <!-- Future: group/ungroup actions -->
-          <button onclick="alert('Grouping UI coming soon.')">Group / Ungroup</button>
-        </div>
+      <!-- === Slack & Overlap === -->
+      <!--<div class="toolbar-group">
+        <button id="clear-slack">Clear Slack</button>
+        <button id="show-slack">Show Slack</button>
+      </div>-->
+
+      <!-- === Import / Export === -->
+      <div class="toolbar-group">
+        <button id="export-data">Export Data</button>
+        <input
+          type="file"
+          id="import-file"
+          accept="application/json"
+          style="display: none"
+        />
+        <button id="import-data">Import Data</button>
       </div>
 
-      <!-- === ROUTING === -->
-      <div class="toolbar-group dropdown">
-        <button class="dropbtn">Routing ▼</button>
-        <div class="dropdown-content">
-          <button id="clear-auto">Clear Auto Drives</button>
-          <button id="validate-btn">Validate & Repair Routing</button>
-          <!-- Future: Insert drives, regenerate, edit waypoints -->
-        </div>
+      <div class="toolbar-group">
+        <button id="validate-constraints">Validate</button>
       </div>
-
-      <!-- === TIMING === -->
-      <div class="toolbar-group dropdown">
-        <button class="dropbtn">Timing ▼</button>
-        <div class="dropdown-content">
-          <button id="clear-unlocked-times">Clear Unlocked Times</button>
-          <button id="fill-times">Fill Times</button>
-        </div>
-      </div>
-
-      <!-- === CONFLICT RESOLUTION === -->
-      <div class="toolbar-group dropdown">
-        <button class="dropbtn">Conflicts ▼</button>
-        <div class="dropdown-content">
-          <!-- Slack & overlap tools -->
-          <button onclick="alert('Slack/Overlap is auto-handled during Fill Times')">Review Conflicts</button>
-        </div>
-      </div>
-
-      <!-- === IMPORT / EXPORT === -->
-      <div class="toolbar-group dropdown">
-        <button class="dropbtn">Data ▼</button>
-        <div class="dropdown-content">
-          <button id="export-data">Export Data</button>
-          <button id="import-data">Import Data</button>
-          <input
-            type="file"
-            id="import-file"
-            accept="application/json"
-            style="display: none"
-          />
-        </div>
-      </div>
-
     </div>
-
 
     <!-- MAP PANE -->
     <div id="map"></div>
