@@ -1,47 +1,3 @@
-/* ===============================
-   Timeline Rendering & Interaction
-   =============================== */
-
-// --- Main render ---
-function renderTimeline(segments) {
-  const cal = document.getElementById('calendar'); //may make this a parameter
-  cal.className = 'timeline';
-  cal.innerHTML = '';
-
-  let lastDay = '';
-  for (let i = 0; i < segments.length; i++) {
-    const seg = segments[i];
-    const day = seg.start?.utc ? fmtDay(seg.start.utc) : '';
-    if (day && day !== lastDay) {
-      cal.appendChild(renderDayDivider(day));
-      lastDay = day;
-    }
-
-    const wrapper = document.createElement('div'); //may make a renderWrapper function
-    wrapper.className = 'rail-pair';
-    wrapper.appendChild(renderRails(seg));
-    wrapper.appendChild(renderCard(seg, segments));
-    cal.appendChild(wrapper);
-  }
-
-  cal.addEventListener('dragover', handleDragOver);
-  cal.addEventListener('drop', (e) => e.preventDefault());
-}
-
-// --- Build rails ---
-function renderRails(seg) {
-  const rails = document.createElement('div');
-  rails.className = 'rails';
-
-  rails.appendChild(buildInsolationRailForSegment(seg));
-
-  const weather = document.createElement('div');
-  weather.className = 'weather-rail';
-  rails.appendChild(weather);
-
-  return rails;
-}
-
 // --- Build a card ---
 function renderCard(seg, segments) {
   const card = document.createElement('div');
@@ -77,7 +33,16 @@ function renderCard(seg, segments) {
         </div>
         <div class="meta">${meta || 'No date set'}</div>
         <div class="card-footer"></div>`;
-      buttons = [      ];
+      buttons = [
+        {
+          cls: 'fill-forward-btn',
+          label: '⏩ Fill Forward',
+          onClick: () => {
+            fillForward(seg);
+            renderTimeline(syncGlobal());
+          }
+        }
+      ];
       break;
 
     case 'trip_end':
@@ -94,7 +59,16 @@ function renderCard(seg, segments) {
         </div>
         <div class="meta">${meta || 'No date set'}</div>
         <div class="card-footer"></div>`;
-      buttons = [      ];
+      buttons = [
+        {
+          cls: 'fill-backward-btn',
+          label: '⏪ Fill Backward',
+          onClick: () => {
+            fillBackward(seg);
+            renderTimeline(syncGlobal());
+          }
+        }
+      ];
       break;
 
     case 'stop':
@@ -125,7 +99,24 @@ function renderCard(seg, segments) {
           }
         ];
       } else {
-        buttons = [        ];
+        buttons = [
+          {
+            cls: 'fill-forward-btn',
+            label: '⏩ Fill Forward',
+            onClick: () => {
+              fillForward(seg);
+              renderTimeline(syncGlobal());
+            }
+          },
+          {
+            cls: 'fill-backward-btn',
+            label: '⏪ Fill Backward',
+            onClick: () => {
+              fillBackward(seg);
+              renderTimeline(syncGlobal());
+            }
+          }
+        ];
       }
 
       if (!card.classList.contains('constrained')) attachCardDragHandlers(card);
@@ -139,8 +130,7 @@ function renderCard(seg, segments) {
       const startStr = showDate(seg.start?.utc, seg.originTz);
       const endStr = showDate(seg.end?.utc, seg.destinationTz);      
       title = segLabel(seg, segments)
-      //let durText = seg.durationMin ? formatDurationMin(seg.durationMin) : ''; // this should not be reading this
-      let durText = seg.duration.val ? formatDurationHr(seg.duration.val) : ''; 
+      let durText = seg.durationMin ? formatDurationMin(seg.durationMin) : '';
       meta = `${startStr}<br>${seg.distanceMi} mi • ${durText}<br>${endStr}`;
       card.innerHTML = `
         <div class="title">${title}</div>
@@ -243,64 +233,6 @@ function renderCard(seg, segments) {
   return card;
 }
 
-function cardBadgeClass(seg) { // need to re-enable this
-  if (seg.type !== 'drive') return '';
-  if (seg.autoDrive && !seg.manualEdit) return 'auto';
-  if (seg.manualEdit) return 'edited';
-  return 'manual';
-}
 
-// --- Build single day divider ---
-function renderDayDivider(day) {
-  const div = document.createElement('div');
-  div.className = 'day-divider';
-  div.textContent = day;
-  return div;
-}
-
-function buildFooter(seg, buttons) {
-  const base = [
-    { cls: 'edit-btn', label: 'Edit', onClick: (c) => editSegment(seg, c) },
-    {
-      cls: 'del-btn',
-      label: 'Delete',
-      onClick: (c) => {
-        deleteSegment(seg, c);
-        renderTimeline(syncGlobal());
-      }
-    }
-  ];
-  return [...buttons, ...base];
-}
-
-function attachButtons(card, buttons) {
-  let footer = card.querySelector('.card-footer');
-
-  footer.innerHTML = buttons
-    .map((b) => `<button class="${b.cls}">${b.label}</button>`)
-    .join('');
-
-  buttons.forEach((b) => {
-    const btn = card.querySelector(`.${b.cls}`);
-    if (btn) btn.onclick = () => b.onClick(card);
-  });
-}
-
-function lockIcons(field) {
-  if (!field) return '';
-  const { lock, emitsBackward, emitsForward } = field;
-
-  let faIcon;
-  if (lock === 'hard') faIcon = 'fa-lock';
-  else if (lock === 'soft') faIcon = 'fa-gear';
-  else faIcon = 'fa-unlock';
-
-  const up = emitsBackward ? '<i class="fa-solid fa-arrow-up"></i>' : '';
-  const down = emitsForward ? '<i class="fa-solid fa-arrow-down"></i>' : '';
-
-  return `<span class="lock-icons">
-    <i class="fa-solid ${faIcon}"></i>${up}${down}
-  </span>`;
-}
 
 

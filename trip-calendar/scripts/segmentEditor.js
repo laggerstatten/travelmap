@@ -73,6 +73,7 @@ function createEditorForm(seg) {
       </div>`;
   }
 
+  // may need to make this its own function
   else if (seg.type === 'stop' || seg.type === 'drive') {
     const listItems = (seg.items || []).map((item, i) => {
       const name = typeof item === 'object' ? item.name ?? '' : item;
@@ -153,11 +154,10 @@ function createEditorForm(seg) {
     });
   }, 0);
 
-  attachSublistHandlers(form, seg);
+  attachSublistHandlers(form, seg); //temp
   if (seg.type === 'stop') {
-    attachConstraintEditor(form, seg);
+    //attachConstraintEditor(form, seg); //temp
   }
-
 
   return form;
 }
@@ -199,13 +199,3 @@ function clearButtonHTML(field) {
             <i class="fa-solid fa-xmark"></i>
           </button>`;
 }
-
-
-
-
-
-
-
-
-
-

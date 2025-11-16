@@ -6,29 +6,6 @@ function canWrite(ep) {
   return LOCK_RANK[ep?.lock || 'undefined'] <= LOCK_RANK.auto;
 }
 
-function normalizeSegments(segments) {
-  for (const s of segments) {
-    s.start    ??= { utc: '', lock: 'undefined' };
-    s.end      ??= { utc: '', lock: 'undefined' };
-    s.duration ??= { val: 0, lock: 'undefined' };
-  }
-}
-
-// internal helper: derive endpoint meta
-function endpointMeta(ep) {
-  const lock = ep?.lock ?? 'undefined';
-  const rank = LOCK_RANK[lock] ?? 0;
-  const hasUtc = !!ep?.utc;
-  const pinned = hasUtc && rank >= LOCK_RANK.soft;
-
-  // For debugging simplicity: a pinned endpoint is an emitter in BOTH directions.
-  // (Later we can narrow this if you decide “start only emits fwd” / “end only emits back”.)
-  const emitsForward  = pinned;
-  const emitsBackward = pinned;
-
-  return { lock, rank, hasUtc, pinned, emitsForward, emitsBackward };
-}
-
 /**
  * annotateEmitters
  * Adds .meta objects on start/end: { lock, rank, hasUtc, pinned, emitsForward, emitsBackward }
@@ -47,6 +24,29 @@ function annotateEmitters(list) {
     s.end.emitsBackward = s.end.meta.emitsBackward;
   }
   return segs;
+}
+
+// internal helper: derive endpoint meta
+function endpointMeta(ep) {
+  const lock = ep?.lock ?? 'undefined';
+  const rank = LOCK_RANK[lock] ?? 0;
+  const hasUtc = !!ep?.utc;
+  const pinned = hasUtc && rank >= LOCK_RANK.soft;
+
+  // For debugging simplicity: a pinned endpoint is an emitter in BOTH directions.
+  // (Later we can narrow this if you decide “start only emits fwd” / “end only emits back”.)
+  const emitsForward  = pinned;
+  const emitsBackward = pinned;
+
+  return { lock, rank, hasUtc, pinned, emitsForward, emitsBackward };
+}
+
+function normalizeSegments(segments) {
+  for (const s of segments) {
+    s.start    ??= { utc: '', lock: 'undefined' };
+    s.end      ??= { utc: '', lock: 'undefined' };
+    s.duration ??= { val: 0, lock: 'undefined' };
+  }
 }
 
 /**
@@ -261,3 +261,44 @@ function segDurationMinutes(seg) {
 
   return 0;
 }
+
+function findNearestEmitterLeft(idx, segments) {
+  for (let i = idx - 1; i >= 0; i--) {
+    const s = segments[i];
+    if (isEmitter(s.end, 'forward'))     return { seg: s, kind: 'end',   field: s.end };
+    if (isEmitter(s.start, 'forward'))   return { seg: s, kind: 'start', field: s.start };
+    if (isEmitter(s.duration, 'forward'))return { seg: s, kind: 'duration', field: s.duration };
+  }
+  return null;
+}
+
+function findNearestEmitterRight(idx, segments) {
+  for (let i = idx + 1; i < segments.length; i++) {
+    const s = segments[i];
+    if (isEmitter(s.start, 'backward'))    return { seg: s, kind: 'start', field: s.start };
+    if (isEmitter(s.end, 'backward'))      return { seg: s, kind: 'end',   field: s.end };
+    if (isEmitter(s.duration, 'backward')) return { seg: s, kind: 'duration', field: s.duration };
+  }
+  return null;
+}
+
+function isEmitter(f, dir) {
+    if (!boundaryLocked(f)) return false;
+    return dir === 'forward' ? !!f.emitsForward : !!f.emitsBackward;
+}
+
+function boundaryLocked(f) { 
+  return !!(f && f.lock && f.lock !== 'unlocked'); 
+}
+
+
+
+
+
+
+
+
+
+
+
+

@@ -16,6 +16,7 @@ function attachCardDragHandlers(card) {
   card.addEventListener('dragend', () => {
     card.classList.remove('dragging');
     reorderFromDOM(document.getElementById('calendar'));
+    // do we need to do anything after this?
   });
 }
 
@@ -125,7 +126,7 @@ function attachGeocoder(editor, seg) {
   const container = editor.querySelector(`#geocoder-${seg.id}`);
   if (!container) return;
 
-  const geocoder = new MapboxGeocoder({
+  const geocoder = new MapboxGeocoder({ // may need to bias toward map extent
     accessToken: mapboxgl.accessToken,
     useBrowserFocus: true,
     marker: false,
@@ -187,14 +188,18 @@ function handleEditorSubmit(editor, seg, card) {
     }
 
     // Capture subitems
-    const items = Array.from(editor.querySelectorAll('.sublist-items li'))
-      .map((li) => {
-        const name = li.querySelector('.item-name')?.value.trim();
-        const dur = parseFloat(li.querySelector('.item-dur')?.value || 0);
-        return name ? { name, dur: isNaN(dur) ? null : dur } : null;
-      })
-      .filter(Boolean);
-    seg.items = items;
+    const trackSubitems = true;
+    let items = []
+    if(trackSubitems) {
+      items = Array.from(editor.querySelectorAll('.sublist-items li'))
+        .map((li) => {
+          const name = li.querySelector('.item-name')?.value.trim();
+          const dur = parseFloat(li.querySelector('.item-dur')?.value || 0);
+          return name ? { name, dur: isNaN(dur) ? null : dur } : null;
+        })
+        .filter(Boolean);
+      seg.items = items;
+    }
 
     if (seg.type === 'drive') {
       const breakHr = items.reduce((a, b) => a + (b.dur || 0), 0);
@@ -214,177 +219,16 @@ function handleEditorSubmit(editor, seg, card) {
     else list.push(seg);
     saveSegments(list);
 
+
+  // do validation functions need to auto run here?
+
     renderTimeline(syncGlobal());
+    renderMap(syncGlobal());
     card.classList.remove('editing');
     editor.remove();
 
     //console.log(`Segment ${seg.id} updated`, { changed });
   });
-}
-
-function updateSegmentTiming(seg, formData) {
-  const prev = structuredClone(seg);
-
-  seg.start ??= { utc: '', lock: 'unlocked' };
-  seg.end ??= { utc: '', lock: 'unlocked' };
-  seg.duration ??= { val: null, lock: 'unlocked' };
-
-  const durVal = formData['duration']?.trim() 
-  ? Number(formData['duration']) 
-  : null;
-
-  const newStartUTC = formData['start'] 
-  ? localToUTC(formData['start'], seg.timeZone) 
-  : '';
-  const newEndUTC = formData['end']   
-  ? localToUTC(formData['end'], seg.timeZone)   
-  : '';
-
-  // Apply user edits (don’t recompute yet)
-  if (newStartUTC && newStartUTC !== prev.start?.utc) {
-    seg.start.utc = newStartUTC;
-    if (seg.start.lock !== 'hard') seg.start.lock = 'unlocked';
-  }
-  
-  if (newEndUTC && newEndUTC !== prev.end?.utc) {
-    seg.end.utc = newEndUTC;
-    if (seg.end.lock !== 'hard') seg.end.lock = 'unlocked';
-  }
-  if (durVal !== null && durVal !== Number(prev.duration?.val || 0)) {
-    seg.duration.val = durVal;
-    if (seg.duration.lock !== 'hard') seg.duration.lock = 'unlocked';
-  }
-
-  seg.start.lock ??= prev.start?.lock || 'unlocked';
-  seg.end.lock ??= prev.end?.lock || 'unlocked';
-  seg.duration.lock ??= prev.duration?.lock || 'unlocked';
-
-  updateLockConsistency(seg);
-
-  const changed = {
-    start: seg.start.utc !== prev.start?.utc,
-    end: seg.end.utc !== prev.end?.utc,
-    duration: seg.duration.val !== prev.duration?.val
-  };
-
-  recalculateSegmentTimes(seg, changed);
-  return { changed, prev };
-}
-
-// Helpers
-const HOURS = 3600000;
-const toDate = (utc) => (utc ? new Date(utc) : null);
-const iso = (d) => (d ? new Date(d).toISOString() : '');
-
-function recalculateSegmentTimes(seg, changed = { start:false, end:false, duration:false }) {
-  const startLocked = seg.start?.lock === 'hard';
-  const endLocked   = seg.end?.lock === 'hard';
-  const durLocked   = seg.duration?.lock === 'hard';
-
-  const hasStart = !!seg.start?.utc;
-  const hasEnd   = !!seg.end?.utc;
-  const hasDur   = seg.duration?.val != null && !isNaN(Number(seg.duration.val));
-
-  const startDT = toDate(seg.start?.utc);
-  const endDT   = toDate(seg.end?.utc);
-  const durMs   = hasDur ? Number(seg.duration.val) * HOURS : null;
-
-  // --- 1) Two locked => compute the third
-  if (startLocked && endLocked) {
-    if (hasStart && hasEnd) seg.duration.val = (endDT - startDT) / HOURS;
-    return seg;
-  }
-  if (startLocked && durLocked) {
-    if (hasStart && hasDur) seg.end.utc = iso(startDT.getTime() + durMs);
-    return seg;
-  }
-  if (endLocked && durLocked) {
-    if (hasEnd && hasDur) seg.start.utc = iso(endDT.getTime() - durMs);
-    return seg;
-  }
-
-  // --- 2) Exactly one locked => edited field drives the third
-  if (startLocked && !endLocked && !durLocked) {
-    if (changed.duration && hasStart && hasDur) seg.end.utc = iso(startDT.getTime() + durMs);
-    else if (changed.end && hasStart && hasEnd) seg.duration.val = (endDT - startDT) / HOURS;
-    return seg;
-  }
-  if (endLocked && !startLocked && !durLocked) {
-    if (changed.duration && hasEnd && hasDur) seg.start.utc = iso(endDT.getTime() - durMs);
-    else if (changed.start && hasStart && hasEnd) seg.duration.val = (endDT - startDT) / HOURS;
-    return seg;
-  }
-  if (durLocked && !startLocked && !endLocked) {
-    if (changed.start && hasStart && hasDur) seg.end.utc = iso(startDT.getTime() + durMs);
-    else if (changed.end && hasEnd && hasDur) seg.start.utc = iso(endDT.getTime() - durMs);
-    return seg;
-  }
-
-  // --- 3) None locked: prefer the edited field(s)
-  // If only one thing changed, compute the dependent third if possible.
-  const oneChanged =
-    (changed.start?1:0) + (changed.end?1:0) + (changed.duration?1:0) === 1;
-
-  if (oneChanged) {
-    if (changed.start && hasStart && hasDur) {
-      seg.end.utc = iso(startDT.getTime() + durMs);
-      return seg;
-    }
-    if (changed.end && hasEnd && hasDur) {
-      seg.start.utc = iso(endDT.getTime() - durMs);
-      return seg;
-    }
-    if (changed.duration) {
-      if (hasStart) seg.end.utc = iso(startDT.getTime() + durMs);
-      else if (hasEnd) seg.start.utc = iso(endDT.getTime() - durMs);
-      return seg;
-    }
-  }
-
-  // --- 4) Fallback: if start & end present, keep duration consistent
-  if (hasStart && hasEnd) seg.duration.val = (endDT - startDT) / HOURS;
-
-  return seg;
-}
-
-function updateLockConsistency(seg) {
-  const locks = {
-    start: seg.start.lock,
-    end: seg.end.lock,
-    duration: seg.duration.lock
-  };
-
-  const hardCount = Object.values(locks).filter((l) => l === 'hard').length;
-
-  // Clear derived states first
-  if (locks.start !== 'hard') seg.start.lock = 'unlocked';
-  if (locks.end !== 'hard') seg.end.lock = 'unlocked';
-  if (locks.duration !== 'hard') seg.duration.lock = 'unlocked';
-
-  // ────────────────────────────────
-  // 1️⃣ Exactly two hard locks → derive the third as soft
-  // ────────────────────────────────
-  if (hardCount === 2) {
-    const hardStart = locks.start === 'hard';
-    const hardEnd = locks.end === 'hard';
-    const hardDur = locks.duration === 'hard';
-
-    if (hardStart && hardEnd && !hardDur) {
-      seg.duration.val = durationFromStartEnd(seg.start.utc, seg.end.utc);
-      seg.duration.lock = 'soft';
-    } else if (hardStart && hardDur && !hardEnd) {
-      seg.end.utc = endFromDuration(seg.start.utc, seg.duration.val);
-      seg.end.lock = 'soft';
-    } else if (hardEnd && hardDur && !hardStart) {
-      seg.start.utc = startFromDuration(seg.end.utc, seg.duration.val);
-      seg.start.lock = 'soft';
-    }
-  }
-
-  // ────────────────────────────────
-  // 2️⃣ One or zero hard locks → everything else stays unlocked
-  // ────────────────────────────────
-  // (no auto-promotion to hard — user must click to lock)
 }
 
 function editSegment(seg, card) {
@@ -393,10 +237,23 @@ function editSegment(seg, card) {
   const editor = buildOnCardEditor(seg, card);
 }
 
-function deleteSegment(seg, card) {
+function deleteSegment(seg, card) { // why does this not trigger validate and repair and other functions?
   const id = seg.id;
   deleteSegmentById(id);
+
+  /**
+    segs = removeSlackAndOverlap(segs);
+    segs = await validateAndRepair(segs);
+    segs = annotateEmitters(segs);
+    segs = determineEmitterDirections(segs, { priority: PLANNING_DIRECTION });
+    segs = propagateTimes(segs);
+    segs = computeSlackAndOverlap(segs);
+    saveSegments(segs);
+  */
+
   renderTimeline(syncGlobal());
+  renderMap(syncGlobal());
+
 }
 
 function deleteSegmentById(id) {
@@ -408,200 +265,7 @@ function deleteSegmentById(id) {
   }
 }
 
-/* ===============================
-   Drive Duration Updater
-   =============================== */
-function updateDriveDurations(editor, seg) {
-  const durFields = Array.from(editor.querySelectorAll('.item-dur')).map(
-    (i) => parseFloat(i.value) || 0
-  );
-  const breakHr = durFields.reduce((a, b) => a + b, 0);
-
-  seg.breakHr = breakHr;
-
-  const baseHr = parseFloat(seg.durationHr || seg.duration?.val || 0);
-  const totalHr = baseHr + breakHr;
-
-  seg.duration = seg.duration || {};
-  seg.duration.val = totalHr;
-
-  const durInput = editor.querySelector('input[name="duration"]');
-  if (durInput) durInput.value = totalHr.toFixed(2);
-}
-
-/* ===============================
-   Sublist Handlers (Add / Remove / Reorder / Collapse)
-   =============================== */
-function attachSublistHandlers(editor, seg) {
-  const addBtn = editor.querySelector('.add-item');
-  const list = editor.querySelector('.sublist-items');
-  const sublist = editor.querySelector('.sublist');
-  const toggle = editor.querySelector('.toggle-sublist');
-  if (!sublist) return;
-
-  // Prevent outer drag interference
-  ['mousedown', 'touchstart', 'pointerdown'].forEach((evt) => {
-    sublist.addEventListener(evt, (e) => e.stopPropagation(), {
-      passive: true
-    });
-  });
-
-  // Collapse / expand
-  toggle?.addEventListener('click', () => {
-    const collapsed = sublist.classList.toggle('collapsed');
-    toggle.querySelector('i').className = collapsed
-      ? 'fa-solid fa-caret-right'
-      : 'fa-solid fa-caret-down';
-  });
-
-  addBtn?.addEventListener('click', () => {
-    const li = document.createElement('li');
-    li.innerHTML = `
-      <span class="drag-handle"><i class="fa-solid fa-grip-vertical"></i></span>
-      <input class="item-name" placeholder="Task or stop" />
-      <input class="item-dur" type="number" step="0.25" placeholder="hr" />
-      <button type="button" class="remove-item">✕</button>`;
-    list.appendChild(li);
-    sublist.classList.remove('collapsed');
-    toggle.querySelector('i').className = 'fa-solid fa-caret-down';
-  });
-
-  editor.addEventListener('click', (e) => {
-    if (e.target.classList.contains('remove-item')) {
-      e.target.closest('li').remove();
-      if (list.children.length === 0) {
-        sublist.classList.add('collapsed');
-        toggle.querySelector('i').className = 'fa-solid fa-caret-right';
-      }
-      if (seg.type === 'drive') updateDriveDurations(editor, seg);
-    }
-  });
-
-  // Auto-recalculate when durations change (drives only)
-  if (seg.type === 'drive') {
-    editor.addEventListener('input', (e) => {
-      if (e.target.classList.contains('item-dur')) {
-        updateDriveDurations(editor, seg);
-      }
-    });
-  }
-
-  // Enable reordering
-  if (typeof Sortable !== 'undefined' && list) {
-    new Sortable(list, {
-      animation: 150,
-      handle: '.drag-handle',
-      forceFallback: true,
-      fallbackOnBody: true,
-      fallbackTolerance: 5,
-      filter: 'input,button',
-      preventOnFilter: false
-    });
-  }
-}
-
-async function resolveOverlapAction(seg, opt) {
-  console.log(`Resolving ${opt.action} (${opt.role}) for`, seg.name);
-
-  // minutes/hours are precomputed on opt
-  const roundedMin = opt.roundedMin ?? 0;
-  const roundedHr  = opt.roundedHr  ?? 0;
-
-  // Unlock if needed
-  if (opt.feasibility === 'unlock') {
-    if (opt.action === 'moveEarlier' || opt.action === 'moveLater') {
-      seg.start.lock = 'unlocked';
-      seg.end.lock   = 'unlocked';
-    } else if (opt.action === 'shrink') {
-      seg.duration.lock = 'unlocked';
-      // also unlock the boundary we’ll recompute below
-      if (opt.role === 'left') seg.end.lock = 'unlocked';
-      else seg.start.lock = 'unlocked';
-    }
-  }
-
-  const formData = {};
-
-  if (opt.action === 'moveEarlier') {
-    formData.start = utcToLocalInput(addMinutes(seg.start.utc, -roundedMin), seg.timeZone);
-    formData.end   = utcToLocalInput(addMinutes(seg.end.utc,   -roundedMin), seg.timeZone);
-  }
-
-  if (opt.action === 'moveLater') {
-    formData.start = utcToLocalInput(addMinutes(seg.start.utc,  roundedMin), seg.timeZone);
-    formData.end   = utcToLocalInput(addMinutes(seg.end.utc,    roundedMin), seg.timeZone);
-  }
-
-  if (opt.action === 'shrink') {
-    // Current duration (minutes) with your helper
-    const curDurMin = segDurationMinutes(seg);
-    const newDurMin = Math.max(0, curDurMin - roundedMin);
-    const newDurHr  = newDurMin / 60;
-
-    // Role determines which boundary stays anchored:
-    // left side shrink ⇒ keep START fixed, move END earlier
-    // right side shrink ⇒ keep END fixed, move START later
-    if (opt.role === 'left') {
-      formData.start    = utcToLocalInput(seg.start.utc, seg.timeZone);
-      formData.end      = utcToLocalInput(endFromDuration(seg.start.utc, newDurHr), seg.timeZone);
-      formData.duration = newDurHr.toFixed(2);
-    } else {
-      formData.end      = utcToLocalInput(seg.end.utc, seg.timeZone);
-      formData.start    = utcToLocalInput(startFromDuration(seg.end.utc, newDurHr), seg.timeZone);
-      formData.duration = newDurHr.toFixed(2);
-    }
-  }
-
-    if (opt.action === 'unlockAndClear') {
-      seg.start.utc = '';
-      seg.end.utc = '';
-      //seg.duration.val = null;
-      seg.start.lock = 'unlocked';
-      seg.end.lock = 'unlocked';
-      seg.duration.lock = 'unlocked';
-      seg.isQueued = false;
-    }
-
-    if (opt.action === 'unlockAndQueue') {
-      seg.start.utc = '';
-      seg.end.utc = '';
-      //seg.duration.val = null;
-      seg.start.lock = 'soft';
-      seg.end.lock = 'soft';
-      seg.duration.lock = 'soft';
-      seg.isQueued = true;
-    }
 
 
 
-
-
-  // Apply via your central logic
-  if (Object.keys(formData).length > 0) {
-    updateSegmentTiming(seg, formData);
-  }
-
-  // Persist + recompute
-  let list = loadSegments();
-  const idx = list.findIndex(s => s.id === seg.id);
-  if (idx !== -1) list[idx] = seg;
-
-  if (opt.action === 'unlockAndQueue') {
-    const qIdx = list.findIndex(s => s.id === seg.id);
-    if (qIdx > -1) {
-      const [item] = list.splice(qIdx, 1);
-      list.unshift(item); // put at top
-    }
-  }
-
-  list = removeSlackAndOverlap(list);
-  list = await validateAndRepair(list);
-  list = annotateEmitters(list);
-  list = determineEmitterDirections(list, { priority: PLANNING_DIRECTION });
-  list = propagateTimes(list);
-  list = computeSlackAndOverlap(list);
-
-  saveSegments(list);
-  renderTimeline(list);
-}
 

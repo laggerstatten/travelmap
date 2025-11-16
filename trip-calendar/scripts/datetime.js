@@ -119,3 +119,5 @@ function formatDurationHr(hr) {
   return formatDurationMin(hr * 60);
 }
 
+const toDate = (utc) => (utc ? new Date(utc) : null);
+const iso = (d) => (d ? new Date(d).toISOString() : '');

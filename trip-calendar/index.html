@@ -39,22 +39,29 @@
     <script src="https://unpkg.com/suncalc/suncalc.js"></script>
 
     <!-- Scripts Unlikely to Need Refactoring -->
-    <script src="scripts/datetime.js" defer></script>
-    <script src="scripts/externaldata.js" defer></script>
-    <script src="scripts/newId.js" defer></script>
+    <script src="scripts/datetime.js" ></script>
+    <script src="scripts/externaldata.js" ></script>
+    <script src="scripts/newId.js" ></script>
 
     <!-- Scripts -->
-    <script src="scripts/timeline.js" defer></script>
-    <script src="scripts/map.js" defer></script>
-    <script src="scripts/constraintTypes.js" defer></script>
-    <script src="scripts/segmentActions.js" defer></script>
-    <script src="scripts/tripInitiationSequence.js" defer></script>
-    <script src="scripts/segmentEditor.js" defer></script>
-    <script src="scripts/timingPropagation.js" defer></script>
-    <script src="scripts/tripAddingSequence.js" defer></script>
-    <script src="scripts/constraintValidation.js" defer></script>
-    <script src="scripts/constraintFunctions.js" defer></script>
-    <script src="scripts/insolation.js" defer></script>
+    <script src="scripts/timeline.js" ></script>
+    <script src="scripts/map.js" ></script>
+    <script src="scripts/segmentActions.js" ></script>
+    <script src="scripts/tripInitiationSequence.js" ></script>
+    <script src="scripts/segmentEditor.js" ></script>
+    <script src="scripts/timingPropagation.js" ></script>
+    <script src="scripts/timingSlackOverlap.js" ></script>
+    <script src="scripts/timingSetters.js" ></script>
+
+    <script src="scripts/tripAddingSequence.js" ></script>
+    <script src="scripts/overlapResolution.js" ></script>
+
+    <script src="scripts/clearAutoDrives.js" ></script>
+    <script src="scripts/clearTimesAndDurations.js" ></script>
+
+    <script src="scripts/enrichment/insolation.js" ></script>
+    <script src="scripts/sublists/sublists.js" ></script>
+
 
     <style>
       #map {
@@ -72,7 +79,10 @@
     <script>
       let segments = [];
       let tripMap = null;
-      //let mapReady = false;
+      let mapReady = false;
+      let pendingSegments = null;
+
+
       mapboxgl.accessToken =
         'pk.eyJ1IjoiZXJpY3NjaGFsbCIsImEiOiJjbDBsbmpvNHYwY3JhM2N0a2Ribm1rZ2k5In0.XY-ziSu8DLnv5UIstoSGRQ';
       const TIMEZONE_TOKEN = '9QEU1A5823HR';
@@ -114,23 +124,8 @@
 
           saveSegments(segs);
           renderTimeline(syncGlobal());
+          renderMap(syncGlobal());
         };
-
-        /**
-          document.getElementById('insert-drives').onclick = () => {
-            let segs = loadSegments();
-            segs = insertDriveSegments(segs);
-            saveSegments(segs);
-            renderTimeline(syncGlobal());
-          };
-  
-          document.getElementById('gen-routes').onclick = async () => {
-            let segs = loadSegments();
-            segs = await generateRoutes(segs);
-            saveSegments(segs);
-            renderTimeline(syncGlobal());
-          };
-        */
 
         document.getElementById('validate-btn').onclick = async () => {
           let segs = loadSegments();
@@ -139,6 +134,8 @@
 
           saveSegments(segs);
           renderTimeline(syncGlobal());
+          renderMap(syncGlobal());
+
         };
 
         document.getElementById('clear-unlocked-times').onclick = () => {
