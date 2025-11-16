@@ -134,12 +134,23 @@ async function resolveOverlapAction(seg, opt) {
     }
 
     if (opt.action === 'unlockAndClear') {
-        unlockAndClear(seg);
+        seg.start.utc = '';
+        seg.end.utc = '';
+        //seg.duration.val = null;
+        seg.start.lock = 'unlocked';
+        seg.end.lock = 'unlocked';
+        seg.duration.lock = 'unlocked';
+        seg.isQueued = false;
     }
 
     if (opt.action === 'unlockAndQueue') {
-        unlockAndQueue(seg);
-        pushToQueueTop(list, seg);
+        seg.start.utc = '';
+        seg.end.utc = '';
+        //seg.duration.val = null;
+        seg.start.lock = 'soft';
+        seg.end.lock = 'soft';
+        seg.duration.lock = 'soft';
+        seg.isQueued = true;
     }
 
     // Apply via your central logic
@@ -152,7 +163,13 @@ async function resolveOverlapAction(seg, opt) {
     const idx = list.findIndex(s => s.id === seg.id);
     if (idx !== -1) list[idx] = seg;
 
-
+    if (opt.action === 'unlockAndQueue') {
+        const qIdx = list.findIndex(s => s.id === seg.id);
+        if (qIdx > -1) {
+            const [item] = list.splice(qIdx, 1);
+            list.unshift(item); // put at top
+        }
+    }
 
     list = removeSlackAndOverlap(list);
     list = await validateAndRepair(list);
@@ -165,36 +182,3 @@ async function resolveOverlapAction(seg, opt) {
     renderTimeline(list);
     renderMap(list);
 }
-
-function unlockAndClear(seg) {
-  seg.start.utc = '';
-  seg.end.utc = '';
-  seg.duration.val = null;
-
-  seg.start.lock = 'unlocked';
-  seg.end.lock = 'unlocked';
-  seg.duration.lock = 'unlocked';
-
-  seg.isQueued = false;
-}
-
-function unlockAndQueue(seg) {
-  seg.start.utc = '';
-  seg.end.utc = '';
-  seg.duration.val = null;
-
-  seg.start.lock = 'soft';
-  seg.end.lock = 'soft';
-  seg.duration.lock = 'soft';
-
-  seg.isQueued = true;
-}
-
-function pushToQueueTop(list, seg) {
-  const idx = list.findIndex(s => s.id === seg.id);
-  if (idx !== -1) {
-    list.splice(idx, 1);
-    list.unshift(seg);
-  }
-}
-

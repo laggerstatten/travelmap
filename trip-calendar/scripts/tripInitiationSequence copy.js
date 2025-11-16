@@ -91,12 +91,7 @@ function waitForTripAnchorsReady() {
    =============================== */
 
 async function validateAndRepair(list) {
-  // --- split into placed timeline vs queued ---
-  const placed = list.filter(seg => !seg.isQueued);
-  const queued = list.filter(seg => seg.isQueued);
-  console.log(queued);
-  // Work only on placed segments
-  let segments = [...placed];
+  let segments = [...list];
 
   segments = removeAdjacentDrives(segments);
 
@@ -106,15 +101,11 @@ async function validateAndRepair(list) {
     const dest = segments.find((x) => x.id === seg.destinationId);
     return origin && dest;
   });
-  console.log(segments);
   // do we need to sort by date here
   segments = insertDriveSegments(segments);
   segments = await generateRoutes(segments);
-  console.log(segments);
 
-  const finalList = [...queued, ...segments];
-  
-  return finalList;
+  return segments;
 }
 
 function removeAdjacentDrives(list) {

@@ -47,7 +47,6 @@ function updateSegmentTiming(seg, formData) {
   return { changed, prev };
 }
 
-
 function recalculateSegmentTimes(seg, changed = { start:false, end:false, duration:false }) {
   const startLocked = seg.start?.lock === 'hard';
   const endLocked   = seg.end?.lock === 'hard';

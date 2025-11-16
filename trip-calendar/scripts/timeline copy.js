@@ -259,62 +259,22 @@ function renderDayDivider(day) {
 }
 
 function buildFooter(seg, buttons) {
-  const actions = [];
-
-  const isQueued = !!seg.isQueued;
-  const isStop = seg.type === "stop";
-
-  // Always allow edit
-  actions.push({
-    cls: "edit-btn",
-    label: "Edit",
-    onClick: (c) => editSegment(seg, c)
-  });
-
-  //
-  // 1. STOP IS QUEUED → Simple delete
-  //
-  if (isQueued && isStop) {
-    actions.push({
-      cls: "del-btn",
-      label: "Delete",
-      onClick: () => deleteQueuedStop(seg)
-    });
-
-    return [...buttons, ...actions];
-  }
-
-  //
-  // 2. STOP IS PLACED → Show only "Delete" and "Move to Queue"
-  //
-  if (isStop && !isQueued) {
-    actions.push({
-      cls: "queue-btn",
-      label: "Move to Queue",
-      onClick: () => movePlacedStopToQueue(seg)
-    });
-
-    actions.push({
-      cls: "del-btn",
-      label: "Delete",
-      onClick: () => deletePlacedStop(seg)
-    });
-
-    return [...buttons, ...actions];
-  }
-
-  //
-  // 3. For any other segment (e.g. drives), default to simple delete
-  //
-  actions.push({
-    cls: "del-btn",
-    label: "Delete",
-    onClick: () => deleteSegment(seg)
-  });
-
-  return [...buttons, ...actions];
+  const base = [
+    { 
+      cls: 'edit-btn', 
+      label: 'Edit', 
+      onClick: (c) => editSegment(seg, c) },
+    {
+      cls: 'del-btn',
+      label: 'Delete',
+      onClick: (c) => {
+        deleteSegment(seg, c);
+        renderTimeline(syncGlobal());
+      }
+    }
+  ];
+  return [...buttons, ...base];
 }
-
 
 function attachButtons(card, buttons) {
   let footer = card.querySelector('.card-footer');

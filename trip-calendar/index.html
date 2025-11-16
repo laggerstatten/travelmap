@@ -61,6 +61,10 @@
 
     <script src="scripts/enrichment/insolation.js" ></script>
     <script src="scripts/sublists/sublists.js" ></script>
+    <script src="scripts/poi.js" defer></script>
+
+    <script src="scripts/pipeline.js" defer></script>
+    <script src="scripts/newFunctions.js" defer></script>
 
 
     <style>
@@ -89,6 +93,7 @@
 
       const SEG_KEY = 'tripSegments';
 
+      let PIPELINELEVEL = 'conflict';
       const PLANNING_DIRECTION = 'forward'; // 'backward' or 'forward'
 
       function loadSegments() {
@@ -232,6 +237,7 @@
           const segs = syncGlobal();
           renderTimeline(segs);
           renderMap(segs);
+          //renderPOITable(segs);
 
       });
     </script>
@@ -321,6 +327,26 @@
       </div>
 
     </div>
+
+    <!--<div id="poi-pane" style="
+      height: 30vh;
+      overflow-y: auto;
+      border-bottom: 1px solid #ccc;
+      background: #fafafa;
+      padding: 8px;
+    ">
+      <h3>Nearby Points of Interest</h3>
+      <table id="poi-table" style="width:100%; border-collapse: collapse;">
+        <thead>
+          <tr>
+            <th style="text-align:left;">Name</th>
+            <th style="text-align:left;">Distance (mi)</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>-->
 
 
     <!-- MAP PANE -->
