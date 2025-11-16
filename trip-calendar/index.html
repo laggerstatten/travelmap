@@ -126,7 +126,7 @@
           segs = removeSlackAndOverlap(segs);
 
           segs = clearAutoDrives(segs);
-
+          PIPELINELEVEL = '';
           saveSegments(segs);
           renderTimeline(syncGlobal());
           renderMap(syncGlobal());
@@ -136,7 +136,7 @@
           let segs = loadSegments();
 
           segs = await validateAndRepair(segs); // do we need to remove slack/overlap first?
-
+          PIPELINELEVEL = 'routing';
           saveSegments(segs);
           renderTimeline(syncGlobal());
           renderMap(syncGlobal());
@@ -148,24 +148,25 @@
           segs = removeSlackAndOverlap(segs);
 
           segs = clearTimesAndDurations(segs);
-
+          if (PIPELINELEVEL === '') {PIPELINELEVEL = ''} else {PIPELINELEVEL = 'routing'};
           saveSegments(segs);
           renderTimeline(syncGlobal());
+          renderMap(syncGlobal());
         };
 
-        document.getElementById('fill-times').onclick = () => {
+        document.getElementById('fill-times').onclick = async () => {
           let segs = loadSegments();
           segs = removeSlackAndOverlap(segs);
-
-          segs = annotateEmitters(segs);
-          segs = determineEmitterDirections(segs, {
-            priority: PLANNING_DIRECTION
-          });
+          segs = await validateAndRepair(segs); // test
+          //segs = annotateEmitters(segs);
+          segs = determineEmitterDirections(segs, { priority: PLANNING_DIRECTION });
+          console.log(segs);
           segs = propagateTimes(segs);
-          segs = computeSlackAndOverlap(segs); //test
-
+          segs = computeSlackAndOverlap(segs);
+          PIPELINELEVEL = 'timing';
           saveSegments(segs);
           renderTimeline(syncGlobal());
+          renderMap(syncGlobal());
         };
 
         /**
@@ -224,6 +225,7 @@
                 saveSegments(parsed);
                 alert('Trip data imported successfully.');
                 renderTimeline(syncGlobal());
+                renderMap(syncGlobal());
               } catch (err) {
                 alert('Import failed: ' + err.message);
               }

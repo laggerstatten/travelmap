@@ -1,3 +1,60 @@
+function clearTimesAndDurations(list, opts = {}) {
+    //console.log('clearTimesAndDurations');
+    let segments = [...list];
+    const { onlyUnlocked = true } = opts;
+
+    const message = onlyUnlocked ?
+        'Clear all non-locked times and durations?' :
+        'Clear all start/end times and durations?';
+
+    if (!confirm(message)) return;
+
+    const shouldClear = (lock) => {
+        if (!onlyUnlocked) return true;
+
+        // DO NOT clear hard or soft
+        return !(lock === 'hard' || lock === 'soft');
+    };
+
+    segments.forEach((seg) => {
+        seg.start ??= { utc: '', lock: 'unlocked' };
+        seg.end ??= { utc: '', lock: 'unlocked' };
+        seg.duration ??= { val: null, lock: 'unlocked' };
+
+        // ───────────── START ─────────────
+        if (shouldClear(seg.start.lock)) {
+            seg.start.utc = '';
+            seg.start.lock = 'unlocked';
+        }
+
+        // ───────────── END ─────────────
+        if (shouldClear(seg.end.lock)) {
+            seg.end.utc = '';
+            seg.end.lock = 'unlocked';
+        }
+
+        // ───────────── DURATION ─────────────
+        if (shouldClear(seg.duration.lock)) {
+            seg.duration.val = null;
+            seg.duration.lock = 'unlocked';
+        }
+
+        // ───────────── DRIVES ─────────────
+        if (seg.type === 'drive') {
+            seg.duration.val =
+                seg.durationHr ??
+                seg.duration?.val ??
+                null;
+            seg.duration.lock = 'auto';
+        }
+
+        delete seg.manualEdit;
+    });
+
+    console.log(segments);
+    return segments;
+}
+
 function updateSegmentTiming(seg, formData) {
   const prev = structuredClone(seg);
 
@@ -158,8 +215,33 @@ function updateLockConsistency(seg) {
   // (no auto-promotion to hard — user must click to lock)
 }
 
+function unlockAndClear(seg) {
+  seg.start.utc = '';
+  seg.end.utc = '';
+  seg.duration.val = null;
 
+  seg.start.lock = 'unlocked';
+  seg.end.lock = 'unlocked';
+  seg.duration.lock = 'unlocked';
 
+  seg.isQueued = false;
+}
 
+function unlockAndQueue(seg) {
+  seg.start.utc = '';
+  seg.end.utc = '';
+  seg.duration.val = null;
 
+  seg.start.lock = 'soft';
+  seg.end.lock = 'soft';
+  seg.duration.lock = 'soft';
+
+  seg.isQueued = true;
+}
+
+function ensureTimingShape(seg) {
+    seg.start    ??= { utc: '', lock: 'unlocked' };
+    seg.end      ??= { utc: '', lock: 'unlocked' };
+    seg.duration ??= { val: null, lock: 'unlocked' };
+}
 

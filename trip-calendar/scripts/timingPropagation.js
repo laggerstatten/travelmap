@@ -1,9 +1,15 @@
+function snap(obj) {
+  return JSON.parse(JSON.stringify(obj));
+}
+
 // same mapping you already use
 const LOCK_RANK = { undefined: 0, auto: 1, unlocked: 1, soft: 2, hard: 3 };
 
-function canWrite(ep) {
-  // only auto/undefined are writable
-  return LOCK_RANK[ep?.lock || 'undefined'] <= LOCK_RANK.auto;
+function canWrite(ep, seg) {
+  const lock = ep?.lock || 'undefined';
+  if (seg?.isQueued) {    return false;  }
+  const can = LOCK_RANK[lock] <= LOCK_RANK.auto;
+  return can;
 }
 
 /**
@@ -11,16 +17,17 @@ function canWrite(ep) {
  * Adds .meta objects on start/end: { lock, rank, hasUtc, pinned, emitsForward, emitsBackward }
  * Does NOT modify utc values. Pure: returns a cloned array.
  */
-function annotateEmitters(list) {
-  const segs = list.map(s => ({ ...s, start: { ...(s.start||{}) }, end: { ...(s.end||{}) } }));
+function annotateEmitters(segs) {
+
   normalizeSegments(segs);
 
   for (const s of segs) {
     s.start.meta = endpointMeta(s.start);
-    s.start.emitsForward = s.start.meta.emitsForward;
+    s.start.emitsForward  = s.start.meta.emitsForward;
     s.start.emitsBackward = s.start.meta.emitsBackward;
-    s.end.meta   = endpointMeta(s.end);
-    s.end.emitsForward = s.end.meta.emitsForward;
+
+    s.end.meta = endpointMeta(s.end);
+    s.end.emitsForward  = s.end.meta.emitsForward;
     s.end.emitsBackward = s.end.meta.emitsBackward;
   }
   return segs;
@@ -138,16 +145,11 @@ function determineEmitterDirections(segments, { priority = 'forward' } = {}) {
  * propagateTimes
  */
 function propagateTimes(segments) {
-  const segs = segments.map(s => ({
-    ...s,
-    start: { ...(s.start || {}), meta: { ...(s.start?.meta || {}) } },
-    end: { ...(s.end || {}), meta: { ...(s.end?.meta || {}) } }
-  }));
-  normalizeSegments(segs);
-  propagateForward(segs);
-  propagateBackward(segs);
+  normalizeSegments(segments);
+  propagateForward(segments);
+  propagateBackward(segments);
 
-  return segs;
+  return segments;
 }
 
 /* ----------------------------- FORWARD PASS ----------------------------- */
@@ -166,7 +168,7 @@ function propagateForward(segs) {
 
     // fill own end if starting from start
     const dur = segDurationMinutes(s);
-    if (emitFromStart && canWrite(s.end) && cursor) {
+    if (emitFromStart && canWrite(s.end, s) && cursor) {
       s.end.utc = addMinutes(cursor, dur);
       cursor = s.end.utc;
     }
@@ -187,10 +189,10 @@ function propagateForward(segs) {
       }
 
       const durNext = segDurationMinutes(next);
-      if (canWrite(next.start) && cursor) {
+      if (canWrite(next.start, next) && cursor) {
         next.start.utc = cursor;
       }
-      if (canWrite(next.end) && next.start.utc) {
+      if (canWrite(next.end, next) && next.start.utc) {
         const newEnd = addMinutes(next.start.utc, durNext);
         next.end.utc = newEnd;
         cursor = newEnd;
@@ -214,7 +216,7 @@ function propagateBackward(segs) {
     const rank = s[cursorField].meta.rank;
 
     const dur = segDurationMinutes(s);
-    if (emitFromEnd && canWrite(s.start) && cursor) {
+    if (emitFromEnd && canWrite(s.start, s) && cursor) {
       const newStart = addMinutes(cursor, -dur);
       s.start.utc = newStart;
       cursor = newStart;
@@ -236,10 +238,10 @@ function propagateBackward(segs) {
       }
 
       const durPrev = segDurationMinutes(prev);
-      if (canWrite(prev.end) && cursor) {
+      if (canWrite(prev.end, prev) && cursor) {
         prev.end.utc = cursor;
       }
-      if (canWrite(prev.start) && prev.end.utc) {
+      if (canWrite(prev.start, prev) && prev.end.utc) {
         const newStart = addMinutes(prev.end.utc, -durPrev);
         prev.start.utc = newStart;
         cursor = newStart;
@@ -290,15 +292,4 @@ function isEmitter(f, dir) {
 function boundaryLocked(f) { 
   return !!(f && f.lock && f.lock !== 'unlocked'); 
 }
-
-
-
-
-
-
-
-
-
-
-
 

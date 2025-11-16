@@ -154,41 +154,22 @@ async function resolveOverlapAction(seg, opt) {
 
 
 
-    list = removeSlackAndOverlap(list);
-    list = await validateAndRepair(list);
-    list = annotateEmitters(list);
-    list = determineEmitterDirections(list, { priority: PLANNING_DIRECTION });
-    list = propagateTimes(list);
-    list = computeSlackAndOverlap(list);
+    /**
+      list = removeSlackAndOverlap(list);
+      list = await validateAndRepair(list);
+      list = annotateEmitters(list);
+      list = determineEmitterDirections(list, { priority: PLANNING_DIRECTION });
+      list = propagateTimes(list);
+      list = computeSlackAndOverlap(list);
+    */
+
+    runPipeline(newList); // test -- should be timing or above
 
     saveSegments(list);
     renderTimeline(list);
     renderMap(list);
 }
 
-function unlockAndClear(seg) {
-  seg.start.utc = '';
-  seg.end.utc = '';
-  seg.duration.val = null;
-
-  seg.start.lock = 'unlocked';
-  seg.end.lock = 'unlocked';
-  seg.duration.lock = 'unlocked';
-
-  seg.isQueued = false;
-}
-
-function unlockAndQueue(seg) {
-  seg.start.utc = '';
-  seg.end.utc = '';
-  seg.duration.val = null;
-
-  seg.start.lock = 'soft';
-  seg.end.lock = 'soft';
-  seg.duration.lock = 'soft';
-
-  seg.isQueued = true;
-}
 
 function pushToQueueTop(list, seg) {
   const idx = list.findIndex(s => s.id === seg.id);

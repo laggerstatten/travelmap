@@ -27,12 +27,16 @@ async function insertQueuedSegment(seg, card) {
   delete seg.openEditor;
   segs = await insertStopInNearestRoute(seg, segs);
 
-  segs = removeSlackAndOverlap(segs);
-  segs = await validateAndRepair(segs);
-  segs = annotateEmitters(segs);
-  segs = determineEmitterDirections(segs, { priority: PLANNING_DIRECTION });
-  segs = propagateTimes(segs);
-  segs = computeSlackAndOverlap(segs);
+  /**
+    segs = removeSlackAndOverlap(segs);
+    segs = await validateAndRepair(segs);
+    segs = annotateEmitters(segs);
+    segs = determineEmitterDirections(segs, { priority: PLANNING_DIRECTION });
+    segs = propagateTimes(segs);
+    segs = computeSlackAndOverlap(segs);
+  */
+
+  runPipeline(newList); // test 
 
   saveSegments(segs);
   renderTimeline(segs);

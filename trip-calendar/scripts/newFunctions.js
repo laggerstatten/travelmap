@@ -23,6 +23,8 @@ async function deletePlacedStop(seg) {
     //newList = propagateTimes(newList);
     //newList = computeSlackAndOverlap(newList);
 
+  runPipeline(newList); // test
+
   saveSegments(newList);
   renderTimeline(newList);
   renderMap(newList);
@@ -51,6 +53,8 @@ async function movePlacedStopToQueue(seg) {
     //newList = propagateTimes(newList);
     //newList = computeSlackAndOverlap(newList);
 
+  runPipeline(newList); // test
+
   saveSegments(newList);
   renderTimeline(newList);
   renderMap(newList);
@@ -63,19 +67,6 @@ function removeSegmentFromList(list, seg) {
 
   const [removed] = list.splice(idx, 1);
   return { list, idx, removed };
-}
-
-
-function unlockAndQueue(seg) {
-  seg.start.utc = '';
-  seg.end.utc = '';
-  seg.duration.val = null;
-
-  seg.start.lock = 'soft';
-  seg.end.lock = 'soft';
-  seg.duration.lock = 'soft';
-
-  seg.isQueued = true;
 }
 
 async function removeStopAndHealRouteIfNeeded(seg, list, idx) {

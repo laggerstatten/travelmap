@@ -221,6 +221,7 @@ function handleEditorSubmit(editor, seg, card) {
 
 
   // do validation functions need to auto run here?
+  // runPipeline(newList); // test 
 
     renderTimeline(syncGlobal());
     renderMap(syncGlobal());
@@ -237,11 +238,11 @@ function editSegment(seg, card) {
   const editor = buildOnCardEditor(seg, card);
 }
 
-  function deleteSegment(seg, card) { // why does this not trigger validate and repair and other functions?
+  function deleteSegment(seg, card) { // why does this not trigger validate and repair and other functions? 
     const id = seg.id;
     deleteSegmentById(id);
   
-  
+    runPipeline(newList); // test 
     renderTimeline(syncGlobal());
     renderMap(syncGlobal());
   
