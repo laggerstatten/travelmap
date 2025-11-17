@@ -36,7 +36,7 @@ async function insertQueuedSegment(seg, card) {
     segs = computeSlackAndOverlap(segs);
   */
 
-  runPipeline(newList); // test 
+  segs = await runPipeline(segs); // test 
 
   saveSegments(segs);
   renderTimeline(segs);

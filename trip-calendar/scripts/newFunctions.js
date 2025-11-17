@@ -23,7 +23,7 @@ async function deletePlacedStop(seg) {
     //newList = propagateTimes(newList);
     //newList = computeSlackAndOverlap(newList);
 
-  runPipeline(newList); // test
+  newList = await runPipeline(newList); // test
 
   saveSegments(newList);
   renderTimeline(newList);
@@ -53,7 +53,7 @@ async function movePlacedStopToQueue(seg) {
     //newList = propagateTimes(newList);
     //newList = computeSlackAndOverlap(newList);
 
-  runPipeline(newList); // test
+  newList = await runPipeline(newList); // test
 
   saveSegments(newList);
   renderTimeline(newList);

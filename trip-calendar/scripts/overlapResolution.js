@@ -163,7 +163,7 @@ async function resolveOverlapAction(seg, opt) {
       list = computeSlackAndOverlap(list);
     */
 
-    runPipeline(newList); // test -- should be timing or above
+    list = await runPipeline(list); // test -- should be timing or above
 
     saveSegments(list);
     renderTimeline(list);

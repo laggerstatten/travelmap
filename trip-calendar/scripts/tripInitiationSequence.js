@@ -30,8 +30,8 @@ async function initTrip() {
     segs = computeSlackAndOverlap(segs);
   */
 
-  runPipeline(newList); // test 
-
+  segs = await runPipeline(segs); // test 
+  console.log(segs);
   saveSegments(segs);
   renderTimeline(segs);
   renderMap(segs);

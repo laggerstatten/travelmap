@@ -1,5 +1,6 @@
 async function runPipeline(list) {
     const level = PIPELINELEVEL;
+    console.log(level);
     let segs = [...list];
 
     //
@@ -30,6 +31,5 @@ async function runPipeline(list) {
         // future conflict resolution
 
     }
-
     return segs;
 }

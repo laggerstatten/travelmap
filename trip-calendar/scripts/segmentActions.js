@@ -126,7 +126,8 @@ function attachGeocoder(editor, seg) {
   const container = editor.querySelector(`#geocoder-${seg.id}`);
   if (!container) return;
 
-  const geocoder = new MapboxGeocoder({ // may need to bias toward map extent
+  const geocoder = new MapboxGeocoder({
+    // may need to bias toward map extent
     accessToken: mapboxgl.accessToken,
     useBrowserFocus: true,
     marker: false,
@@ -189,8 +190,8 @@ function handleEditorSubmit(editor, seg, card) {
 
     // Capture subitems
     const trackSubitems = true;
-    let items = []
-    if(trackSubitems) {
+    let items = [];
+    if (trackSubitems) {
       items = Array.from(editor.querySelectorAll('.sublist-items li'))
         .map((li) => {
           const name = li.querySelector('.item-name')?.value.trim();
@@ -219,9 +220,8 @@ function handleEditorSubmit(editor, seg, card) {
     else list.push(seg);
     saveSegments(list);
 
-
-  // do validation functions need to auto run here?
-  // runPipeline(newList); // test 
+    // do validation functions need to auto run here?
+    // list = await runPipeline(list); // test
 
     renderTimeline(syncGlobal());
     renderMap(syncGlobal());
@@ -238,15 +238,37 @@ function editSegment(seg, card) {
   const editor = buildOnCardEditor(seg, card);
 }
 
-  function deleteSegment(seg, card) { // why does this not trigger validate and repair and other functions? 
+/**
+    function deleteSegment(seg, card) { // why does this not trigger validate and repair and other functions? 
+      const id = seg.id;
+      deleteSegmentById(id);
+  
+      let segs = loadSegments();
+    
+      segs = await runPipeline(segs); // test 
+  
+      saveSegments(segs);
+      renderTimeline(syncGlobal());
+      renderMap(syncGlobal());
+    
+    }
+  */
+
+function deleteSegment(seg, card) {
+  // fire-and-forget async wrapper
+  (async () => {
     const id = seg.id;
     deleteSegmentById(id);
-  
-    runPipeline(newList); // test 
-    renderTimeline(syncGlobal());
-    renderMap(syncGlobal());
-  
-  }
+
+    let segs = loadSegments();
+
+    segs = await runPipeline(segs); // test
+
+    saveSegments(segs);
+    renderTimeline(segs);
+    renderMap(segs);
+  })();
+}
 
 /**
   function deleteSegment(seg, card) {
@@ -280,7 +302,3 @@ function deleteSegmentById(id) {
     saveSegments(segments);
   }
 }
-
-
-
-
