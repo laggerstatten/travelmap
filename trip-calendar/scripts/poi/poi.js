@@ -17,7 +17,7 @@ function updateStopDropdown(list) {
 async function runPOISearch() {
   const mode = document.getElementById('poi-source').value;
 
-  //await loadVisited(); // needed for visited flags
+  await loadVisited(); // needed for visited flags
 
   if (mode === 'center') {
     const c = mapInstance.getCenter();
@@ -185,18 +185,10 @@ function updateAZATable(rows) {
 
   rows.forEach((r) => {
     const tr = document.createElement('tr');
-    //if (visitedAZAs.has(r.aza_id)) tr.classList.add('visited');
+    if (visitedAZAs.has(r.aza_id)) tr.classList.add('visited');
     const hours = Math.floor(r.drive_time_min / 60);
     const mins = Math.round(r.drive_time_min % 60);
     const timeLabel = r.drive_time_min != null ? `${hours}h ${mins}m` : '';
-
-    /**
-      tr.innerHTML = `
-      <td><button class="visit-btn">${
-        visitedAZAs.has(r.aza_id) ? '✓' : 'Mark Visited'
-      }</button></td>
-    `;
-    */
 
     tr.innerHTML = `
     <td><button class="queue-stop-btn">Add Stop</button></td>
@@ -205,10 +197,11 @@ function updateAZATable(rows) {
     <td>${r.State}</td>
     <td>${timeLabel}</td>
     <td>${r.drive_distance_mi ? r.drive_distance_mi.toFixed(1) : ''}</td>
+    <td><button class="visit-btn">${visitedAZAs.has(r.aza_id) ? '✓' : 'Mark Visited'
+    }</button></td>
   `;
 
     // --- Mark Visited ---
-    /**
       const visitBtn = tr.querySelector('.visit-btn');
       visitBtn.addEventListener('click', async (e) => {
         e.stopPropagation();
@@ -216,7 +209,6 @@ function updateAZATable(rows) {
         await loadVisited();
         updateAZATable(rows);
       });
-    */
 
     // Store destination coordinates
     tr.dataset.lon = r.CenterPointLong;
@@ -265,12 +257,6 @@ async function queueStopFromPOI(poi) {
   return seg;
 }
 
-
-
-
-
-
-
 function getFullRouteLineString(segments, maxPoints = 40) {
   if (!Array.isArray(segments)) return null;
 
@@ -306,7 +292,7 @@ function getFullRouteLineString(segments, maxPoints = 40) {
 
   // -------------------------------
   // NEW: Downsample to prevent CPU overload
-  // -------------------------------
+  /** @type {*} */
   const downsampled = downsampleCoordinates(fullCoords, maxPoints);
 
   return {
