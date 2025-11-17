@@ -238,22 +238,6 @@ function editSegment(seg, card) {
   const editor = buildOnCardEditor(seg, card);
 }
 
-/**
-    function deleteSegment(seg, card) { // why does this not trigger validate and repair and other functions? 
-      const id = seg.id;
-      deleteSegmentById(id);
-  
-      let segs = loadSegments();
-    
-      segs = await runPipeline(segs); // test 
-  
-      saveSegments(segs);
-      renderTimeline(syncGlobal());
-      renderMap(syncGlobal());
-    
-    }
-  */
-
 function deleteSegment(seg, card) {
   // fire-and-forget async wrapper
   (async () => {
@@ -269,30 +253,6 @@ function deleteSegment(seg, card) {
     renderMap(segs);
   })();
 }
-
-/**
-  function deleteSegment(seg, card) {
-  
-    // fire-and-forget async wrapper
-    (async () => {
-      const id = seg.id;
-      deleteSegmentById(id);
-  
-      let segs = loadSegments();
-  
-      segs = removeSlackAndOverlap(segs);
-      segs = await validateAndRepair(segs);
-      segs = annotateEmitters(segs);
-      segs = determineEmitterDirections(segs, { priority: PLANNING_DIRECTION });
-      segs = propagateTimes(segs);
-      segs = computeSlackAndOverlap(segs);
-  
-      saveSegments(segs);
-      renderTimeline(segs);
-      renderMap(segs);
-    })();
-  }
-*/
 
 function deleteSegmentById(id) {
   let segments = loadSegments();

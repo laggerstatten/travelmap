@@ -115,7 +115,13 @@
         document.getElementById('mode-timeline').onclick = () =>
           renderTimeline(syncGlobal());
         document.getElementById('init-trip').onclick = () => initTrip();
-        document.getElementById('add-stop').onclick = () => queueStop();
+        document.getElementById('add-stop').onclick = () => {
+          let segs = loadSegments();
+          queueStop(segs);
+          saveSegments(segs);
+          renderTimeline(syncGlobal());
+          renderMap(syncGlobal());
+        };
 
         document.getElementById('clear-auto').onclick = () => {
           let segs = loadSegments();
@@ -252,7 +258,6 @@
         renderTimeline(segs);
         updateStopDropdown(segs);
         renderMap(segs);
-
       });
     </script>
   </head>
@@ -375,11 +380,11 @@
           <button id="poi-refresh">Refresh</button>
         </div>
 
-        <h3>AZA Zoos (within 500 mi)</h3>
+        <h3>AZA Zoos</h3>
         <table id="aza-table">
           <thead>
             <tr>
-              <th>Make Origin</th>
+              <th>Add to Trip</th>
               <th>Name</th>
               <th>City</th>
               <th>State</th>
@@ -457,7 +462,6 @@
 
       // --- Search handler ---
       let lastSearchCoords = null;
-
     </script>
   </body>
 </html>

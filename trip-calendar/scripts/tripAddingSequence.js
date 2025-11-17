@@ -1,8 +1,14 @@
 /* ===============================
    Queue Trip Stop
    =============================== */
-function queueStop() {
-  let segments = loadSegments();
+
+/**
+ * CREATE segment with stop type
+ *
+ * @param {*} segments
+ */
+function queueStop(segments) {
+  //let segments = loadSegments(); // might move this outside of function, and pass as a param
   const seg = {
     id: newId(),
     name: '(untitled)',
@@ -16,9 +22,9 @@ function queueStop() {
 
   segments.unshift(seg);
 
-  saveSegments(segments);
-  renderTimeline(segments);
-  renderMap(segments);
+  //saveSegments(segments);
+  //renderTimeline(segments);
+  //renderMap(segments);
 }
 
 async function insertQueuedSegment(seg, card) {

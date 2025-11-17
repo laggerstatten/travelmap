@@ -192,12 +192,6 @@ function updateAZATable(rows) {
 
     /**
       tr.innerHTML = `
-      <td><button class="set-origin-btn">Set Origin</button></td>
-      <td>${r.Name}</td>
-      <td>${r.City}</td>
-      <td>${r.State}</td>
-      <td>${timeLabel}</td>
-      <td>${r.drive_distance_mi ? r.drive_distance_mi.toFixed(1) : ''}</td>
       <td><button class="visit-btn">${
         visitedAZAs.has(r.aza_id) ? '✓' : 'Mark Visited'
       }</button></td>
@@ -205,7 +199,7 @@ function updateAZATable(rows) {
     */
 
     tr.innerHTML = `
-    <td><button class="set-origin-btn">Set Origin</button></td>
+    <td><button class="queue-stop-btn">Add Stop</button></td>
     <td>${r.Name}</td>
     <td>${r.City}</td>
     <td>${r.State}</td>
@@ -229,45 +223,51 @@ function updateAZATable(rows) {
     tr.dataset.lat = r.CenterPointLat;
 
     tbody.appendChild(tr);
+
+    // --- Add Stop button handler ---
+    const addBtn = tr.querySelector('.queue-stop-btn');
+    addBtn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      await queueStopFromPOI(r);
+    });
+
   });
 }
 
-/**
-  function getFullRouteLineString(segments) {
-    if (!Array.isArray(segments)) return null;
-  
-    // Sort by trip order if needed — you likely already have them in order,
-    // but this ensures the route will always be correct
-    const ordered = segments.slice().sort((a, b) => a.order - b.order);
-  
-    const fullCoords = [];
-  
-    for (const seg of ordered) {
-      if (seg.type === "drive" && seg.routeGeometry && Array.isArray(seg.routeGeometry.coordinates)) {
-        const coords = seg.routeGeometry.coordinates;
-  
-        // Avoid duplicating the shared point between segments
-        if (fullCoords.length > 0) {
-          const last = fullCoords[fullCoords.length - 1];
-          const firstOfNext = coords[0];
-          if (last[0] === firstOfNext[0] && last[1] === firstOfNext[1]) {
-            fullCoords.push(...coords.slice(1));
-            continue;
-          }
-        }
-  
-        fullCoords.push(...coords);
-      }
-    }
-  
-    if (fullCoords.length < 2) return null;
-  
-    return {
-      type: "LineString",
-      coordinates: fullCoords
-    };
+async function queueStopFromPOI(poi) {
+  let segs = loadSegments();
+
+  // Create a new queued stop at index 0
+  queueStop(segs);
+
+  // Newly created stop is at segs[0]
+  const seg = segs[0];
+
+  // Apply POI attributes to match your structure
+  seg.name = poi.Name || '(untitled)';
+  seg.location_name = poi.Name || '(untitled)';
+  seg.coordinates = [poi.CenterPointLong, poi.CenterPointLat];
+
+  // Make sure items exists
+  if (!Array.isArray(seg.items)) seg.items = [];
+
+  try {
+    seg.timeZone = await getTimeZone(seg.coordinates);
+  } catch (err) {
+    console.warn("Timezone lookup failed:", err);
   }
-*/
+
+  // Save + re-render
+  saveSegments(segs);
+  renderTimeline(syncGlobal());
+  renderMap(syncGlobal());
+
+  return seg;
+}
+
+
+
+
 
 
 

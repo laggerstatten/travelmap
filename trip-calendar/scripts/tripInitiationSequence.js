@@ -42,6 +42,11 @@ async function initTrip() {
 /* ===============================
    Queue Trip Origin / Destination
    =============================== */
+/**
+ * CREATE a new segment with the trip_start type and hard end lock
+ *
+ * @param {*} segments
+ */
 function queueTripOrigin(segments) {
   const seg = {
     id: newId(),
@@ -57,6 +62,11 @@ function queueTripOrigin(segments) {
   segments.unshift(seg);
 }
 
+/**
+ * CREATE a new segment with the trip_end type and hard start lock
+ *
+ * @param {*} segments
+ */
 function queueTripDestination(segments) {
   const seg = {
     id: newId(),
@@ -118,6 +128,13 @@ async function validateAndRepair(list) {
   return finalList;
 }
 
+/**
+ * UPDATE segments by checking for drives adjacent to each other and removing them
+ * DELETE adjacent segments with drive type
+ *
+ * @param {*} list
+ * @return {*} 
+ */
 function removeAdjacentDrives(list) {
   let segments = [...list];
 
@@ -130,6 +147,13 @@ function removeAdjacentDrives(list) {
   return segments;
 }
 
+/**
+ * UPDATE segments by checking for non-drives adjacent to each other and inserting drives
+ * CREATE segment with drive type
+ *
+ * @param {*} list
+ * @return {*} 
+ */
 function insertDriveSegments(list) {
   let segments = [...list];
   const out = [];
@@ -156,6 +180,13 @@ function insertDriveSegments(list) {
   return out;
 }
 
+/**
+ * UPDATE segments by writing routing data for drive type segments
+ * UPDATE segment
+ *
+ * @param {*} list
+ * @return {*} 
+ */
 async function generateRoutes(list) {
   //const segments = sortByDateInPlace([...list]);
   // // commenting this out to see if anything breaks
@@ -225,9 +256,13 @@ async function generateRoutes(list) {
     return list;
   }
 */
-
-
-
+/**
+ *
+ *
+ * @param {*} seg
+ * @param {*} segments
+ * @return {*} 
+ */
 function segLabel(seg, segments) {
   if (!seg) return '(unknown)';
   if (seg.name) return seg.name;
