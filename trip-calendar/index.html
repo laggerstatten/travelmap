@@ -109,6 +109,28 @@
       }
     </script>
 
+    <script>
+      function resetTrip() {
+        const confirmWipe = confirm('Clear all trip data and start fresh?');
+        if (!confirmWipe) return;
+
+        // Remove tripSegments from localStorage
+        localStorage.removeItem(SEG_KEY);
+
+        // Reset globals
+        segments = [];
+        PIPELINELEVEL = 'conflict';
+        pendingSegments = null;
+
+        // Now force UI to reset
+        renderTimeline([]);
+        renderMap([]);
+        updateStopDropdown([]);
+
+        console.log('Trip has been reset.');
+      }
+    </script>
+
     <script defer>
       window.addEventListener('DOMContentLoaded', () => {
         // --- TOOLBAR HOOKS ---
@@ -240,6 +262,10 @@
             reader.readAsText(file);
           });
 
+        document.getElementById('reset-trip').onclick = () => {
+          resetTrip();
+        };
+
         document
           .getElementById('poi-source')
           .addEventListener('change', (e) => {
@@ -341,6 +367,7 @@
       <div class="toolbar-group dropdown">
         <button class="dropbtn">Data ▼</button>
         <div class="dropdown-content">
+          <button id="reset-trip">Reset Trip</button>
           <button id="export-data">Export Data</button>
           <button id="import-data">Import Data</button>
           <input

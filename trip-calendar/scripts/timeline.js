@@ -54,8 +54,7 @@ function renderCard(seg, segments) {
     .map((k) => seg[k]?.lock === 'hard')
     .filter(Boolean).length;
   if (lockedCount >= 2) card.classList.add('constrained');
-  if (!seg.type === 'stop')
-    card.classList.add('constrained');
+  if (!seg.type === 'stop') card.classList.add('constrained');
 
   let title = seg.name || '(untitled)';
   let meta = '';
@@ -77,7 +76,7 @@ function renderCard(seg, segments) {
         </div>
         <div class="meta">${meta || 'No date set'}</div>
         <div class="card-footer"></div>`;
-      buttons = [      ];
+      buttons = [];
       break;
 
     case 'trip_end':
@@ -94,7 +93,7 @@ function renderCard(seg, segments) {
         </div>
         <div class="meta">${meta || 'No date set'}</div>
         <div class="card-footer"></div>`;
-      buttons = [      ];
+      buttons = [];
       break;
 
     case 'stop':
@@ -125,7 +124,7 @@ function renderCard(seg, segments) {
           }
         ];
       } else {
-        buttons = [        ];
+        buttons = [];
       }
 
       if (!card.classList.contains('constrained')) attachCardDragHandlers(card);
@@ -137,10 +136,10 @@ function renderCard(seg, segments) {
       // Drive
       // ───────────────────────────────
       const startStr = showDate(seg.start?.utc, seg.originTz);
-      const endStr = showDate(seg.end?.utc, seg.destinationTz);      
-      title = segLabel(seg, segments)
+      const endStr = showDate(seg.end?.utc, seg.destinationTz);
+      title = segLabel(seg, segments);
       //let durText = seg.durationMin ? formatDurationMin(seg.durationMin) : ''; // this should not be reading this
-      let durText = seg.duration.val ? formatDurationHr(seg.duration.val) : ''; 
+      let durText = seg.duration.val ? formatDurationHr(seg.duration.val) : '';
       meta = `${startStr}<br>${seg.distanceMi} mi • ${durText}<br>${endStr}`;
       card.innerHTML = `
         <div class="title">${title}</div>
@@ -152,7 +151,8 @@ function renderCard(seg, segments) {
       break;
 
     case 'slack': {
-      const hours = seg.duration?.val?.toFixed(2) ?? (seg.minutes / 60).toFixed(2);
+      const hours =
+        seg.duration?.val?.toFixed(2) ?? (seg.minutes / 60).toFixed(2);
       const startStr = fmtDate(seg.start?.utc, seg.slackInfo.tz);
       const endStr = fmtDate(seg.end?.utc, seg.slackInfo.tz);
 
@@ -165,12 +165,21 @@ function renderCard(seg, segments) {
     }
 
     case 'overlap': {
-      const hours = seg.duration?.val?.toFixed(2) ?? (seg.minutes / 60).toFixed(2);
+      const hours =
+        seg.duration?.val?.toFixed(2) ?? (seg.minutes / 60).toFixed(2);
       const startStr = fmtDate(seg.start?.utc, seg.overlapInfo.tz);
-      const endStr   = fmtDate(seg.end?.utc, seg.overlapInfo.tz);
+      const endStr = fmtDate(seg.end?.utc, seg.overlapInfo.tz);
 
-      const leftTxt  = seg.overlapInfo.leftAnchor  ? `${seg.overlapInfo.leftAnchor.seg.name || '(unnamed)'} • ${seg.overlapInfo.leftAnchor.kind} ${lockIcons(seg.overlapInfo.leftAnchor.field)}` : '—';
-      const rightTxt = seg.overlapInfo.rightAnchor ? `${seg.overlapInfo.rightAnchor.seg.name || '(unnamed)'} • ${seg.overlapInfo.rightAnchor.kind} ${lockIcons(seg.overlapInfo.rightAnchor.field)}`: '—';
+      const leftTxt = seg.overlapInfo.leftAnchor
+        ? `${seg.overlapInfo.leftAnchor.seg.name || '(unnamed)'} • ${
+            seg.overlapInfo.leftAnchor.kind
+          } ${lockIcons(seg.overlapInfo.leftAnchor.field)}`
+        : '—';
+      const rightTxt = seg.overlapInfo.rightAnchor
+        ? `${seg.overlapInfo.rightAnchor.seg.name || '(unnamed)'} • ${
+            seg.overlapInfo.rightAnchor.kind
+          } ${lockIcons(seg.overlapInfo.rightAnchor.field)}`
+        : '—';
 
       card.innerHTML = `
         <div class="title">Overlap (${hours}h)</div>
@@ -183,7 +192,6 @@ function renderCard(seg, segments) {
       `;
       break;
     }
-
   }
 
   if (card.querySelector('.card-footer')) {
@@ -198,7 +206,7 @@ function renderCard(seg, segments) {
 
     // Summarize emitters (for banner text)
     const details = seg.overlapEmitters
-      .map(e => {
+      .map((e) => {
         const mins = e.overlapMinutes?.toFixed?.(0) ?? '?';
         const hrs = (e.overlapMinutes / 60).toFixed(2);
         return `${e.role} (${mins} min / ${hrs} h via ${e.affectedField})`;
@@ -218,12 +226,14 @@ function renderCard(seg, segments) {
 
     // Collect all dynamic options based on each emitter
     const allOptions = [
-      ...seg.overlapEmitters.flatMap(e => getOverlapResolutionOptions(seg, e.role)),
+      ...seg.overlapEmitters.flatMap((e) =>
+        getOverlapResolutionOptions(seg, e.role)
+      ),
       ...getUnlockAndQueueOptions(seg)
     ];
 
     // Render buttons dynamically
-    allOptions.forEach(opt => {
+    allOptions.forEach((opt) => {
       const btn = document.createElement('button');
       btn.textContent = opt.label;
       btn.classList.add('resolve-btn', `resolve-${opt.action}`);
@@ -234,8 +244,6 @@ function renderCard(seg, segments) {
     });
 
     card.appendChild(indicator);
-
-
   }
 
   if (seg.openEditor && !card.querySelector('.oncard-editor'))
@@ -243,7 +251,8 @@ function renderCard(seg, segments) {
   return card;
 }
 
-function cardBadgeClass(seg) { // need to re-enable this
+function cardBadgeClass(seg) {
+  // need to re-enable this
   if (seg.type !== 'drive') return '';
   if (seg.autoDrive && !seg.manualEdit) return 'auto';
   if (seg.manualEdit) return 'edited';
@@ -262,12 +271,12 @@ function buildFooter(seg, buttons) {
   const actions = [];
 
   const isQueued = !!seg.isQueued;
-  const isStop = seg.type === "stop";
+  const isStop = seg.type === 'stop';
 
   // Always allow edit
   actions.push({
-    cls: "edit-btn",
-    label: "Edit",
+    cls: 'edit-btn',
+    label: 'Edit',
     onClick: (c) => editSegment(seg, c)
   });
 
@@ -276,8 +285,8 @@ function buildFooter(seg, buttons) {
   //
   if (isQueued && isStop) {
     actions.push({
-      cls: "del-btn",
-      label: "Delete",
+      cls: 'del-btn',
+      label: 'Delete',
       onClick: () => deleteQueuedStop(seg)
     });
 
@@ -289,14 +298,14 @@ function buildFooter(seg, buttons) {
   //
   if (isStop && !isQueued) {
     actions.push({
-      cls: "queue-btn",
-      label: "Move to Queue",
+      cls: 'queue-btn',
+      label: 'Move to Queue',
       onClick: () => movePlacedStopToQueue(seg)
     });
 
     actions.push({
-      cls: "del-btn",
-      label: "Delete",
+      cls: 'del-btn',
+      label: 'Delete',
       onClick: () => deletePlacedStop(seg)
     });
 
@@ -307,14 +316,13 @@ function buildFooter(seg, buttons) {
   // 3. For any other segment (e.g. drives), default to simple delete
   //
   actions.push({
-    cls: "del-btn",
-    label: "Delete",
-    onClick: () => deleteSegment(seg)
+    cls: 'del-btn',
+    label: 'Delete',
+    onClick: () => deleteSegment(seg)  // do we need renderTimeline(syncGlobal());
   });
 
   return [...buttons, ...actions];
 }
-
 
 function attachButtons(card, buttons) {
   let footer = card.querySelector('.card-footer');
@@ -345,5 +353,3 @@ function lockIcons(field) {
     <i class="fa-solid ${faIcon}"></i>${up}${down}
   </span>`;
 }
-
-

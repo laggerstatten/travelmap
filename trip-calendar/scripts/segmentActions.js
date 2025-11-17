@@ -1,4 +1,5 @@
 function attachCardDragHandlers(card) {
+  console.log('Attaching drag handlers to card', card);
   const id = card.dataset.id;
 
   // --- Drag logic ---
@@ -21,6 +22,7 @@ function attachCardDragHandlers(card) {
 }
 
 function handleDragOver(e) {
+  console.log('Drag over', e);
   e.preventDefault();
   const cal = e.currentTarget;
   const dragging = cal.querySelector('.timeline-card.dragging');
@@ -41,6 +43,7 @@ function handleDragOver(e) {
 }
 
 function getDragAfterElement(container, y) {
+  console.log('Getting drag after element at y=', y);
   // include entire rail-pair for position math
   const pairs = [...container.querySelectorAll('.rail-pair:not(.dragging)')];
   return pairs.reduce(
@@ -56,6 +59,7 @@ function getDragAfterElement(container, y) {
 }
 
 function reorderFromDOM(calendar) {
+  console.log('Reordering segments from DOM');
   const ids = [...calendar.querySelectorAll('.rail-pair .timeline-card')].map(
     (el) => el.dataset.id
   );

@@ -89,9 +89,7 @@ function waitForTripAnchorsReady() {
   return new Promise((resolve) => {
     const check = () => {
       const segs = loadSegments();
-      const startReady = segs.some(
-        (s) => s.type === 'trip_start' && !s.isQueued
-      );
+      const startReady = segs.some((s) => s.type === 'trip_start' && !s.isQueued);
       const endReady = segs.some((s) => s.type === 'trip_end' && !s.isQueued);
       if (startReady && endReady) resolve();
       else requestAnimationFrame(check);
@@ -106,7 +104,7 @@ function waitForTripAnchorsReady() {
 
 async function validateAndRepair(list) {
   // --- split into placed timeline vs queued ---
-  const placed = list.filter(seg => !seg.isQueued);
+  const placed = list.filter(seg => !seg.isQueued); // check for errors
   const queued = list.filter(seg => seg.isQueued);
   // Work only on placed segments
   let segments = [...placed];
@@ -189,7 +187,7 @@ function insertDriveSegments(list) {
  */
 async function generateRoutes(list) {
   //const segments = sortByDateInPlace([...list]);
-  // // commenting this out to see if anything breaks
+  // commenting this out to see if anything breaks
   // may need to be part of validate and repair function
   const segments = [...list];
 

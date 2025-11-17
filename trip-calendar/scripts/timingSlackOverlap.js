@@ -1,3 +1,9 @@
+/**
+ * UPDATE segments by inserting elements representing slack and overlap
+ *
+ * @param {*} list
+ * @return {*} 
+ */
 function computeSlackAndOverlap(list) {
   //console.log('computeSlackAndOverlap');
   let segments = [...list];
@@ -141,12 +147,18 @@ function computeSlackAndOverlap(list) {
   return segments;
 }
 
+/**
+ * UPDATE segments by removing elements representing slack and overlap
+ *
+ * @param {*} list
+ * @return {*} 
+ */
 function removeSlackAndOverlap(list) {
   //console.log('removeSlackAndOverlap');
   let segments = [...list];
 
   // Build a working copy excluding derived types
-  const baseSegments = segments.filter(
+  const baseSegments = segments.filter(  // check for missing type
     (s) => s.type !== 'slack' && s.type !== 'overlap'
   );
 
