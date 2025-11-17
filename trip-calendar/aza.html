@@ -1,13 +1,17 @@
 <!DOCTYPE html>
-<!-- Current Version -->
+
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Trip Calendar + Map Prototype</title>
+    <title>AZA Zoos + Visits</title>
     <link rel="stylesheet" href="styles/mono.css" />
 
-    <script src="scripts/poi/config.js"></script>
+    <script src="scripts/config.js"></script>
+    <script src="scripts/drivetime_aza.js"></script>
+    <script src="scripts/drivetime.js"></script>
+
+    <script src="scripts/buildUAPopup.js"></script>
 
     <!-- Mapbox -->
     <link
@@ -74,9 +78,104 @@
     <script src="scripts/constraints/constraintValidation.js"></script>
     <script src="scripts/constraints/constraintFunctions.js"></script>
 
-    <script src="scripts/poi/poi.js"></script>
+    <script src="scripts/poi.js"></script>
 
     <script src="scripts/newFunctions.js"></script>
+
+    <style>
+      #map {
+        height: 40vh;
+        width: 100%;
+        border-bottom: 1px solid #ccc;
+      }
+
+      body {
+        margin: 0;
+        padding: 0;
+      }
+
+      #auth {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 11;
+        background: rgba(255, 255, 255, 0.9);
+        padding: 6px 10px;
+        border-radius: 6px;
+        font-size: 13px;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+      }
+
+      #auth button {
+        margin: 0 4px;
+        padding: 4px 8px;
+      }
+      /* Drawer styling */
+
+      #result-panel {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: rgba(255, 255, 255, 0.97);
+        box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.25);
+        max-height: 50%;
+        transform: translateY(60%);
+        transition: transform 0.4s ease-in-out;
+        overflow: auto;
+        z-index: 20;
+        padding: 10px;
+        border-top-left-radius: 8px;
+        border-top-right-radius: 8px;
+      }
+
+      #result-panel.open {
+        transform: translateY(0);
+      }
+
+      #result-toggle {
+        position: absolute;
+        top: 5px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #333;
+        color: #fff;
+        border-radius: 10px 10px 0 0;
+        padding: 6px 16px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 600;
+        user-select: none;
+        z-index: 25;
+        box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.25);
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+      }
+
+      th,
+      td {
+        border-bottom: 1px solid #ccc;
+        text-align: left;
+        padding: 6px;
+      }
+
+      th {
+        background-color: #f2f2f2;
+      }
+
+      tr:hover {
+        background-color: #f0f8ff;
+        cursor: pointer;
+      }
+
+      .visited {
+        background-color: #dff0d8 !important;
+      }
+    </style>
 
     <script>
       let segments = [];
@@ -234,30 +333,23 @@
             reader.readAsText(file);
           });
 
-        document
-          .getElementById('poi-source')
-          .addEventListener('change', (e) => {
-            const select = document.getElementById('poi-stop-select');
-            select.style.display =
-              e.target.value === 'stop' ? 'inline-block' : 'none';
-          });
-
-        document.getElementById('poi-refresh').addEventListener('click', () => {
-          runPOISearch();
-        });
-
         initMap();
 
         const segs = syncGlobal();
         renderTimeline(segs);
-        updateStopDropdown(segs);
         renderMap(segs);
-
+        //renderPOITable(segs);
       });
     </script>
   </head>
 
   <body>
+    <div id="auth">
+      <button id="login">Login with GitHub</button>
+      <button id="logout" style="display: none">Logout</button>
+      <span id="auth-status">Not logged in</span>
+    </div>
+
     <div id="toolbar" class="toolbar">
       <!-- === SELECT === -->
       <div class="toolbar-group dropdown">
@@ -346,12 +438,6 @@
           />
         </div>
       </div>
-
-      <div id="auth">
-        <button id="login">Login with GitHub</button>
-        <button id="logout" style="display: none">Logout</button>
-        <span id="auth-status">Not logged in</span>
-      </div>
     </div>
 
     <!-- MAP PANE -->
@@ -363,33 +449,21 @@
 
       <!-- POI PANE (bottom-right) -->
       <div id="poi-pane">
-        <div style="margin-bottom: 8px">
-          <select id="poi-source">
-            <option value="center">Closest to Map Center</option>
-            <option value="stop">Closest to Stop</option>
-            <option value="route">Closest to Route</option>
-          </select>
-
-          <select id="poi-stop-select" style="display: none"></select>
-
-          <button id="poi-refresh">Refresh</button>
-        </div>
-
-        <h3>AZA Zoos (within 500 mi)</h3>
-        <table id="aza-table">
-          <thead>
-            <tr>
-              <th>Make Origin</th>
-              <th>Name</th>
-              <th>City</th>
-              <th>State</th>
-              <th>Drive Time (min)</th>
-              <th>Distance (mi)</th>
-              <th>Visited</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
+      <h3>AZA Zoos (within 500 mi)</h3>
+      <table id="aza-table">
+        <thead>
+          <tr>
+            <th>Make Origin</th>
+            <th>Name</th>
+            <th>City</th>
+            <th>State</th>
+            <th>Drive Time (min)</th>
+            <th>Distance (mi)</th>
+            <th>Visited</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
       </div>
     </div>
     <script>
@@ -437,7 +511,7 @@
           USER_ID = currentUser.id;
           console.log('Logged in as:', USER_ID);
           if (typeof loadVisited === 'function') {
-            //loadVisited();  /temp
+            loadVisited();
           }
         } else {
           currentUser = null;
@@ -455,9 +529,146 @@
           : 'Not logged in';
       });
 
+      // --- Map + search setup ---
+      mapboxgl.accessToken = MAPBOX_TOKEN;
+      const map = new mapboxgl.Map({
+        container: 'map',
+        style: 'mapbox://styles/ericschall/clvvt5o32098a01nucx668i03',
+        center: [-103.59, 40.67],
+        zoom: 3
+      });
+
+      const searchBox = new MapboxSearchBox();
+      searchBox.accessToken = mapboxgl.accessToken;
+
+      searchBox.options = {
+        language: 'en',
+        country: 'us',
+        types: ['place', 'region'],
+        proximity: [-98.5, 39.5],
+        limit: 5
+      };
+
+      document.getElementById('search-box').appendChild(searchBox);
+
+      let marker = null;
+      let popup = null;
+      let originLng = null;
+      let originLat = null;
+      const routeLayerId = 'route-line';
+      let visitedAZAs = new Set();
+
+      const resultPanel = document.getElementById('result-panel');
+      const resultToggle = document.getElementById('result-toggle');
+
+      resultToggle.addEventListener('click', function () {
+        const isOpen = resultPanel.classList.contains('open');
+        if (isOpen) {
+          resultPanel.classList.remove('open');
+          resultToggle.textContent = '▲ Show Results';
+        } else {
+          resultPanel.classList.add('open');
+          resultToggle.textContent = '▼ Hide Results';
+        }
+      });
+
+      function openDrawer() {
+        const isOpen = resultPanel.classList.contains('open');
+        if (!isOpen) {
+          resultPanel.classList.add('open');
+          resultToggle.textContent = '▼ Hide Results';
+        }
+      }
+
+      function closeDrawer() {
+        const isOpen = resultPanel.classList.contains('open');
+        if (isOpen) {
+          resultPanel.classList.remove('open');
+          resultToggle.textContent = '▲ Show Results';
+        }
+      }
+
       // --- Search handler ---
       let lastSearchCoords = null;
 
+      searchBox.addEventListener('retrieve', async function (e) {
+        let feature = null;
+        if (
+          e &&
+          e.detail &&
+          e.detail.features &&
+          e.detail.features.length > 0
+        ) {
+          feature = e.detail.features[0];
+        }
+        if (!feature) {
+          console.warn('No valid location selected');
+          return;
+        }
+
+        const [lng, lat] = feature.geometry.coordinates;
+        const rounded = [Number(lng.toFixed(4)), Number(lat.toFixed(4))];
+
+        if (
+          lastSearchCoords &&
+          rounded[0] === lastSearchCoords[0] &&
+          rounded[1] === lastSearchCoords[1]
+        ) {
+          console.log('Ignoring duplicate searchBox retrieve event');
+          return;
+        }
+
+        lastSearchCoords = rounded;
+
+        console.log(`Selected: ${feature.properties?.name} → ${lat}, ${lng}`);
+        originLng = lng;
+        originLat = lat;
+
+        if (marker) {
+          marker.remove();
+        }
+        const newMarker = new mapboxgl.Marker({
+          color: '#FF5E00'
+        });
+        newMarker.setLngLat([lng, lat]);
+        newMarker.addTo(map);
+        marker = newMarker;
+
+        map.flyTo({
+          center: [lng, lat],
+          zoom: 8
+        });
+
+        const info = await identifyLocation(lng, lat);
+        console.log('Location info:', info);
+
+        buildUAPopup(info, lng, lat);
+
+        await loadVisited();
+        await fetchAZA(lat, lng);
+      });
+
+      async function identifyLocation(lng, lat) {
+        // --- IDENTIFY LOCATION ---
+
+        try {
+          const res = await fetch(SUPABASE_IDENTIFY_URL, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              lng,
+              lat
+            })
+          });
+          const info = await res.json();
+          return info;
+        } catch (err) {
+          console.error('Identify call failed:', err);
+          return null;
+        }
+      }
     </script>
   </body>
 </html>
