@@ -4,9 +4,9 @@ async function insertQueuedSegment(seg, card) {
   delete seg.openEditor;
 
   segs = removeSlackAndOverlap(segs);
-  console.log(snap(segs));
+  //console.log(snap(segs));
   segs = await insertStopInNearestRoute(seg, segs);
-  console.log(snap(segs));
+  //console.log(snap(segs));
 
   segs = await runPipeline(segs); // test 
 

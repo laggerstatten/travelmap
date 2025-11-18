@@ -65,45 +65,6 @@ function removeAdjacentDrives(list) {
 }
 
 /**
- * Given two segment IDs, re-locate them in `segments`,
- * check if they are still adjacent drives, and if so
- * remove them in place.
- *
- * Returns:
- *   []        → both removed
- *   [segA, segB] → kept (no mutation), using their current positions
- */
-function removeAdjacentDrivesById(segments, idA, idB) {
-  const idxA = segments.findIndex((s) => s.id === idA);
-  const idxB = segments.findIndex((s) => s.id === idB);
-
-  if (idxA === -1 || idxB === -1) {
-    // one or both got removed/changed earlier
-    return [];
-  }
-
-  // normalize order
-  const firstIdx = Math.min(idxA, idxB);
-  const secondIdx = Math.max(idxA, idxB);
-
-  const first = segments[firstIdx];
-  const second = segments[secondIdx];
-
-  const areAdjacent = secondIdx === firstIdx + 1;
-  const bothDrives =
-    first?.type === "drive" && second?.type === "drive";
-
-  if (areAdjacent && bothDrives) {
-    // mutate list in place: remove both
-    segments.splice(firstIdx, 2);
-    return segments; // return the mutated list
-  }
-
-  // No removal needed -> return original list
-  return segments;
-}
-
-/**
  * UPDATE segments by checking for non-drives adjacent to each other and inserting drives
  * CREATE segment with drive type
  *
@@ -132,52 +93,6 @@ function insertDriveSegments(list) {
   }
 
   return list;
-}
-
-function insertDriveBetweenById(segments, idA, idB) {
-  const idxA = segments.findIndex(s => s.id === idA);
-  const idxB = segments.findIndex(s => s.id === idB);
-
-  if (idxA === -1 || idxB === -1) {
-    // They were already modified/removed earlier
-    return false;
-  }
-
-  // normalize order
-  const firstIdx  = Math.min(idxA, idxB);
-  const secondIdx = Math.max(idxA, idxB);
-
-  const first  = segments[firstIdx];
-  const second = segments[secondIdx];
-
-  const areAdjacent = secondIdx === firstIdx + 1;
-  if (!areAdjacent) return false;
-
-  // The rule: insert a drive only if both are non-drive
-  const shouldInsert =
-    first?.type !== "drive" &&
-    second?.type !== "drive";
-
-  if (!shouldInsert) return false;
-
-  // Create new drive segment
-  const driveSeg = {
-    id: newId(),
-    name: `Drive from ${first.name || "current stop"} to ${
-      second.name || "next stop"
-    }`,
-    type: "drive",
-    autoDrive: true,
-    manualEdit: false,
-    originId: first.id,
-    destinationId: second.id,
-  };
-
-  // Mutate list IN PLACE
-  // Insert between firstIdx and secondIdx
-  segments.splice(firstIdx + 1, 0, driveSeg);
-
-  return true;
 }
 
 /**
@@ -281,6 +196,91 @@ async function insertStopInNearestRoute(stop, list) {
   return await insertStopInRouteById(segments, stop.id, bestDrive.id, stop);
 }
 
+/**
+ * Given two segment IDs, re-locate them in `segments`,
+ * check if they are still adjacent drives, and if so
+ * remove them in place.
+ *
+ * Returns:
+ *   []        → both removed
+ *   [segA, segB] → kept (no mutation), using their current positions
+ */
+function removeAdjacentDrivesById(segments, idA, idB) {
+  const idxA = segments.findIndex((s) => s.id === idA);
+  const idxB = segments.findIndex((s) => s.id === idB);
+
+  if (idxA === -1 || idxB === -1) {
+    // one or both got removed/changed earlier
+    return [];
+  }
+
+  // normalize order
+  const firstIdx = Math.min(idxA, idxB);
+  const secondIdx = Math.max(idxA, idxB);
+
+  const first = segments[firstIdx];
+  const second = segments[secondIdx];
+
+  const areAdjacent = secondIdx === firstIdx + 1;
+  const bothDrives =
+    first?.type === "drive" && second?.type === "drive";
+
+  if (areAdjacent && bothDrives) {
+    // mutate list in place: remove both
+    segments.splice(firstIdx, 2);
+    return segments; // return the mutated list
+  }
+
+  // No removal needed -> return original list
+  return segments;
+}
+
+function insertDriveBetweenById(segments, idA, idB) {
+  const idxA = segments.findIndex(s => s.id === idA);
+  const idxB = segments.findIndex(s => s.id === idB);
+
+  if (idxA === -1 || idxB === -1) {
+    // They were already modified/removed earlier
+    return false;
+  }
+
+  // normalize order
+  const firstIdx  = Math.min(idxA, idxB);
+  const secondIdx = Math.max(idxA, idxB);
+
+  const first  = segments[firstIdx];
+  const second = segments[secondIdx];
+
+  const areAdjacent = secondIdx === firstIdx + 1;
+  if (!areAdjacent) return false;
+
+  // The rule: insert a drive only if both are non-drive
+  const shouldInsert =
+    first?.type !== "drive" &&
+    second?.type !== "drive";
+
+  if (!shouldInsert) return false;
+
+  // Create new drive segment
+  const driveSeg = {
+    id: newId(),
+    name: `Drive from ${first.name || "current stop"} to ${
+      second.name || "next stop"
+    }`,
+    type: "drive",
+    autoDrive: true,
+    manualEdit: false,
+    originId: first.id,
+    destinationId: second.id,
+  };
+
+  // Mutate list IN PLACE
+  // Insert between firstIdx and secondIdx
+  segments.splice(firstIdx + 1, 0, driveSeg);
+
+  return true;
+}
+
 async function insertStopInRouteById(segments, stopId, driveId, stopObj) {
   let driveIdx = segments.findIndex(s => s.id === driveId);
   if (driveIdx === -1) return segments;
@@ -352,7 +352,6 @@ async function insertStopInRouteById(segments, stopId, driveId, stopObj) {
   return segments;
 }
 
-
 async function healRouteIfNeeded(list, prevId, nextId) {
   const left = prevId ? list.find(s => s.id === prevId) : null;
   const right = nextId ? list.find(s => s.id === nextId) : null;
@@ -414,6 +413,3 @@ async function healRouteBetweenDrives(leftDriveId, rightDriveId, list) {
 
   return list;
 }
-
-
-
