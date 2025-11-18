@@ -15,20 +15,6 @@ async function initTrip() {
   await waitForTripAnchorsReady();
 
   segs = loadSegments();
-  /**
-    segs = await validateAndRepair(segs);
-    //saveSegments(segs);
-    //renderTimeline(segs);
-  
-    segs = annotateEmitters(segs);
-    segs = determineEmitterDirections(segs, { priority: PLANNING_DIRECTION });
-    segs = propagateTimes(segs);
-    //saveSegments(segs);
-    //renderTimeline(segs);
-  
-    // Compute slack/overlap
-    segs = computeSlackAndOverlap(segs);
-  */
 
   segs = await runPipeline(segs); // test 
   console.log(segs);
@@ -127,21 +113,71 @@ async function validateAndRepair(list) {
 }
 
 /**
- * UPDATE segments by checking for drives adjacent to each other and removing them
- * DELETE adjacent segments with drive type
- *
- * @param {*} list
- * @return {*} 
+ * Walks the list and removes adjacent drives.
+ * Mutates `list` in place and restarts from the beginning
+ * whenever a pair is removed.
  */
-function removeAdjacentDrives(list) { //FIXME: uses index lookup
-  let segments = [...list];
+function removeAdjacentDrives(list) {
+  let i = 0;
 
-  for (let i = 0; i < segments.length - 1; i++) {
-    if (segments[i].type === 'drive' && segments[i + 1].type === 'drive') {
-      segments.splice(i, 2);
-      i--;
+  while (i < list.length - 1) {
+    const segA = list[i];
+    const segB = list[i + 1];
+
+    if (!segA || !segB) break;
+
+    const result = removeAdjacentDrivesById(list, segA.id, segB.id);
+
+    if (result.length === 0) {
+      // A pair was removed; the list has changed.
+      // Start scanning again from the beginning.
+      i = 0;
+      continue;
     }
+
+    // nothing removed; move forward
+    i++;
   }
+
+  return list;
+}
+
+/**
+ * Given two segment IDs, re-locate them in `segments`,
+ * check if they are still adjacent drives, and if so
+ * remove them in place.
+ *
+ * Returns:
+ *   []        → both removed
+ *   [segA, segB] → kept (no mutation), using their current positions
+ */
+function removeAdjacentDrivesById(segments, idA, idB) {
+  const idxA = segments.findIndex((s) => s.id === idA);
+  const idxB = segments.findIndex((s) => s.id === idB);
+
+  if (idxA === -1 || idxB === -1) {
+    // one or both got removed/changed earlier
+    return [];
+  }
+
+  // normalize order
+  const firstIdx = Math.min(idxA, idxB);
+  const secondIdx = Math.max(idxA, idxB);
+
+  const first = segments[firstIdx];
+  const second = segments[secondIdx];
+
+  const areAdjacent = secondIdx === firstIdx + 1;
+  const bothDrives =
+    first?.type === "drive" && second?.type === "drive";
+
+  if (areAdjacent && bothDrives) {
+    // mutate list in place: remove both
+    segments.splice(firstIdx, 2);
+    return segments; // return the mutated list
+  }
+
+  // No removal needed -> return original list
   return segments;
 }
 
@@ -152,30 +188,74 @@ function removeAdjacentDrives(list) { //FIXME: uses index lookup
  * @param {*} list
  * @return {*} 
  */
-function insertDriveSegments(list) { //FIXME: uses index lookup
-  let segments = [...list];
-  const out = [];
-  for (let i = 0; i < segments.length; i++) {
-    const cur = segments[i];
-    out.push(cur);
-    const next = segments[i + 1];
-    if (!next) break;
-    if (cur.type !== 'drive' && next.type !== 'drive') {
-      out.push({
-        // check to see if there are other attributes we need to push
-        id: newId(),
-        name: `Drive from ${cur.name || 'current stop'} to ${
-          next.name || 'next stop'
-        }`,
-        type: 'drive',
-        autoDrive: true,
-        manualEdit: false,
-        originId: cur.id,
-        destinationId: next.id
-      });
+function insertDriveSegments(list) {
+  let i = 0;
+
+  while (i < list.length - 1) {
+    const segA = list[i];
+    const segB = list[i + 1];
+
+    if (!segA || !segB) break;
+
+    const inserted = insertDriveBetweenById(list, segA.id, segB.id);
+
+    if (inserted) {
+      // list mutated → drive inserted → restart scan
+      i = 0;
+      continue;
     }
+
+    // no insertion → continue forward
+    i++;
   }
-  return out;
+
+  return list;
+}
+
+function insertDriveBetweenById(segments, idA, idB) {
+  const idxA = segments.findIndex(s => s.id === idA);
+  const idxB = segments.findIndex(s => s.id === idB);
+
+  if (idxA === -1 || idxB === -1) {
+    // They were already modified/removed earlier
+    return false;
+  }
+
+  // normalize order
+  const firstIdx  = Math.min(idxA, idxB);
+  const secondIdx = Math.max(idxA, idxB);
+
+  const first  = segments[firstIdx];
+  const second = segments[secondIdx];
+
+  const areAdjacent = secondIdx === firstIdx + 1;
+  if (!areAdjacent) return false;
+
+  // The rule: insert a drive only if both are non-drive
+  const shouldInsert =
+    first?.type !== "drive" &&
+    second?.type !== "drive";
+
+  if (!shouldInsert) return false;
+
+  // Create new drive segment
+  const driveSeg = {
+    id: newId(),
+    name: `Drive from ${first.name || "current stop"} to ${
+      second.name || "next stop"
+    }`,
+    type: "drive",
+    autoDrive: true,
+    manualEdit: false,
+    originId: first.id,
+    destinationId: second.id,
+  };
+
+  // Mutate list IN PLACE
+  // Insert between firstIdx and secondIdx
+  segments.splice(firstIdx + 1, 0, driveSeg);
+
+  return true;
 }
 
 /**
@@ -198,19 +278,8 @@ async function generateRoutes(list) {
     const origin = segments.find((ev) => ev.id === seg.originId);
     const destination = segments.find((ev) => ev.id === seg.destinationId);
 
-    // Fallback: nearest non-drive neighbors //FIXME: this should go away
-    const originAlt =
-      origin ||
-      [...segments.slice(0, segments.indexOf(seg))]
-        .reverse()
-        .find((ev) => ev.coordinates[1] && ev.coordinates[0]);
-    const destAlt =
-      destination ||
-      segments
-        .slice(segments.indexOf(seg) + 1)
-        .find((ev) => ev.coordinates[1] && ev.coordinates[0]);
-    const from = originAlt;
-    const to = destAlt;
+    const from = origin;
+    const to = destination;
 
     if (!from || !to) {
       continue;
@@ -254,13 +323,8 @@ async function generateRoutes(list) {
     return list;
   }
 */
-/**
- *
- *
- * @param {*} seg
- * @param {*} segments
- * @return {*} 
- */
+
+
 function segLabel(seg, segments) {
   if (!seg) return '(unknown)';
   if (seg.name) return seg.name;

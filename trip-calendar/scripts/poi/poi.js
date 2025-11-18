@@ -1,9 +1,9 @@
 function updateStopDropdown(list) {
-  console.log(list);
+  //console.log(list);
   const select = document.getElementById('poi-stop-select');
   select.innerHTML = '';
   let segments = [...list];
-  console.log(segments);
+  //console.log(segments);
   segments.forEach((seg) => {
     if (seg.type === 'stop') {
       const opt = document.createElement('option');

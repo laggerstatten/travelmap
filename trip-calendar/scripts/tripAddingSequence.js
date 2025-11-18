@@ -8,7 +8,6 @@
  * @param {*} segments
  */
 function queueStop(segments) {
-  //let segments = loadSegments(); // might move this outside of function, and pass as a param
   const seg = {
     id: newId(),
     name: '(untitled)',
@@ -22,25 +21,17 @@ function queueStop(segments) {
 
   segments.unshift(seg);
 
-  //saveSegments(segments);
-  //renderTimeline(segments);
-  //renderMap(segments);
 }
 
 async function insertQueuedSegment(seg, card) {
   let segs = loadSegments();
   delete seg.isQueued;
   delete seg.openEditor;
-  segs = await insertStopInNearestRoute(seg, segs);
 
-  /**
-    segs = removeSlackAndOverlap(segs);
-    segs = await validateAndRepair(segs);
-    segs = annotateEmitters(segs);
-    segs = determineEmitterDirections(segs, { priority: PLANNING_DIRECTION });
-    segs = propagateTimes(segs);
-    segs = computeSlackAndOverlap(segs);
-  */
+  segs = removeSlackAndOverlap(segs);
+  console.log(snap(segs));
+  segs = await insertStopInNearestRoute(seg, segs);
+  console.log(snap(segs));
 
   segs = await runPipeline(segs); // test 
 
@@ -50,99 +41,124 @@ async function insertQueuedSegment(seg, card) {
 }
 
 async function insertStopInNearestRoute(stop, list) {
-  let segments = [...list];
-  let timeWindow = getSegmentsInTimeWindow(stop, segments);
+  let segments = list;
 
+  let timeWindow = getSegmentsInTimeWindow(stop, segments);
   if (!Array.isArray(timeWindow) || !timeWindow.length) {
     console.log('No time window found — falling back to all segments');
     timeWindow = [...segments];
 
     if (stop.start) delete stop.start.utc;
-    if (stop.end) delete stop.end.utc;
-
+    if (stop.end)   delete stop.end.utc;
   }
 
   const drives = timeWindow.filter(
     (ev) => ev.type === 'drive' && ev.routeGeometry
   );
+
   if (!drives.length) {
     console.warn("No drives found — appending stop.");
     segments.push(stop);
     return segments;
   }
 
+  // ------------------------------------------------
+  // 1. Find the best drive segment by ID (not index)
+  // ------------------------------------------------
   let bestDrive = null;
-  let bestDist = Infinity;
+  let bestDist  = Infinity;
+
   for (const d of drives) {
     const coords = d.routeGeometry?.coordinates;
     if (!coords?.length) continue;
+
     const mid = coords[Math.floor(coords.length / 2)];
-    const dx = stop.coordinates[0] - mid[0];
-    const dy = stop.coordinates[1] - mid[1];
-    const dist = Math.sqrt(dx * dx + dy * dy);
+    const dx  = stop.coordinates[0] - mid[0];
+    const dy  = stop.coordinates[1] - mid[1];
+    const dist = Math.sqrt(dx*dx + dy*dy);
+
     if (dist < bestDist) {
-      bestDist = dist;
+      bestDist  = dist;
       bestDrive = d;
     }
   }
-  if (!bestDrive) return;
 
-  const origin = segments.find((seg) => seg.id === bestDrive.originId);
-  const destination = segments.find(
-    (seg) => seg.id === bestDrive.destinationId
-  );
+  if (!bestDrive) return segments;
 
-  if (!origin || !destination) {
-    return;
-  }
+  // ------------------------------------------------
+  // 2. Delegate to the helper that works by IDs
+  // ------------------------------------------------
+  return await insertStopInRouteById(segments, stop.id, bestDrive.id, stop);
+}
 
-  if (!origin.coordinates || !destination.coordinates) return;
+async function insertStopInRouteById(segments, stopId, driveId, stopObj) {
+  let driveIdx = segments.findIndex(s => s.id === driveId);
+  if (driveIdx === -1) return segments;
 
-  const r1 = await getRouteInfo(origin, stop);
-  const r2 = await getRouteInfo(stop, destination);
-  if (!r1 || !r2) return;
+  const drive = segments[driveIdx];
 
+  const origin = segments.find(s => s.id === drive.originId);
+  const destination = segments.find(s => s.id === drive.destinationId);
+
+  if (!origin || !destination) return segments;
+  if (!origin.coordinates || !destination.coordinates) return segments;
+
+  // --------------------------------------------
+  // Get route info (origin → stop, stop → dest)
+  // --------------------------------------------
+  const r1 = await getRouteInfo(origin, stopObj);
+  const r2 = await getRouteInfo(stopObj, destination);
+  if (!r1 || !r2) return segments;
+
+  // --------------------------------------------
+  // Build two new drive segments
+  // --------------------------------------------
   const newDrive1 = {
     id: newId(),
     type: 'drive',
     autoDrive: true,
-    name: `Drive from ${origin.name} to ${stop.name}`,
+    name: `Drive from ${origin.name} to ${stopObj.name}`,
     routeGeometry: r1.geometry,
     distanceMi: r1.distance_mi.toFixed(1),
     durationMin: r1.duration_min.toFixed(0),
     durationHr: (r1.duration_min / 60).toFixed(2),
     duration: { val: (r1.duration_min / 60).toFixed(2), lock: 'hard' },
     originId: origin.id,
-    destinationId: stop.id,
+    destinationId: stopObj.id,
     originTz: origin.timeZone,
-    destinationTz: stop.timeZone,
+    destinationTz: stopObj.timeZone,
   };
 
   const newDrive2 = {
     id: newId(),
     type: 'drive',
     autoDrive: true,
-    name: `Drive from ${stop.name} to ${destination.name}`,
+    name: `Drive from ${stopObj.name} to ${destination.name}`,
     routeGeometry: r2.geometry,
     distanceMi: r2.distance_mi.toFixed(1),
     durationMin: r2.duration_min.toFixed(0),
     durationHr: (r2.duration_min / 60).toFixed(2),
     duration: { val: (r2.duration_min / 60).toFixed(2), lock: 'hard' },
-    originId: stop.id,
+    originId: stopObj.id,
     destinationId: destination.id,
-    originTz: stop.timeZone,
-    destinationTz: destination.timeZone,   
+    originTz: stopObj.timeZone,
+    destinationTz: destination.timeZone,
   };
 
-  const tempIndex = segments.findIndex((seg) => seg.id === stop.id); //FIXME: uses index lookup
-  if (tempIndex !== -1) segments.splice(tempIndex, 1);
+  // --------------------------------------------
+  // Remove a temporary instance of the stop (if it exists)
+  // --------------------------------------------
+  const tempStopIdx = segments.findIndex(s => s.id === stopId);
+  if (tempStopIdx !== -1) segments.splice(tempStopIdx, 1);
 
-  const driveIndex = segments.findIndex((seg) => seg.id === bestDrive.id);
-  if (driveIndex === -1) {
-    return;
-  }
+  // --------------------------------------------
+  // Replace the original drive with:
+  //   [ newDrive1, stopObj, newDrive2 ]
+  // --------------------------------------------
+  driveIdx = segments.findIndex(s => s.id === driveId);
+  if (driveIdx === -1) return segments;
+  segments.splice(driveIdx, 1, newDrive1, stopObj, newDrive2);
 
-  segments.splice(driveIndex, 1, newDrive1, stop, newDrive2);
   return segments;
 }
 

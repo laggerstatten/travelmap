@@ -1,5 +1,5 @@
 function attachCardDragHandlers(card) {
-  console.log('Attaching drag handlers to card', card);
+  //console.log('Attaching drag handlers to card', card);
   const id = card.dataset.id;
 
   // --- Drag logic ---
@@ -21,7 +21,7 @@ function attachCardDragHandlers(card) {
   });
 }
 
-function handleDragOver(e) { //FIXME: uses index lookup
+function handleDragOver(e) {
   console.log('Drag over', e);
   e.preventDefault();
   const cal = e.currentTarget;
@@ -42,7 +42,7 @@ function handleDragOver(e) { //FIXME: uses index lookup
   }
 }
 
-function getDragAfterElement(container, y) { //FIXME: uses index lookup
+function getDragAfterElement(container, y) { 
   console.log('Getting drag after element at y=', y);
   // include entire rail-pair for position math
   const pairs = [...container.querySelectorAll('.rail-pair:not(.dragging)')];
@@ -58,7 +58,7 @@ function getDragAfterElement(container, y) { //FIXME: uses index lookup
   ).element;
 }
 
-function reorderFromDOM(calendar) { //FIXME: uses index lookup
+function _reorderFromDOM(calendar) { //FIXME: uses index lookup
   console.log('Reordering segments from DOM');
   const ids = [...calendar.querySelectorAll('.rail-pair .timeline-card')].map(
     (el) => el.dataset.id
@@ -249,7 +249,7 @@ function deleteSegment(seg, card) {
     deleteSegmentById(id);
 
     let segs = loadSegments();
-
+    PIPELINELEVEL = '';
     segs = await runPipeline(segs); // test
 
     saveSegments(segs);
@@ -258,7 +258,7 @@ function deleteSegment(seg, card) {
   })();
 }
 
-function deleteSegmentById(id) { //FIXME: verify is working
+function deleteSegmentById(id) {
   let segments = loadSegments();
   const idx = segments.findIndex((seg) => String(seg.id) === String(id));
   if (idx !== -1) {

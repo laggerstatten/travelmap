@@ -66,7 +66,7 @@
     <script src="scripts/overlapResolution.js"></script>
 
     <script src="scripts/clearAutoDrives.js"></script>
-    <script src="scripts/clearTimesAndDurations.js"></script>
+    <!-- <script src="scripts/clearTimesAndDurations.js"></script> -->
 
     <script src="scripts/enrichment/insolation.js"></script>
     <script src="scripts/sublists/sublists.js"></script>
@@ -158,8 +158,8 @@
 
         document.getElementById('validate-btn').onclick = async () => {
           let segs = loadSegments();
-
-          segs = await validateAndRepair(segs); // do we need to remove slack/overlap first?
+          segs = removeSlackAndOverlap(segs);
+          segs = await validateAndRepair(segs); // do we need to remove slack/overlap first? YES
           PIPELINELEVEL = 'routing';
           saveSegments(segs);
           renderTimeline(syncGlobal());

@@ -24,8 +24,8 @@ function renderTimeline(segments) {
     cal.appendChild(wrapper);
   }
 
-  cal.addEventListener('dragover', handleDragOver);
-  cal.addEventListener('drop', (e) => e.preventDefault());
+  //cal.addEventListener('dragover', handleDragOver);
+  //cal.addEventListener('drop', (e) => e.preventDefault());
 }
 
 // --- Build rails ---
