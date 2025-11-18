@@ -120,7 +120,12 @@ function renderCard(seg, segments) {
           {
             cls: 'insert-btn',
             label: 'Insert into Route',
-            onClick: () => insertQueuedSegment(seg, card)
+            onClick: () => {
+              logAction('insertQueuedSegmentClicked', {
+                segId: seg.id
+              });
+              insertQueuedSegment(seg, card);
+            }
           }
         ];
       } else {
@@ -277,7 +282,10 @@ function buildFooter(seg, buttons) {
   actions.push({
     cls: 'edit-btn',
     label: 'Edit',
-    onClick: (c) => editSegment(seg, c)
+    onClick: (c) => {
+      editSegment(seg, c);
+      logAction('editSegmentClicked', {});
+    }
   });
 
   //
@@ -287,7 +295,10 @@ function buildFooter(seg, buttons) {
     actions.push({
       cls: 'del-btn',
       label: 'Delete',
-      onClick: () => deleteQueuedStop(seg)
+      onClick: () => {
+        deleteQueuedStop(seg);
+        logAction('deleteQueuedStopClicked', {});
+      }
     });
 
     return [...buttons, ...actions];
@@ -300,13 +311,19 @@ function buildFooter(seg, buttons) {
     actions.push({
       cls: 'queue-btn',
       label: 'Move to Queue',
-      onClick: () => movePlacedStopToQueue(seg)
+      onClick: () => {
+        movePlacedStopToQueue(seg);
+        logAction('movePlacedStopToQueueClicked', {});
+      }
     });
 
     actions.push({
       cls: 'del-btn',
       label: 'Delete',
-      onClick: () => deletePlacedStop(seg)
+      onClick: () => {
+        deletePlacedStop(seg);
+        logAction('deletePlacedStopClicked', {});
+      }
     });
 
     return [...buttons, ...actions];
@@ -318,7 +335,11 @@ function buildFooter(seg, buttons) {
   actions.push({
     cls: 'del-btn',
     label: 'Delete',
-    onClick: () => deleteSegment(seg)  // do we need renderTimeline(syncGlobal());
+    onClick: () => {
+      deleteSegment(seg);
+      logAction('deleteSegmentClicked', {});
+      // do we need renderTimeline(syncGlobal());
+    }
   });
 
   return [...buttons, ...actions];

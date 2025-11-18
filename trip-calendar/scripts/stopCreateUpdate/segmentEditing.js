@@ -1,3 +1,9 @@
+function editSegment(seg, card) {
+    if (card.classList.contains('editing')) return;
+    card.classList.add('editing');
+    const editor = buildOnCardEditor(seg, card);
+}
+
 /* ===============================
    Handle Save
    =============================== */
@@ -24,8 +30,8 @@ function handleEditorSubmit(editor, seg, card) {
         if (trackSubitems) {
             items = Array.from(editor.querySelectorAll('.sublist-items li'))
                 .map((li) => {
-                    const name = li.querySelector('.item-name') ?.value.trim() ;
-                    const dur = parseFloat(li.querySelector('.item-dur') ?.value || 0 );
+                    const name = li.querySelector('.item-name') ?.value.trim();
+                    const dur = parseFloat(li.querySelector('.item-dur') ?.value || 0);
                     return name ? { name, dur: isNaN(dur) ? null : dur } : null;
                 })
                 .filter(Boolean);
@@ -34,7 +40,7 @@ function handleEditorSubmit(editor, seg, card) {
 
         if (seg.type === 'drive') {
             const breakHr = items.reduce((a, b) => a + (b.dur || 0), 0);
-            const baseHr = parseFloat(seg.durationHr || seg.duration ?.val || 0 );
+            const baseHr = parseFloat(seg.durationHr || seg.duration ?.val || 0);
             seg.breakHr = breakHr;
             seg.duration.val = (baseHr + breakHr).toFixed(2);
         }
@@ -43,6 +49,16 @@ function handleEditorSubmit(editor, seg, card) {
         if (seg.isQueued && (seg.type === 'trip_start' || seg.type === 'trip_end'))
             seg.isQueued = false;
         seg.openEditor = false;
+
+        logAction("segmentEdited", {
+            segId: seg.id,
+            changes: changed,
+            newStart: seg.start ?.utc,
+            newEnd: seg.end ?.utc,
+            newDuration: seg.duration ?.val,
+            newName: seg.name,
+            items: seg.items || []
+        });
 
         const list = loadSegments();
         const idx = list.findIndex((s) => s.id === seg.id);
@@ -107,7 +123,7 @@ function attachClearButtons(editor, seg) {
 
             // Optional: update lock icon in the editor
             const lockBtn = e.currentTarget
-                .closest('label') ?.querySelector('.lock-toggle') ;
+                .closest('label') ?.querySelector('.lock-toggle');
             if (lockBtn) {
                 lockBtn.textContent = '🔓';
                 lockBtn.title = 'Unlocked — click to hard lock';
@@ -135,9 +151,15 @@ function attachGeocoder(editor, seg) {
     geocoder.addTo(container);
 
     // Handle selection
-    geocoder.on('result', async (e) => {
+    geocoder.on('result', async(e) => {
         const f = e.result;
-        if (!f ?.geometry ) return;
+        if (!f ?.geometry) return;
+
+        logAction('locationSelected', {
+            segId: seg.id,
+            location_name: f.text || f.place_name || '',
+            coords: f.geometry.coordinates
+        });
 
         seg.coordinates = f.geometry.coordinates;
         seg.location_name = f.text || f.place_name || '';
@@ -161,7 +183,3 @@ function attachGeocoder(editor, seg) {
         seg.location_name = '';
     });
 }
-
-
-
-

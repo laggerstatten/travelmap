@@ -2,7 +2,6 @@
    Trip Initialization (Async)
    =============================== */
 async function initTrip() {
-  console.log('Initializing trip...');
 
   let segs = loadSegments();
 
@@ -11,18 +10,14 @@ async function initTrip() {
   queueTripDestination(segs);
   saveSegments(segs);
   renderTimeline(segs);
-  console.log('Waiting for trip anchors...');
   await waitForTripAnchorsReady();
 
   segs = loadSegments();
 
   segs = await runPipeline(segs); // test 
-  console.log(segs);
   saveSegments(segs);
   renderTimeline(segs);
   renderMap(segs);
-
-  console.log('Trip initialization complete.');
 }
 
 /* ===============================

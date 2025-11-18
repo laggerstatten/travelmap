@@ -27,7 +27,6 @@ function attachCardDragHandlers(card) {
     card.classList.remove('dragging');
     reorderFromDOM(document.getElementById('calendar'), movedId);
   });
-
 }
 
 function handleDragOver(e) {
@@ -67,24 +66,16 @@ function getDragAfterElement(container, y) {
   ).element;
 }
 
-/**
-  function reorderFromDOM(calendar) { //FIXME: uses index lookup
-    console.log('Reordering segments from DOM');
-    const ids = [...calendar.querySelectorAll('.rail-pair .timeline-card')].map(
-      (el) => el.dataset.id
-    );
-  
-    segments = ids.map((id) => segments.find((s) => s.id === id));
-    saveSegments(segments);
-    //renderTimeline(syncGlobal());
-  }
-*/
-
 function normalizeBeforeId(beforeId, list) {
-  let next = list.find(s => s.id === beforeId);
-  while (next && next.type !== "stop" && next.type !== "trip_start" && next.type !== "trip_end") {
+  let next = list.find((s) => s.id === beforeId);
+  while (
+    next &&
+    next.type !== 'stop' &&
+    next.type !== 'trip_start' &&
+    next.type !== 'trip_end'
+  ) {
     // Skip ephemeral segments
-    const idx = list.findIndex(s => s.id === next.id);
+    const idx = list.findIndex((s) => s.id === next.id);
     next = list[idx + 1];
   }
   return next ? next.id : null;
@@ -98,8 +89,13 @@ function getStopLikeNeighbors(cardIndex, allCards) {
   let left = null;
   for (let i = cardIndex - 1; i >= 0; i--) {
     const id = allCards[i].dataset.id;
-    const seg = loadSegments().find(s => s.id === id);
-    if (seg && (seg.type === "stop" || seg.type === "trip_start" || seg.type === "trip_end")) {
+    const seg = loadSegments().find((s) => s.id === id);
+    if (
+      seg &&
+      (seg.type === 'stop' ||
+        seg.type === 'trip_start' ||
+        seg.type === 'trip_end')
+    ) {
       left = seg;
       break;
     }
@@ -109,8 +105,13 @@ function getStopLikeNeighbors(cardIndex, allCards) {
   let right = null;
   for (let i = cardIndex + 1; i < allCards.length; i++) {
     const id = allCards[i].dataset.id;
-    const seg = loadSegments().find(s => s.id === id);
-    if (seg && (seg.type === "stop" || seg.type === "trip_start" || seg.type === "trip_end")) {
+    const seg = loadSegments().find((s) => s.id === id);
+    if (
+      seg &&
+      (seg.type === 'stop' ||
+        seg.type === 'trip_start' ||
+        seg.type === 'trip_end')
+    ) {
       right = seg;
       break;
     }
@@ -119,20 +120,15 @@ function getStopLikeNeighbors(cardIndex, allCards) {
   return { left, right };
 }
 
-
-
-
 async function reorderFromDOM(calendar, movedId) {
-  console.log("=== SAFE reorderFromDOM === movedId:", movedId);
+  console.log('=== SAFE reorderFromDOM === movedId:', movedId);
   if (!movedId) return;
 
-  const allCards = [
-    ...calendar.querySelectorAll(".rail-pair .timeline-card")
-  ];
+  const allCards = [...calendar.querySelectorAll('.rail-pair .timeline-card')];
 
-  const movedEl = allCards.find(el => el.dataset.id === movedId);
+  const movedEl = allCards.find((el) => el.dataset.id === movedId);
   if (!movedEl) {
-    console.warn("Dragged card not found in DOM.");
+    console.warn('Dragged card not found in DOM.');
     return;
   }
 
@@ -143,41 +139,45 @@ async function reorderFromDOM(calendar, movedId) {
   const afterCard = nextCard; // semantic "insert before this one"
   const afterId = afterCard ? afterCard.dataset.id : null;
 
-  console.log("afterId (element moved in front of):", afterId);
+  console.log('afterId (element moved in front of):', afterId);
 
   // ---- Load segments to reason about drives ----
   const list = loadSegments();
-  const movedSeg = list.find(s => s.id === movedId);
+  const movedSeg = list.find((s) => s.id === movedId);
   if (!movedSeg) {
-    console.warn("Moved segment not found in list.");
+    console.warn('Moved segment not found in list.');
     return;
   }
 
   // ============================
   // SAFETY: corridor protection
   // ============================
-  if (movedSeg.type === "stop") {
+  if (movedSeg.type === 'stop') {
     const incomingDrive = list.find(
-      s => s.type === "drive" && s.destinationId === movedSeg.id
+      (s) => s.type === 'drive' && s.destinationId === movedSeg.id
     );
     const outgoingDrive = list.find(
-      s => s.type === "drive" && s.originId === movedSeg.id
+      (s) => s.type === 'drive' && s.originId === movedSeg.id
     );
 
     // ---- NEW: prevent dragging across slack on the far side of its own outgoing drive ----
     if (outgoingDrive) {
-      const dest = list.find(s => s.id === outgoingDrive.destinationId);
+      const dest = list.find((s) => s.id === outgoingDrive.destinationId);
       const attachedSlack = list.find(
-        s =>
-          s.type === "slack" &&
+        (s) =>
+          s.type === 'slack' &&
           (s.a === outgoingDrive.id || s.b === outgoingDrive.id)
       );
 
       if (dest && attachedSlack) {
-        const idxStop = allCards.findIndex(el => el.dataset.id === movedId);
-        const idxDrive = allCards.findIndex(el => el.dataset.id === outgoingDrive.id);
-        const idxSlack = allCards.findIndex(el => el.dataset.id === attachedSlack.id);
-        const idxDest = allCards.findIndex(el => el.dataset.id === dest.id);
+        const idxStop = allCards.findIndex((el) => el.dataset.id === movedId);
+        const idxDrive = allCards.findIndex(
+          (el) => el.dataset.id === outgoingDrive.id
+        );
+        const idxSlack = allCards.findIndex(
+          (el) => el.dataset.id === attachedSlack.id
+        );
+        const idxDest = allCards.findIndex((el) => el.dataset.id === dest.id);
 
         const hasAll =
           idxStop !== -1 &&
@@ -195,7 +195,7 @@ async function reorderFromDOM(calendar, movedId) {
 
         if (crossesOwnSlack) {
           console.warn(
-            "Blocked: cannot drag stop across slack on the far side of its own outgoing drive."
+            'Blocked: cannot drag stop across slack on the far side of its own outgoing drive.'
           );
           renderTimeline(list);
           renderMap(list);
@@ -206,18 +206,24 @@ async function reorderFromDOM(calendar, movedId) {
 
     // ---- NEW: prevent dragging across slack on the far side of its own incoming drive ----
     if (incomingDrive) {
-      const origin = list.find(s => s.id === incomingDrive.originId);
+      const origin = list.find((s) => s.id === incomingDrive.originId);
       const attachedSlackIn = list.find(
-        s =>
-          s.type === "slack" &&
+        (s) =>
+          s.type === 'slack' &&
           (s.a === incomingDrive.id || s.b === incomingDrive.id)
       );
 
       if (origin && attachedSlackIn) {
-        const idxStop = allCards.findIndex(el => el.dataset.id === movedId);
-        const idxDrive = allCards.findIndex(el => el.dataset.id === incomingDrive.id);
-        const idxSlack = allCards.findIndex(el => el.dataset.id === attachedSlackIn.id);
-        const idxOrigin = allCards.findIndex(el => el.dataset.id === origin.id);
+        const idxStop = allCards.findIndex((el) => el.dataset.id === movedId);
+        const idxDrive = allCards.findIndex(
+          (el) => el.dataset.id === incomingDrive.id
+        );
+        const idxSlack = allCards.findIndex(
+          (el) => el.dataset.id === attachedSlackIn.id
+        );
+        const idxOrigin = allCards.findIndex(
+          (el) => el.dataset.id === origin.id
+        );
 
         const hasAll =
           idxStop !== -1 &&
@@ -235,7 +241,7 @@ async function reorderFromDOM(calendar, movedId) {
 
         if (crossesIncomingSlack) {
           console.warn(
-            "Blocked: cannot drag stop across slack on the far side of its own incoming drive."
+            'Blocked: cannot drag stop across slack on the far side of its own incoming drive.'
           );
           renderTimeline(list);
           renderMap(list);
@@ -244,16 +250,17 @@ async function reorderFromDOM(calendar, movedId) {
       }
     }
 
-
     // Case 1: stop is being dropped BETWEEN origin and its incoming drive:
     // pattern after drop:  [ originStop , movedStop , incomingDrive ]
     if (
       incomingDrive &&
-      nextCard && nextCard.dataset.id === incomingDrive.id &&
-      prevCard && prevCard.dataset.id === incomingDrive.originId
+      nextCard &&
+      nextCard.dataset.id === incomingDrive.id &&
+      prevCard &&
+      prevCard.dataset.id === incomingDrive.originId
     ) {
       console.warn(
-        "Blocked: cannot place stop between its origin and its incoming drive."
+        'Blocked: cannot place stop between its origin and its incoming drive.'
       );
       renderTimeline(list);
       renderMap(list);
@@ -264,11 +271,13 @@ async function reorderFromDOM(calendar, movedId) {
     // pattern after drop: [ outgoingDrive , movedStop , destStop ]
     if (
       outgoingDrive &&
-      prevCard && prevCard.dataset.id === outgoingDrive.id &&
-      nextCard && nextCard.dataset.id === outgoingDrive.destinationId
+      prevCard &&
+      prevCard.dataset.id === outgoingDrive.id &&
+      nextCard &&
+      nextCard.dataset.id === outgoingDrive.destinationId
     ) {
       console.warn(
-        "Blocked: cannot place stop between its outgoing drive and its destination."
+        'Blocked: cannot place stop between its outgoing drive and its destination.'
       );
       renderTimeline(list);
       renderMap(list);
@@ -279,34 +288,33 @@ async function reorderFromDOM(calendar, movedId) {
   // ---- normal semantic insert index code (still just for logging) ----
   let insertIndex;
   if (afterId) {
-    insertIndex = list.findIndex(s => s.id === afterId);
-    console.log("Semantic insertIndex (before afterId):", insertIndex);
+    insertIndex = list.findIndex((s) => s.id === afterId);
+    console.log('Semantic insertIndex (before afterId):', insertIndex);
   } else {
     insertIndex = list.length;
-    console.log("Semantic insertIndex = END:", insertIndex);
+    console.log('Semantic insertIndex = END:', insertIndex);
   }
 
   // we pass the beforeId (stop/anything) into the move function;
   // movePlacedStopById now handles healing + splitting
   await movePlacedStopById(movedId, afterId);
 
-  console.log("=== END SAFE reorderFromDOM ===");
+  console.log('=== END SAFE reorderFromDOM ===');
 }
 
-
 async function movePlacedStopById(stopId, beforeId) {
-  console.log("========== MOVE PLACED STOP ==========");
-  console.log("stopId:", stopId, "beforeId:", beforeId);
+  console.log('========== MOVE PLACED STOP ==========');
+  console.log('stopId:', stopId, 'beforeId:', beforeId);
 
   // -----------------------------------------
   // Load original full list (authoritative)
   // -----------------------------------------
   const beforeList = loadSegments();
-  console.log("Initial list:", snap(beforeList));
+  console.log('Initial list:', snap(beforeList));
 
-  const stop = beforeList.find(s => s.id === stopId);
+  const stop = beforeList.find((s) => s.id === stopId);
   if (!stop) {
-    console.warn("Stop not found:", stopId);
+    console.warn('Stop not found:', stopId);
     return;
   }
 
@@ -318,7 +326,7 @@ async function movePlacedStopById(stopId, beforeId) {
   // A. REMOVE STOP & HEAL OLD CORRIDOR
   // ====================================
   //
-  console.log("--- A. Removing stop and healing old corridor ---");
+  console.log('--- A. Removing stop and healing old corridor ---');
 
   let {
     list: afterRemoval,
@@ -328,22 +336,22 @@ async function movePlacedStopById(stopId, beforeId) {
 
   list = afterRemoval;
 
-  console.log("After raw removal:", snap(list));
-  console.log("Removed stop:", stopId, "prevId:", prevId, "nextId:", nextId);
+  console.log('After raw removal:', snap(list));
+  console.log('Removed stop:', stopId, 'prevId:', prevId, 'nextId:', nextId);
 
   list = await healRouteIfNeeded(list, prevId, nextId);
-  console.log("After healRouteIfNeeded:", snap(list));
+  console.log('After healRouteIfNeeded:', snap(list));
 
   //
   // ====================================
   // B. INSERT STOP AT NEW LOCATION
   // ====================================
   //
-  console.log("--- B. Inserting stop at new location ---");
-  console.log("Inserting", stopId, "before", beforeId);
+  console.log('--- B. Inserting stop at new location ---');
+  console.log('Inserting', stopId, 'before', beforeId);
 
   list = insertStopRelativeToId(list, stop, beforeId);
-  console.log("After insertion:", snap(list));
+  console.log('After insertion:', snap(list));
 
   //
   // ====================================
@@ -352,24 +360,24 @@ async function movePlacedStopById(stopId, beforeId) {
   // ====================================
   //
   /**
-    console.log("--- C. Fixing drives around the stop ---");
-  
-    const { left, right } = getNeighborsById(list, stopId);
-    console.log("Neighbors around stop:", { left: left?.id, right: right?.id });
-  
-    if (left && right) {
-      console.log("Checking adjacent removal X->Y:", left.id, right.id);
-      removeAdjacentDrivesById(list, left.id, right.id);
-  
-      console.log("Checking insert X->S:", left.id, stopId);
-      insertDriveBetweenById(list, left.id, stopId);
-  
-      console.log("Checking insert S->Y:", stopId, right.id);
-      insertDriveBetweenById(list, stopId, right.id);
-    }
-  
-    console.log("After pair fixes:", snap(list));
-  */
+  console.log("--- C. Fixing drives around the stop ---");
+ 
+  const { left, right } = getNeighborsById(list, stopId);
+  console.log("Neighbors around stop:", { left: left?.id, right: right?.id });
+ 
+  if (left && right) {
+    console.log("Checking adjacent removal X->Y:", left.id, right.id);
+    removeAdjacentDrivesById(list, left.id, right.id);
+ 
+    console.log("Checking insert X->S:", left.id, stopId);
+    insertDriveBetweenById(list, left.id, stopId);
+ 
+    console.log("Checking insert S->Y:", stopId, right.id);
+    insertDriveBetweenById(list, stopId, right.id);
+  }
+ 
+  console.log("After pair fixes:", snap(list));
+*/
 
   //
   // ====================================
@@ -378,22 +386,22 @@ async function movePlacedStopById(stopId, beforeId) {
   // This is where we MUST pass beforeList
   // ====================================
   //
-  console.log("--- D. Corridor split check ---");
+  console.log('--- D. Corridor split check ---');
 
   list = await splitIfInsertedIntoDrive(list, stopId, beforeList);
-  console.log("After splitIfInsertedIntoDrive:", snap(list));
+  console.log('After splitIfInsertedIntoDrive:', snap(list));
 
   //
   // ====================================
   // E. FINAL NORMALIZATION
   // ====================================
   //
-  console.log("--- E. Running final pipeline ---");
+  console.log('--- E. Running final pipeline ---');
 
   list = await runPipeline(list);
-  console.log("After pipeline:", snap(list));
+  console.log('After pipeline:', snap(list));
 
-  console.log("========== END MOVE ==========");
+  console.log('========== END MOVE ==========');
 
   saveSegments(list);
   renderTimeline(list);
@@ -402,43 +410,40 @@ async function movePlacedStopById(stopId, beforeId) {
   return list;
 }
 
-
 function insertStopRelativeToId(list, seg, beforeId) {
-  console.log("insertStopRelativeToId: inserting", seg.id, "before", beforeId);
+  console.log('insertStopRelativeToId: inserting', seg.id, 'before', beforeId);
 
   const out = [...list];
 
   if (!beforeId) {
-    console.log("  No beforeId → appending");
+    console.log('  No beforeId → appending');
     out.push(seg);
     return out;
   }
 
-  const idx = out.findIndex(s => s.id === beforeId);
+  const idx = out.findIndex((s) => s.id === beforeId);
 
-  console.log("  beforeId index:", idx);
+  console.log('  beforeId index:', idx);
 
   if (idx === -1) {
-    console.log("  beforeId not found → appending");
+    console.log('  beforeId not found → appending');
     out.push(seg);
     return out;
   }
 
   out.splice(idx, 0, seg);
-  console.log("  Inserted at index:", idx);
+  console.log('  Inserted at index:', idx);
 
   return out;
 }
 
 function getNeighborsById(list, id) {
-  const i = list.findIndex(s => s.id === id);
+  const i = list.findIndex((s) => s.id === id);
   if (i === -1) return { left: null, right: null };
 
   // Skip slack/overlap/other non-structural segments
-  const isStructural = seg =>
-    seg &&
-    seg.type !== "slack" &&
-    seg.type !== "overlap";
+  const isStructural = (seg) =>
+    seg && seg.type !== 'slack' && seg.type !== 'overlap';
 
   // Walk left to find first structural neighbor
   let left = null;
@@ -461,25 +466,24 @@ function getNeighborsById(list, id) {
   return { left, right };
 }
 
-
 async function splitIfInsertedIntoDrive(list, stopId, beforeList) {
-  console.log("splitIfInsertedIntoDrive:", stopId);
+  console.log('splitIfInsertedIntoDrive:', stopId);
 
   // Current neighbors after insertion
   const { left, right } = getNeighborsById(list, stopId);
-  console.log("  Neighbors:", { left: left?.id, right: right?.id });
+  console.log('  Neighbors:', { left: left?.id, right: right?.id });
 
-  const stop = list.find(s => s.id === stopId);
+  const stop = list.find((s) => s.id === stopId);
   if (!stop) return list;
 
   // ------------------------------------------------------
   // CASE 1: Left neighbor is the drive that needs splitting
   // ------------------------------------------------------
-  if (left && left.type === "drive") {
+  if (left && left.type === 'drive') {
     // Confirm this drive existed in the original list:
-    const existed = beforeList.some(d => d.id === left.id);
+    const existed = beforeList.some((d) => d.id === left.id);
     if (existed) {
-      console.log("  Splitting left drive", left.id);
+      console.log('  Splitting left drive', left.id);
       return await insertStopInRouteById(list, stopId, left.id, stop);
     }
   }
@@ -487,17 +491,14 @@ async function splitIfInsertedIntoDrive(list, stopId, beforeList) {
   // ------------------------------------------------------
   // CASE 2: Right neighbor is the drive that needs splitting
   // ------------------------------------------------------
-  if (right && right.type === "drive") {
-    const existed = beforeList.some(d => d.id === right.id);
+  if (right && right.type === 'drive') {
+    const existed = beforeList.some((d) => d.id === right.id);
     if (existed) {
-      console.log("  Splitting right drive", right.id);
+      console.log('  Splitting right drive', right.id);
       return await insertStopInRouteById(list, stopId, right.id, stop);
     }
   }
 
-  console.log("  No split needed.");
+  console.log('  No split needed.');
   return list;
 }
-
-
-
