@@ -46,37 +46,39 @@
     <script src="https://unpkg.com/suncalc/suncalc.js"></script>
 
     <!-- Scripts Unlikely to Need Refactoring -->
-    <script src="scripts/datetime.js"></script>
-    <script src="scripts/externaldata.js"></script>
-    <script src="scripts/newId.js"></script>
+    <script src="scripts/helper/datetime.js"></script>
+    <script src="scripts/helper/externaldata.js"></script>
+    <script src="scripts/helper/newId.js"></script>
 
     <!-- Scripts -->
-    <script src="scripts/timeline.js"></script>
-    <script src="scripts/map.js"></script>
-    <script src="scripts/pipeline.js"></script>
+    <script src="scripts/rendering/timeline.js"></script>
+    <script src="scripts/rendering/segmentEditor.js"></script>
+
+    <script src="scripts/rendering/map.js"></script>
+    <script src="scripts/runPipeline.js"></script>
+
+    <script src="scripts/tripInitiationSequence.js"></script>
 
     <script src="scripts/segmentActions.js"></script>
-    <script src="scripts/tripInitiationSequence.js"></script>
-    <script src="scripts/segmentEditor.js"></script>
-    <script src="scripts/timingPropagation.js"></script>
-    <script src="scripts/timingSlackOverlap.js"></script>
-    <script src="scripts/timingSetters.js"></script>
+
 
     <script src="scripts/tripAddingSequence.js"></script>
-    <script src="scripts/overlapResolution.js"></script>
-
     <script src="scripts/clearAutoDrives.js"></script>
-    <!-- <script src="scripts/clearTimesAndDurations.js"></script> -->
+    <script src="scripts/newFunctions.js"></script>
 
-    <script src="scripts/enrichment/insolation.js"></script>
+    <script src="scripts/timing/timingPropagation.js"></script>
+    <script src="scripts/timing/timingSetters.js"></script>
+    <script src="scripts/timing/timingSlackOverlap.js"></script>
+    <script src="scripts/timing/overlapResolution.js"></script>
+
     <script src="scripts/sublists/sublists.js"></script>
     <script src="scripts/constraints/constraintTypes.js"></script>
     <script src="scripts/constraints/constraintValidation.js"></script>
     <script src="scripts/constraints/constraintFunctions.js"></script>
 
-    <script src="scripts/poi/poi.js"></script>
+    <script src="scripts/enrichment/insolation.js"></script>
 
-    <script src="scripts/newFunctions.js"></script>
+    <script src="scripts/poi/poi.js"></script>
 
     <script>
       let segments = [];
