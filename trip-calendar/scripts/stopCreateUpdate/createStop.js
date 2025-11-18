@@ -6,7 +6,7 @@
  *
  * @param {*} segments
  */
-function queueTripOrigin(segments) {
+function queueTripOrigin(segments) { 
     const seg = {
         id: newId(),
         name: '(untitled)',
@@ -26,7 +26,7 @@ function queueTripOrigin(segments) {
  *
  * @param {*} segments
  */
-function queueTripDestination(segments) {
+function queueTripDestination(segments) { 
     const seg = {
         id: newId(),
         name: '(untitled)',
@@ -44,13 +44,13 @@ function queueTripDestination(segments) {
 /* ===============================
    Queue Trip Stop
    =============================== */
+
 /**
  * CREATE segment with stop type
  *
  * @param {*} segments
  */
-function queueStop(segments) {
-    //let segments = loadSegments(); // might move this outside of function, and pass as a param
+function queueStop(segments) { 
     const seg = {
         id: newId(),
         name: '(untitled)',
@@ -64,9 +64,6 @@ function queueStop(segments) {
 
     segments.unshift(seg);
 
-    //saveSegments(segments);
-    //renderTimeline(segments);
-    //renderMap(segments);
 }
 
 
