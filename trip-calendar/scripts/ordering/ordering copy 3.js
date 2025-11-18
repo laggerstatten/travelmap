@@ -51,7 +51,7 @@ function handleDragOver(e) {
   }
 }
 
-function getDragAfterElement(container, y) {
+function getDragAfterElement(container, y) { 
   //console.log('Getting drag after element at y=', y);
   // include entire rail-pair for position math
   const pairs = [...container.querySelectorAll('.rail-pair:not(.dragging)')];
@@ -90,36 +90,6 @@ function normalizeBeforeId(beforeId, list) {
   return next ? next.id : null;
 }
 
-//
-// SAFETY: prevent dragging a stop across its own drive corridor
-//
-function getStopLikeNeighbors(cardIndex, allCards) {
-  // walk left
-  let left = null;
-  for (let i = cardIndex - 1; i >= 0; i--) {
-    const id = allCards[i].dataset.id;
-    const seg = loadSegments().find(s => s.id === id);
-    if (seg && (seg.type === "stop" || seg.type === "trip_start" || seg.type === "trip_end")) {
-      left = seg;
-      break;
-    }
-  }
-
-  // walk right
-  let right = null;
-  for (let i = cardIndex + 1; i < allCards.length; i++) {
-    const id = allCards[i].dataset.id;
-    const seg = loadSegments().find(s => s.id === id);
-    if (seg && (seg.type === "stop" || seg.type === "trip_start" || seg.type === "trip_end")) {
-      right = seg;
-      break;
-    }
-  }
-
-  return { left, right };
-}
-
-
 
 
 async function reorderFromDOM(calendar, movedId) {
@@ -137,11 +107,11 @@ async function reorderFromDOM(calendar, movedId) {
   }
 
   const cardIndex = allCards.indexOf(movedEl);
-  const prevCard = allCards[cardIndex - 1] || null;
-  const nextCard = allCards[cardIndex + 1] || null;
+  const prevCard  = allCards[cardIndex - 1] || null;
+  const nextCard  = allCards[cardIndex + 1] || null;
 
   const afterCard = nextCard; // semantic "insert before this one"
-  const afterId = afterCard ? afterCard.dataset.id : null;
+  const afterId   = afterCard ? afterCard.dataset.id : null;
 
   console.log("afterId (element moved in front of):", afterId);
 
@@ -153,9 +123,7 @@ async function reorderFromDOM(calendar, movedId) {
     return;
   }
 
-  // ============================
-  // SAFETY: corridor protection
-  // ============================
+  // Only enforce this for real stops
   if (movedSeg.type === "stop") {
     const incomingDrive = list.find(
       s => s.type === "drive" && s.destinationId === movedSeg.id
@@ -163,87 +131,6 @@ async function reorderFromDOM(calendar, movedId) {
     const outgoingDrive = list.find(
       s => s.type === "drive" && s.originId === movedSeg.id
     );
-
-    // ---- NEW: prevent dragging across slack on the far side of its own outgoing drive ----
-    if (outgoingDrive) {
-      const dest = list.find(s => s.id === outgoingDrive.destinationId);
-      const attachedSlack = list.find(
-        s =>
-          s.type === "slack" &&
-          (s.a === outgoingDrive.id || s.b === outgoingDrive.id)
-      );
-
-      if (dest && attachedSlack) {
-        const idxStop = allCards.findIndex(el => el.dataset.id === movedId);
-        const idxDrive = allCards.findIndex(el => el.dataset.id === outgoingDrive.id);
-        const idxSlack = allCards.findIndex(el => el.dataset.id === attachedSlack.id);
-        const idxDest = allCards.findIndex(el => el.dataset.id === dest.id);
-
-        const hasAll =
-          idxStop !== -1 &&
-          idxDrive !== -1 &&
-          idxSlack !== -1 &&
-          idxDest !== -1;
-
-        // Illegal pattern (after drop):
-        //   drive(Mid→Dest) … slack(attached to that drive) … movedStop … Dest
-        const crossesOwnSlack =
-          hasAll &&
-          idxDrive < idxSlack &&
-          idxSlack < idxStop &&
-          idxStop < idxDest;
-
-        if (crossesOwnSlack) {
-          console.warn(
-            "Blocked: cannot drag stop across slack on the far side of its own outgoing drive."
-          );
-          renderTimeline(list);
-          renderMap(list);
-          return;
-        }
-      }
-    }
-
-    // ---- NEW: prevent dragging across slack on the far side of its own incoming drive ----
-    if (incomingDrive) {
-      const origin = list.find(s => s.id === incomingDrive.originId);
-      const attachedSlackIn = list.find(
-        s =>
-          s.type === "slack" &&
-          (s.a === incomingDrive.id || s.b === incomingDrive.id)
-      );
-
-      if (origin && attachedSlackIn) {
-        const idxStop = allCards.findIndex(el => el.dataset.id === movedId);
-        const idxDrive = allCards.findIndex(el => el.dataset.id === incomingDrive.id);
-        const idxSlack = allCards.findIndex(el => el.dataset.id === attachedSlackIn.id);
-        const idxOrigin = allCards.findIndex(el => el.dataset.id === origin.id);
-
-        const hasAll =
-          idxStop !== -1 &&
-          idxDrive !== -1 &&
-          idxSlack !== -1 &&
-          idxOrigin !== -1;
-
-        // Illegal pattern (after drop):
-        //   Origin … Stop … Slack(attached) … incomingDrive
-        const crossesIncomingSlack =
-          hasAll &&
-          idxOrigin < idxStop &&
-          idxStop < idxSlack &&
-          idxSlack < idxDrive;
-
-        if (crossesIncomingSlack) {
-          console.warn(
-            "Blocked: cannot drag stop across slack on the far side of its own incoming drive."
-          );
-          renderTimeline(list);
-          renderMap(list);
-          return;
-        }
-      }
-    }
-
 
     // Case 1: stop is being dropped BETWEEN origin and its incoming drive:
     // pattern after drop:  [ originStop , movedStop , incomingDrive ]
@@ -255,6 +142,7 @@ async function reorderFromDOM(calendar, movedId) {
       console.warn(
         "Blocked: cannot place stop between its origin and its incoming drive."
       );
+      // revert UI to model state
       renderTimeline(list);
       renderMap(list);
       return;
@@ -276,7 +164,7 @@ async function reorderFromDOM(calendar, movedId) {
     }
   }
 
-  // ---- normal semantic insert index code (still just for logging) ----
+  // ---- normal semantic insert index code ----
   let insertIndex;
   if (afterId) {
     insertIndex = list.findIndex(s => s.id === afterId);
@@ -286,13 +174,11 @@ async function reorderFromDOM(calendar, movedId) {
     console.log("Semantic insertIndex = END:", insertIndex);
   }
 
-  // we pass the beforeId (stop/anything) into the move function;
-  // movePlacedStopById now handles healing + splitting
-  await movePlacedStopById(movedId, afterId);
+  const stopLikeBeforeId = normalizeBeforeId(afterId, list);
+  await movePlacedStopById(movedId, stopLikeBeforeId);
 
   console.log("=== END SAFE reorderFromDOM ===");
 }
-
 
 async function movePlacedStopById(stopId, beforeId) {
   console.log("========== MOVE PLACED STOP ==========");
@@ -434,33 +320,11 @@ function getNeighborsById(list, id) {
   const i = list.findIndex(s => s.id === id);
   if (i === -1) return { left: null, right: null };
 
-  // Skip slack/overlap/other non-structural segments
-  const isStructural = seg =>
-    seg &&
-    seg.type !== "slack" &&
-    seg.type !== "overlap";
-
-  // Walk left to find first structural neighbor
-  let left = null;
-  for (let L = i - 1; L >= 0; L--) {
-    if (isStructural(list[L])) {
-      left = list[L];
-      break;
-    }
-  }
-
-  // Walk right to find first structural neighbor
-  let right = null;
-  for (let R = i + 1; R < list.length; R++) {
-    if (isStructural(list[R])) {
-      right = list[R];
-      break;
-    }
-  }
-
-  return { left, right };
+  return {
+    left: list[i - 1] || null,
+    right: list[i + 1] || null
+  };
 }
-
 
 async function splitIfInsertedIntoDrive(list, stopId, beforeList) {
   console.log("splitIfInsertedIntoDrive:", stopId);
