@@ -134,7 +134,7 @@ async function insertStopInNearestRoute(stop, list) {
     destinationTz: destination.timeZone,   
   };
 
-  const tempIndex = segments.findIndex((seg) => seg.id === stop.id);
+  const tempIndex = segments.findIndex((seg) => seg.id === stop.id); //FIXME: uses index lookup
   if (tempIndex !== -1) segments.splice(tempIndex, 1);
 
   const driveIndex = segments.findIndex((seg) => seg.id === bestDrive.id);

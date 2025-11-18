@@ -133,7 +133,7 @@ async function validateAndRepair(list) {
  * @param {*} list
  * @return {*} 
  */
-function removeAdjacentDrives(list) {
+function removeAdjacentDrives(list) { //FIXME: uses index lookup
   let segments = [...list];
 
   for (let i = 0; i < segments.length - 1; i++) {
@@ -152,7 +152,7 @@ function removeAdjacentDrives(list) {
  * @param {*} list
  * @return {*} 
  */
-function insertDriveSegments(list) {
+function insertDriveSegments(list) { //FIXME: uses index lookup
   let segments = [...list];
   const out = [];
   for (let i = 0; i < segments.length; i++) {
@@ -198,7 +198,7 @@ async function generateRoutes(list) {
     const origin = segments.find((ev) => ev.id === seg.originId);
     const destination = segments.find((ev) => ev.id === seg.destinationId);
 
-    // Fallback: nearest non-drive neighbors
+    // Fallback: nearest non-drive neighbors //FIXME: this should go away
     const originAlt =
       origin ||
       [...segments.slice(0, segments.indexOf(seg))]

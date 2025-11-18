@@ -61,7 +61,7 @@ async function movePlacedStopToQueue(seg) {
 }
 
 
-function removeSegmentFromList(list, seg) {
+function removeSegmentFromList(list, seg) { //FIXME: uses index lookup
   const idx = list.findIndex(s => s.id === seg.id);
   if (idx === -1) return { list, idx: -1 };
 
@@ -69,7 +69,7 @@ function removeSegmentFromList(list, seg) {
   return { list, idx, removed };
 }
 
-async function removeStopAndHealRouteIfNeeded(seg, list, idx) {
+async function removeStopAndHealRouteIfNeeded(seg, list, idx) { //FIXME: uses index lookup
   const left = list[idx - 1];
   const right = list[idx];
 
@@ -81,7 +81,7 @@ async function removeStopAndHealRouteIfNeeded(seg, list, idx) {
 }
 
 
-async function removeStopAndHealRoute(stop, list, idx) {
+async function removeStopAndHealRoute(stop, list, idx) { //FIXME: uses index lookup
   const left = list[idx - 1];
   const right = list[idx];
 

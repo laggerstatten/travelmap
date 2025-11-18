@@ -171,7 +171,7 @@ async function resolveOverlapAction(seg, opt) {
 }
 
 
-function pushToQueueTop(list, seg) {
+function pushToQueueTop(list, seg) { //FIXME: uses index lookup
   const idx = list.findIndex(s => s.id === seg.id);
   if (idx !== -1) {
     list.splice(idx, 1);
