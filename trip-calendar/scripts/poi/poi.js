@@ -1,3 +1,6 @@
+let azaMarkers = [];
+
+
 function updateStopDropdown(list) {
   //console.log(list);
   const select = document.getElementById('poi-stop-select');
@@ -5,7 +8,9 @@ function updateStopDropdown(list) {
   let segments = [...list];
   //console.log(segments);
   segments.forEach((seg) => {
-    if (seg.type === 'stop') {
+    if (seg.type === 'stop' ||
+        seg.type === 'trip_start' ||
+        seg.type === 'trip_end') {
       const opt = document.createElement('option');
       opt.value = seg.id;
       opt.textContent = seg.name || 'Stop ' + seg.id;
@@ -68,6 +73,27 @@ async function loadVisited() {
   }
 }
 
+async function markVisited(aza_id) {
+  // --- Mark zoo as visited ---
+  try {
+    const res = await fetch(UPDATE_AZA_VISIT_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        user_id: USER_ID,
+        aza_id
+      })
+    });
+    const json = await res.json();
+    console.log('Updated visit:', json);
+  } catch (err) {
+    console.error('Failed to update visit:', err);
+  }
+}
+
+
 async function fetchAZA(lat, lng) {
   // --- FETCH AZA WITHIN 500 MILES ---
   try {
@@ -116,12 +142,11 @@ async function fetchAZARoute(lineString) {  // note the smaller search radius
     //updateAZATable(resultList || []);
 
     updateAZATable(resultList);
+    addAZAMarkers(resultList); 
   } catch (err) {
     console.error('Error retrieving AZA or drive times:', err);
   }
 }
-
-
 
 async function fetchAZAMatrix(resultList, lng, lat) {
   // --- MATRIX API CALL ---
@@ -165,8 +190,10 @@ async function fetchAZAMatrix(resultList, lng, lat) {
     // Combine and sort
     allResults.sort((a, b) => a.drive_time_min - b.drive_time_min);
     updateAZATable(allResults);
+    addAZAMarkers(allResults);
   } else {
     updateAZATable([]);
+    clearAZAMarkers(); 
   }
 }
 
@@ -320,4 +347,30 @@ function downsampleCoordinates(coords, maxPoints) {
   }
 
   return result;
+}
+
+function clearAZAMarkers() {
+  azaMarkers.forEach(m => m.remove());
+  azaMarkers = [];
+}
+
+function addAZAMarkers(resultList) {
+  clearAZAMarkers();
+
+  resultList.forEach(r => {
+    if (!r.CenterPointLat || !r.CenterPointLong) return;
+
+    const marker = new mapboxgl.Marker({ color: "#0088ff" })
+      .setLngLat([r.CenterPointLong, r.CenterPointLat])
+      .setPopup(
+        new mapboxgl.Popup({ offset: 24 }).setHTML(`
+          <strong>${r.ZooName || "AZA Facility"}</strong><br/>
+          ${r.City || ""}, ${r.State || ""}<br/>
+          ${r.drive_time_min ? `${r.drive_time_min.toFixed(0)} min` : ""}
+        `)
+      )
+      .addTo(mapInstance);
+
+    azaMarkers.push(marker);
+  });
 }
