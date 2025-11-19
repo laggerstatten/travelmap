@@ -1,7 +1,17 @@
 function editSegment(seg, card) {
     if (card.classList.contains('editing')) return;
     card.classList.add('editing');
+
+    // Mark this segment as the active editor
+    window.currentEditorSegment = seg;
+
     const editor = buildOnCardEditor(seg, card);
+
+    // If this is a drive segment, prepare its edit mode state
+    if (seg.type === 'drive') {
+        seg._isEditingDrive = true; // temporary session state
+        seg._waypointModeActive = false; // off until user explicitly enables
+    }
 }
 
 /* ===============================
@@ -71,6 +81,12 @@ function handleEditorSubmit(editor, seg, card) {
         renderTimeline(syncGlobal());
         renderMap(syncGlobal());
         card.classList.remove('editing');
+
+        if (seg.type === 'drive') {
+            seg._isEditingDrive = false;
+            seg._waypointModeActive = false;
+        }
+
         editor.remove();
 
         //console.log(`Segment ${seg.id} updated`, { changed });

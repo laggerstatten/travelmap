@@ -74,19 +74,62 @@ function attachSublistHandlers(editor, seg) {
    Drive Duration Updater
    =============================== */
 function updateDriveDurations(editor, seg) {
-    const durFields = Array.from(editor.querySelectorAll('.item-dur')).map(
-        (i) => parseFloat(i.value) || 0
-    );
-    const breakHr = durFields.reduce((a, b) => a + b, 0);
+  const items = Array.from(editor.querySelectorAll('.sublist-items li'));
 
-    seg.breakHr = breakHr;
+  seg.items = items.map(li => {
+    const type = li.dataset.type;
+    const name = li.querySelector('.item-name').value.trim();
 
-    const baseHr = parseFloat(seg.durationHr || seg.duration ?.val || 0 );
-    const totalHr = baseHr + breakHr;
+    if (type === "waypoint") {
+      const coords = JSON.parse(li.dataset.coords);
+      return {
+        type: "waypoint",
+        name,
+        coordinates: coords
+      };
+    }
 
-    seg.duration = seg.duration || {};
-    seg.duration.val = totalHr;
+    return {
+      name,
+      dur: parseFloat(li.querySelector(".item-dur").value) || 0
+    };
+  });
 
-    const durInput = editor.querySelector('input[name="duration"]');
-    if (durInput) durInput.value = totalHr.toFixed(2);
+  saveSegments();
 }
+
+
+function refreshSublistUI(seg) {
+  const card = document.querySelector(`.card[data-id="${seg.id}"]`);
+  if (!card) return;
+
+  const editor = card.querySelector("form.oncard-editor");
+  const list = editor.querySelector(".sublist-items");
+
+  const html = (seg.items || []).map((item, i) => {
+    const isWaypoint = item.type === "waypoint";
+
+    return `
+      <li data-index="${i}" data-type="${isWaypoint ? "waypoint" : "note"}">
+        <span class="drag-handle"><i class="fa-solid fa-grip-vertical"></i></span>
+
+        <input class="item-name"
+               value="${item.name ?? ''}"
+               placeholder="${isWaypoint ? 'Waypoint' : 'Task or stop'}" />
+
+        ${
+          isWaypoint
+            ? `<span class="wp-coords">${item.coordinates[1].toFixed(5)}, ${item.coordinates[0].toFixed(5)}</span>`
+            : `<input class="item-dur" type="number" value="${item.dur ?? ''}" step="0.25" />`
+        }
+
+        <button type="button" class="remove-item">✕</button>
+      </li>
+    `;
+  }).join('');
+
+  list.innerHTML = html;
+
+  attachSublistHandlers(editor, seg);
+}
+

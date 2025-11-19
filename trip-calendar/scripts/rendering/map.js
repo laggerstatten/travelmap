@@ -51,6 +51,45 @@ function initMap() {
       renderMap(pendingSegments);
       pendingSegments = null;
     }
+
+    mapInstance.on("click", (e) => {
+      const seg = window.currentEditorSegment;
+
+      if (!seg) return;
+      if (seg.type !== "drive") return;
+      if (!seg._waypointModeActive) return;
+
+      const { lng, lat } = e.lngLat;
+
+      // 1. Load the full list fresh
+      const list = loadSegments();
+
+      // 2. Find the real segment in the list
+      const realSeg = list.find(s => s.id === seg.id);
+
+      // 3. Mutate the real segment
+      realSeg.items = realSeg.items || [];
+      realSeg.items.push({
+        type: "waypoint",
+        name: `WP ${realSeg.items.length + 1}`,
+        coordinates: [lng, lat]
+      });
+
+      // 4. Save the whole new structure
+      saveSegments(list);
+
+      // 5. Update UI
+      refreshSublistUI(realSeg);
+      rerouteDrive(realSeg);
+
+      // 6. ALSO update the editor’s local `seg` so it stays in sync
+      seg.items = realSeg.items;
+    });
+
+
+
+
+
   });
 }
 
