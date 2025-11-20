@@ -39,37 +39,37 @@
       const height = 800;
       const margin = { top: 20, right: 20, bottom: 40, left: 40 };
 
-      const csvFile = "hourly_temp.csv";
+      const csvFile = 'hourly_temp.csv';
 
       // --- Temp categories (unchanged) ---
       function tempCategory(t) {
-        if (t < 15) return "frigid";
-        if (t < 32) return "freezing";
-        if (t < 45) return "very cold";
-        if (t < 55) return "cold";
-        if (t < 65) return "cool";
-        if (t < 75) return "comfortable";
-        if (t < 85) return "warm";
-        if (t < 95) return "hot";
-        return "sweltering";
+        if (t < 15) return 'frigid';
+        if (t < 32) return 'freezing';
+        if (t < 45) return 'very cold';
+        if (t < 55) return 'cold';
+        if (t < 65) return 'cool';
+        if (t < 75) return 'comfortable';
+        if (t < 85) return 'warm';
+        if (t < 95) return 'hot';
+        return 'sweltering';
       }
 
       const catColor = {
-        frigid: "#6bb5d8",
-        freezing: "#9ccde2",
-        "very cold": "#a3d9a5",
-        cold: "#7cbc65",
-        cool: "#b0cc85",
-        comfortable: "#ecdca0",
-        warm: "#d59a7d",
-        hot: "#c25c48",
-        sweltering: "#9e3d32"
+        frigid: '#6bb5d8',
+        freezing: '#9ccde2',
+        'very cold': '#a3d9a5',
+        cold: '#7cbc65',
+        cool: '#b0cc85',
+        comfortable: '#ecdca0',
+        warm: '#d59a7d',
+        hot: '#c25c48',
+        sweltering: '#9e3d32'
       };
 
       // Hard-coded window
-      const START_DOY = 318;  // Nov 14
+      const START_DOY = 318; // Nov 14
       const START_HOUR = 8;
-      const END_DOY = 319;    // Nov 15
+      const END_DOY = 319; // Nov 15
       const END_HOUR = 22;
 
       function toIndex(doy, hour) {
@@ -79,14 +79,14 @@
       const startIndex = toIndex(START_DOY, START_HOUR);
       const endIndex = toIndex(END_DOY, END_HOUR);
 
-      const tooltip = d3.select("#tooltip");
+      const tooltip = d3.select('#tooltip');
 
       d3.csv(csvFile).then((raw) => {
         // parse basic fields
         const parsed = raw.map((d) => ({
           doy: +d.doy,
           hour: +d.hour,
-          temp: +d.temp || +d["HLY-TEMP-NORMAL"]
+          temp: +d.temp || +d['HLY-TEMP-NORMAL']
         }));
 
         parsed.forEach((d) => {
@@ -97,7 +97,7 @@
           (d) => d.index >= startIndex && d.index <= endIndex && !isNaN(d.temp)
         );
 
-        console.log("ribbon points:", ribbonData.length);
+        console.log('ribbon points:', ribbonData.length);
 
         // x is constant (a single column)
         const xLeft = margin.left;
@@ -106,31 +106,33 @@
         // y grows downward from startIndex to endIndex
         const y = d3
           .scaleBand()
-          .domain(ribbonData.map(d => d.index))
+          .domain(ribbonData.map((d) => d.index))
           .range([margin.top, height - margin.bottom])
           .paddingInner(0)
           .paddingOuter(0);
 
-        const svg = d3.select("#chart")
-          .append("svg")
-          .attr("width", width)
-          .attr("height", height);
+        const svg = d3
+          .select('#chart')
+          .append('svg')
+          .attr('width', width)
+          .attr('height', height);
 
         // draw vertical ribbon: one cell per hour, stacked downward
-        svg.selectAll("rect.cell")
+        svg
+          .selectAll('rect.cell')
           .data(ribbonData)
-          .join("rect")
-          .attr("class", "cell")
-          .attr("x", xLeft)
-          .attr("y", d => y(d.index))
-          .attr("width", cellWidth)
-          .attr("height", y.bandwidth())
-          .attr("fill", d => catColor[tempCategory(d.temp)] || "#444")
-          .on("mousemove", (event, d) => {
+          .join('rect')
+          .attr('class', 'cell')
+          .attr('x', xLeft)
+          .attr('y', (d) => y(d.index))
+          .attr('width', cellWidth)
+          .attr('height', y.bandwidth())
+          .attr('fill', (d) => catColor[tempCategory(d.temp)] || '#444')
+          .on('mousemove', (event, d) => {
             tooltip
-              .style("display", "block")
-              .style("left", event.pageX + 10 + "px")
-              .style("top", event.pageY + 10 + "px")
+              .style('display', 'block')
+              .style('left', event.pageX + 10 + 'px')
+              .style('top', event.pageY + 10 + 'px')
               .html(
                 `DOY: ${d.doy}<br>
                  Hour: ${d.hour}:00<br>
@@ -138,23 +140,25 @@
                  <b>${tempCategory(d.temp)}</b>`
               );
           })
-          .on("mouseout", () => tooltip.style("display", "none"));
+          .on('mouseout', () => tooltip.style('display', 'none'));
 
         // y-axis tick every 6 hours
         const tickEvery = 6;
         const tickVals = ribbonData
-          .filter(d => d.hour % tickEvery === 0)
-          .map(d => d.index);
+          .filter((d) => d.hour % tickEvery === 0)
+          .map((d) => d.index);
 
-        const yAxis = d3.axisLeft(y)
+        const yAxis = d3
+          .axisLeft(y)
           .tickValues(tickVals)
-          .tickFormat(idx => {
-            const d = ribbonData.find(r => r.index === idx);
+          .tickFormat((idx) => {
+            const d = ribbonData.find((r) => r.index === idx);
             return `DOY ${d.doy} ${d.hour}:00`;
           });
 
-        svg.append("g")
-          .attr("transform", `translate(${margin.left - 5},0)`)
+        svg
+          .append('g')
+          .attr('transform', `translate(${margin.left - 5},0)`)
           .call(yAxis);
       });
     </script>

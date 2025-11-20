@@ -1,58 +1,55 @@
 function clearTimesAndDurations(list, opts = {}) {
-    //console.log('clearTimesAndDurations');
-    let segments = [...list];
-    const { onlyUnlocked = true } = opts;
+  //console.log('clearTimesAndDurations');
+  let segments = [...list];
+  const { onlyUnlocked = true } = opts;
 
-    const message = onlyUnlocked ?
-        'Clear all non-locked times and durations?' :
-        'Clear all start/end times and durations?';
+  const message = onlyUnlocked
+    ? 'Clear all non-locked times and durations?'
+    : 'Clear all start/end times and durations?';
 
-    if (!confirm(message)) return;
+  if (!confirm(message)) return;
 
-    const shouldClear = (lock) => {
-        if (!onlyUnlocked) return true;
+  const shouldClear = (lock) => {
+    if (!onlyUnlocked) return true;
 
-        // DO NOT clear hard or soft
-        return !(lock === 'hard' || lock === 'soft');
-    };
+    // DO NOT clear hard or soft
+    return !(lock === 'hard' || lock === 'soft');
+  };
 
-    segments.forEach((seg) => {
-        seg.start ??= { utc: '', lock: 'unlocked' };
-        seg.end ??= { utc: '', lock: 'unlocked' };
-        seg.duration ??= { val: null, lock: 'unlocked' };
+  segments.forEach((seg) => {
+    seg.start ??= { utc: '', lock: 'unlocked' };
+    seg.end ??= { utc: '', lock: 'unlocked' };
+    seg.duration ??= { val: null, lock: 'unlocked' };
 
-        // ───────────── START ─────────────
-        if (shouldClear(seg.start.lock)) {
-            seg.start.utc = '';
-            seg.start.lock = 'unlocked';
-        }
+    // ───────────── START ─────────────
+    if (shouldClear(seg.start.lock)) {
+      seg.start.utc = '';
+      seg.start.lock = 'unlocked';
+    }
 
-        // ───────────── END ─────────────
-        if (shouldClear(seg.end.lock)) {
-            seg.end.utc = '';
-            seg.end.lock = 'unlocked';
-        }
+    // ───────────── END ─────────────
+    if (shouldClear(seg.end.lock)) {
+      seg.end.utc = '';
+      seg.end.lock = 'unlocked';
+    }
 
-        // ───────────── DURATION ─────────────
-        if (shouldClear(seg.duration.lock)) {
-            seg.duration.val = null;
-            seg.duration.lock = 'unlocked';
-        }
+    // ───────────── DURATION ─────────────
+    if (shouldClear(seg.duration.lock)) {
+      seg.duration.val = null;
+      seg.duration.lock = 'unlocked';
+    }
 
-        // ───────────── DRIVES ─────────────
-        if (seg.type === 'drive') {
-            seg.duration.val =
-                seg.durationHr ??
-                seg.duration?.val ??
-                null;
-            seg.duration.lock = 'auto';
-        }
+    // ───────────── DRIVES ─────────────
+    if (seg.type === 'drive') {
+      seg.duration.val = seg.durationHr ?? seg.duration?.val ?? null;
+      seg.duration.lock = 'auto';
+    }
 
-        delete seg.manualEdit;
-    });
+    delete seg.manualEdit;
+  });
 
-    console.log(segments);
-    return segments;
+  console.log(segments);
+  return segments;
 }
 
 function updateSegmentTiming(seg, formData) {
@@ -62,23 +59,23 @@ function updateSegmentTiming(seg, formData) {
   seg.end ??= { utc: '', lock: 'unlocked' };
   seg.duration ??= { val: null, lock: 'unlocked' };
 
-  const durVal = formData['duration']?.trim() 
-  ? Number(formData['duration']) 
-  : null;
+  const durVal = formData['duration']?.trim()
+    ? Number(formData['duration'])
+    : null;
 
-  const newStartUTC = formData['start'] 
-  ? localToUTC(formData['start'], seg.timeZone) 
-  : '';
-  const newEndUTC = formData['end']   
-  ? localToUTC(formData['end'], seg.timeZone)   
-  : '';
+  const newStartUTC = formData['start']
+    ? localToUTC(formData['start'], seg.timeZone)
+    : '';
+  const newEndUTC = formData['end']
+    ? localToUTC(formData['end'], seg.timeZone)
+    : '';
 
   // Apply user edits (don’t recompute yet)
   if (newStartUTC && newStartUTC !== prev.start?.utc) {
     seg.start.utc = newStartUTC;
     if (seg.start.lock !== 'hard') seg.start.lock = 'unlocked';
   }
-  
+
   if (newEndUTC && newEndUTC !== prev.end?.utc) {
     seg.end.utc = newEndUTC;
     if (seg.end.lock !== 'hard') seg.end.lock = 'unlocked';
@@ -104,18 +101,21 @@ function updateSegmentTiming(seg, formData) {
   return { changed, prev };
 }
 
-function recalculateSegmentTimes(seg, changed = { start:false, end:false, duration:false }) {
+function recalculateSegmentTimes(
+  seg,
+  changed = { start: false, end: false, duration: false }
+) {
   const startLocked = seg.start?.lock === 'hard';
-  const endLocked   = seg.end?.lock === 'hard';
-  const durLocked   = seg.duration?.lock === 'hard';
+  const endLocked = seg.end?.lock === 'hard';
+  const durLocked = seg.duration?.lock === 'hard';
 
   const hasStart = !!seg.start?.utc;
-  const hasEnd   = !!seg.end?.utc;
-  const hasDur   = seg.duration?.val != null && !isNaN(Number(seg.duration.val));
+  const hasEnd = !!seg.end?.utc;
+  const hasDur = seg.duration?.val != null && !isNaN(Number(seg.duration.val));
 
   const startDT = toDate(seg.start?.utc);
-  const endDT   = toDate(seg.end?.utc);
-  const durMs   = hasDur ? Number(seg.duration.val) * 3600000 : null;
+  const endDT = toDate(seg.end?.utc);
+  const durMs = hasDur ? Number(seg.duration.val) * 3600000 : null;
 
   // --- 1) Two locked => compute the third
   if (startLocked && endLocked) {
@@ -133,25 +133,34 @@ function recalculateSegmentTimes(seg, changed = { start:false, end:false, durati
 
   // --- 2) Exactly one locked => edited field drives the third
   if (startLocked && !endLocked && !durLocked) {
-    if (changed.duration && hasStart && hasDur) seg.end.utc = iso(startDT.getTime() + durMs);
-    else if (changed.end && hasStart && hasEnd) seg.duration.val = (endDT - startDT) / 3600000;
+    if (changed.duration && hasStart && hasDur)
+      seg.end.utc = iso(startDT.getTime() + durMs);
+    else if (changed.end && hasStart && hasEnd)
+      seg.duration.val = (endDT - startDT) / 3600000;
     return seg;
   }
   if (endLocked && !startLocked && !durLocked) {
-    if (changed.duration && hasEnd && hasDur) seg.start.utc = iso(endDT.getTime() - durMs);
-    else if (changed.start && hasStart && hasEnd) seg.duration.val = (endDT - startDT) / 3600000;
+    if (changed.duration && hasEnd && hasDur)
+      seg.start.utc = iso(endDT.getTime() - durMs);
+    else if (changed.start && hasStart && hasEnd)
+      seg.duration.val = (endDT - startDT) / 3600000;
     return seg;
   }
   if (durLocked && !startLocked && !endLocked) {
-    if (changed.start && hasStart && hasDur) seg.end.utc = iso(startDT.getTime() + durMs);
-    else if (changed.end && hasEnd && hasDur) seg.start.utc = iso(endDT.getTime() - durMs);
+    if (changed.start && hasStart && hasDur)
+      seg.end.utc = iso(startDT.getTime() + durMs);
+    else if (changed.end && hasEnd && hasDur)
+      seg.start.utc = iso(endDT.getTime() - durMs);
     return seg;
   }
 
   // --- 3) None locked: prefer the edited field(s)
   // If only one thing changed, compute the dependent third if possible.
   const oneChanged =
-    (changed.start?1:0) + (changed.end?1:0) + (changed.duration?1:0) === 1;
+    (changed.start ? 1 : 0) +
+      (changed.end ? 1 : 0) +
+      (changed.duration ? 1 : 0) ===
+    1;
 
   if (oneChanged) {
     if (changed.start && hasStart && hasDur) {
@@ -240,8 +249,7 @@ function unlockAndQueue(seg) {
 }
 
 function ensureTimingShape(seg) {
-    seg.start    ??= { utc: '', lock: 'unlocked' };
-    seg.end      ??= { utc: '', lock: 'unlocked' };
-    seg.duration ??= { val: null, lock: 'unlocked' };
+  seg.start ??= { utc: '', lock: 'unlocked' };
+  seg.end ??= { utc: '', lock: 'unlocked' };
+  seg.duration ??= { val: null, lock: 'unlocked' };
 }
-

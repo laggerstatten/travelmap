@@ -2,7 +2,7 @@
 function logEmitMatrix(segments) {
   const rows = segments.map((s, i) => ({
     idx: i,
-    id: (s.id||'').slice(0,6),
+    id: (s.id || '').slice(0, 6),
     type: s.type,
     // START
     s_lock: s.start.lock,
@@ -17,7 +17,7 @@ function logEmitMatrix(segments) {
     e_pinned: !!s.end.meta?.pinned,
     e_emitF: !!s.end.meta?.emitsForward,
     e_emitB: !!s.end.meta?.emitsBackward,
-    e_utc: s.end.utc || '',
+    e_utc: s.end.utc || ''
   }));
   console.table(rows);
 }
@@ -25,7 +25,7 @@ function logEmitMatrix(segments) {
 function logEmitterDirections(segments) {
   const rows = [];
   segments.forEach((s, i) => {
-    ['start','end'].forEach(side => {
+    ['start', 'end'].forEach((side) => {
       const m = s[side].meta;
       if (!m?.pinned) return;
       rows.push({
@@ -41,4 +41,3 @@ function logEmitterDirections(segments) {
   });
   console.table(rows);
 }
-

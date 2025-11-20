@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
-
-<head>
+  <head>
     <title>Federal Parks</title>
-    <meta charset='utf-8'>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet">
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css"
+      rel="stylesheet"
+    />
     <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.0.0/mapbox-gl-geocoder.min.js"></script>
@@ -14,148 +16,170 @@
     <script src="../scripts/mapFiltersViews.js"></script>
     <script src="../scripts/geocoding.js"></script>
 
-    <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.0.0/mapbox-gl-geocoder.css" type="text/css">
-    <link rel="stylesheet" href="../styles/basic.css" type="text/css">
-</head>
+    <link
+      rel="stylesheet"
+      href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.0.0/mapbox-gl-geocoder.css"
+      type="text/css"
+    />
+    <link rel="stylesheet" href="../styles/basic.css" type="text/css" />
+  </head>
 
-<body>
-
+  <body>
     <div id="map"></div>
 
     <div class="map-overlay">
-        <nav id="layertogglemenu"></nav>
+      <nav id="layertogglemenu"></nav>
 
-        <select id="geographyType">
-            <option value="ua">Urban Area</option>
-            <option value="county">County</option>
-            <option value="cbsa">CBSA</option>
-            <option value="csa">CSA</option>
-            <option value="dma">DMA</option>
-            <option value="tz">Time Zone</option>
-            <option value="province">State</option>
-        </select>
+      <select id="geographyType">
+        <option value="ua">Urban Area</option>
+        <option value="county">County</option>
+        <option value="cbsa">CBSA</option>
+        <option value="csa">CSA</option>
+        <option value="dma">DMA</option>
+        <option value="tz">Time Zone</option>
+        <option value="province">State</option>
+      </select>
 
-        <select id="geographyValue">
-            <option value="Honolulu, HI">Honolulu, HI</option>
-            <option value="Honolulu County">Honolulu County</option>
-            <option value="Urban Honolulu, HI Metro Area">Urban Honolulu, HI Metro Area</option>
-            <option value="El Paso, TX--NM">El Paso, TX--NM</option>
-            <option value="El Paso County">El Paso County</option>
-            <option value="Texas">Texas</option>
-            <option value="El Paso, TX Metro Area">El Paso, TX Metro Area</option>
-            <option value="El Paso-Las Cruces, TX-NM CSA">El Paso-Las Cruces, TX-NM CSA</option>
-            <option value="El Paso (Las Cruces)">El Paso (Las Cruces)</option>
-            <option value="Mountain">Mountain</option>
-        </select>
+      <select id="geographyValue">
+        <option value="Honolulu, HI">Honolulu, HI</option>
+        <option value="Honolulu County">Honolulu County</option>
+        <option value="Urban Honolulu, HI Metro Area">
+          Urban Honolulu, HI Metro Area
+        </option>
+        <option value="El Paso, TX--NM">El Paso, TX--NM</option>
+        <option value="El Paso County">El Paso County</option>
+        <option value="Texas">Texas</option>
+        <option value="El Paso, TX Metro Area">El Paso, TX Metro Area</option>
+        <option value="El Paso-Las Cruces, TX-NM CSA">
+          El Paso-Las Cruces, TX-NM CSA
+        </option>
+        <option value="El Paso (Las Cruces)">El Paso (Las Cruces)</option>
+        <option value="Mountain">Mountain</option>
+      </select>
 
-        <div id="button-container">
-            <button id="fit_L48">L48</button>
-            <button id="fit_PRVI">Puerto Rico & Virgin Islands</button>
-            <button id="fit_AS">American Samoa</button>
-            <button id="fit_GNMI">Guam & Northern Mariana Islands</button>
-            <button id="fit_HIM">Hawaii & Midway</button>
-            <button id="fit_USMOI">Minor Outlying Islands</button>
-            <button id="fit_IP">Seattle - Anchorage</button>
-            <button id="fit_ALEU">Aleutian Islands</button>
-            <button id="fit_AK">Alaska</button>
-        </div>
+      <div id="button-container">
+        <button id="fit_L48">L48</button>
+        <button id="fit_PRVI">Puerto Rico & Virgin Islands</button>
+        <button id="fit_AS">American Samoa</button>
+        <button id="fit_GNMI">Guam & Northern Mariana Islands</button>
+        <button id="fit_HIM">Hawaii & Midway</button>
+        <button id="fit_USMOI">Minor Outlying Islands</button>
+        <button id="fit_IP">Seattle - Anchorage</button>
+        <button id="fit_ALEU">Aleutian Islands</button>
+        <button id="fit_AK">Alaska</button>
+      </div>
 
-        <div id="basemapmenu">
-            <input id="cl0o3orgw000314te6oodkezq" type="radio" name="rtoggle" value="satellite_geom">
-            <label for="cl0o3orgw000314te6oodkezq">Satellite Geom</label>
+      <div id="basemapmenu">
+        <input
+          id="cl0o3orgw000314te6oodkezq"
+          type="radio"
+          name="rtoggle"
+          value="satellite_geom"
+        />
+        <label for="cl0o3orgw000314te6oodkezq">Satellite Geom</label>
 
-            <input id="clvvt5o32098a01nucx668i03" type="radio" name="rtoggle" value="nav_bare">
-            <label for="clvvt5o32098a01nucx668i03">Navigation No Boundary/POI</label>
+        <input
+          id="clvvt5o32098a01nucx668i03"
+          type="radio"
+          name="rtoggle"
+          value="nav_bare"
+        />
+        <label for="clvvt5o32098a01nucx668i03"
+          >Navigation No Boundary/POI</label
+        >
 
-            <input id="cl7pshdpb000015mwy3tpm9y2" type="radio" name="rtoggle" value="physical" checked="checked">
-            <label for="cl7pshdpb000015mwy3tpm9y2">Physical</label>
+        <input
+          id="cl7pshdpb000015mwy3tpm9y2"
+          type="radio"
+          name="rtoggle"
+          value="physical"
+          checked="checked"
+        />
+        <label for="cl7pshdpb000015mwy3tpm9y2">Physical</label>
 
-            <input id="clvx84fcd070101ph21dfavmf" type="radio" name="rtoggle" value="satellite_rebuild">
-            <label for="clvx84fcd070101ph21dfavmf">Satellite Rebuild</label>
-        </div>
-
+        <input
+          id="clvx84fcd070101ph21dfavmf"
+          type="radio"
+          name="rtoggle"
+          value="satellite_rebuild"
+        />
+        <label for="clvx84fcd070101ph21dfavmf">Satellite Rebuild</label>
+      </div>
     </div>
 
     <script>
-        mapboxgl.accessToken = MAPBOX_TOKEN; //TOKEN
-        const map = new mapboxgl.Map({
-            container: 'map',
-            //Physical v2.9
-            style: 'mapbox://styles/ericschall/cl7pshdpb000015mwy3tpm9y2',
-            center: [-103.59179687498357, 40.66995747013945],
-            zoom: 3
+      mapboxgl.accessToken = MAPBOX_TOKEN; //TOKEN
+      const map = new mapboxgl.Map({
+        container: 'map',
+        //Physical v2.9
+        style: 'mapbox://styles/ericschall/cl7pshdpb000015mwy3tpm9y2',
+        center: [-103.59179687498357, 40.66995747013945],
+        zoom: 3
+      });
+
+      // get context dropdown values
+      initGeogDropdowns();
+      updateGeogDropdowns();
+
+      // Function to handle bbox click events
+      setupBBOXClickEvents();
+
+      // Add source and layer whenever base style is loaded
+      map.on('style.load', async () => {
+        // FIXME: maintain toggle state
+        // Reload source and layer
+        addFederalSourceAndLayer();
+      });
+
+      // basemap switcher function
+      basemapSwitcher();
+
+      map.on('load', async () => {
+        // on-click function
+        map.on('click', 'clusters', async (e) => {
+          const features = map.queryRenderedFeatures(e.point, {
+            layers: ['clusters']
+          });
+          const clusterId = features[0].properties.cluster_id;
+          map
+            .getSource('FederalStampSites')
+            .getClusterExpansionZoom(clusterId, (err, zoom) => {
+              if (err) return;
+
+              map.easeTo({
+                center: features[0].geometry.coordinates,
+                zoom: zoom
+              });
+            });
         });
 
-        // get context dropdown values
-        initGeogDropdowns();
-        updateGeogDropdowns();
+        map.on('click', 'unclustered-point', (e) => {
+          const coordinates = e.features[0].geometry.coordinates.slice();
+          const mag = e.features[0].properties.mag;
 
-        // Function to handle bbox click events
-        setupBBOXClickEvents();
+          while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
+            coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
+          }
 
-        // Add source and layer whenever base style is loaded
-        map.on('style.load', async() => {
-            // FIXME: maintain toggle state
-            // Reload source and layer
-            addFederalSourceAndLayer();
+          new mapboxgl.Popup()
+            .setLngLat(coordinates)
+            .setHTML(`magnitude: <br>Was there a tsunami?: `)
+            .addTo(map);
         });
 
-        // basemap switcher function
-        basemapSwitcher();
-
-        map.on('load', async() => {
-
-            // on-click function
-            map.on('click', 'clusters', async(e) => {
-                const features = map.queryRenderedFeatures(e.point, {
-                    layers: ['clusters']
-                });
-                const clusterId = features[0].properties.cluster_id;
-                map.getSource('FederalStampSites').getClusterExpansionZoom(
-                    clusterId,
-                    (err, zoom) => {
-                        if (err) return;
-
-                        map.easeTo({
-                            center: features[0].geometry.coordinates,
-                            zoom: zoom
-                        });
-                    }
-                );
-            });
-
-            map.on('click', 'unclustered-point', (e) => {
-                const coordinates = e.features[0].geometry.coordinates.slice();
-                const mag = e.features[0].properties.mag;
-
-                while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
-                    coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
-                }
-
-                new mapboxgl.Popup()
-                    .setLngLat(coordinates)
-                    .setHTML(
-                        `magnitude: <br>Was there a tsunami?: `
-                    )
-                    .addTo(map);
-            });
-
-            map.on('mouseenter', 'clusters', () => {
-                map.getCanvas().style.cursor = 'pointer';
-            });
-
-            map.on('mouseleave', 'clusters', () => {
-                map.getCanvas().style.cursor = '';
-            });
-
+        map.on('mouseenter', 'clusters', () => {
+          map.getCanvas().style.cursor = 'pointer';
         });
 
-        // After the last frame rendered before the map enters an "idle" state.
-        map.on('idle', () => {
-            roadLabelToggle();
+        map.on('mouseleave', 'clusters', () => {
+          map.getCanvas().style.cursor = '';
         });
+      });
+
+      // After the last frame rendered before the map enters an "idle" state.
+      map.on('idle', () => {
+        roadLabelToggle();
+      });
     </script>
-
-</body>
-
+  </body>
 </html>

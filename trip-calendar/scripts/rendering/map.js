@@ -1,4 +1,3 @@
-
 //let mapReady = false; //moving to index.html
 //let pendingSegments = null;
 
@@ -47,16 +46,17 @@ function initMap() {
 
     mapReady = true;
 
-    if (pendingSegments) { // this seems to be a global
+    if (pendingSegments) {
+      // this seems to be a global
       renderMap(pendingSegments);
       pendingSegments = null;
     }
 
-    mapInstance.on("click", (e) => {
+    mapInstance.on('click', (e) => {
       const seg = window.currentEditorSegment;
 
       if (!seg) return;
-      if (seg.type !== "drive") return;
+      if (seg.type !== 'drive') return;
       if (!seg._waypointModeActive) return;
 
       const { lng, lat } = e.lngLat;
@@ -65,12 +65,12 @@ function initMap() {
       const list = loadSegments();
 
       // 2. Find the real segment in the list
-      const realSeg = list.find(s => s.id === seg.id);
+      const realSeg = list.find((s) => s.id === seg.id);
 
       // 3. Mutate the real segment
       realSeg.items = realSeg.items || [];
       realSeg.items.push({
-        type: "waypoint",
+        type: 'waypoint',
         name: `WP ${realSeg.items.length + 1}`,
         coordinates: [lng, lat]
       });
@@ -85,11 +85,6 @@ function initMap() {
       // 6. ALSO update the editor’s local `seg` so it stays in sync
       seg.items = realSeg.items;
     });
-
-
-
-
-
   });
 }
 
@@ -158,11 +153,10 @@ function renderMap(segs) {
 
     if (bbox[0] !== bbox[2] || bbox[1] !== bbox[3]) {
       mapInstance.fitBounds(bbox, {
-        padding: 40,      // now just a little visual cushion
+        padding: 40, // now just a little visual cushion
         maxZoom: 12,
-        duration: 0,
+        duration: 0
       });
     }
   }
-
 }

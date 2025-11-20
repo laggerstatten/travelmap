@@ -6,19 +6,19 @@
  *
  * @param {*} segments
  */
-function queueTripOrigin(segments) { 
-    const seg = {
-        id: newId(),
-        name: '(untitled)',
-        type: 'trip_start',
-        isAnchorStart: true,
-        start: { lock: 'undefined', utc: '' },
-        end: { lock: 'hard', utc: '' },
-        isQueued: true,
-        openEditor: true
-    };
+function queueTripOrigin(segments) {
+  const seg = {
+    id: newId(),
+    name: '(untitled)',
+    type: 'trip_start',
+    isAnchorStart: true,
+    start: { lock: 'undefined', utc: '' },
+    end: { lock: 'hard', utc: '' },
+    isQueued: true,
+    openEditor: true
+  };
 
-    segments.unshift(seg);
+  segments.unshift(seg);
 }
 
 /**
@@ -26,19 +26,19 @@ function queueTripOrigin(segments) {
  *
  * @param {*} segments
  */
-function queueTripDestination(segments) { 
-    const seg = {
-        id: newId(),
-        name: '(untitled)',
-        type: 'trip_end',
-        isAnchorEnd: true,
-        start: { lock: 'hard', utc: '' },
-        end: { lock: 'undefined', utc: '' },
-        isQueued: true,
-        openEditor: true
-    };
+function queueTripDestination(segments) {
+  const seg = {
+    id: newId(),
+    name: '(untitled)',
+    type: 'trip_end',
+    isAnchorEnd: true,
+    start: { lock: 'hard', utc: '' },
+    end: { lock: 'undefined', utc: '' },
+    isQueued: true,
+    openEditor: true
+  };
 
-    segments.push(seg);
+  segments.push(seg);
 }
 
 /* ===============================
@@ -50,23 +50,17 @@ function queueTripDestination(segments) {
  *
  * @param {*} segments
  */
-function queueStop(segments) { 
-    const seg = {
-        id: newId(),
-        name: '(untitled)',
-        type: 'stop',
-        start: { utc: '', lock: 'unlocked' },
-        end: { utc: '', lock: 'unlocked' },
-        duration: { val: null, lock: 'unlocked' },
-        isQueued: true,
-        openEditor: true
-    };
+function queueStop(segments) {
+  const seg = {
+    id: newId(),
+    name: '(untitled)',
+    type: 'stop',
+    start: { utc: '', lock: 'unlocked' },
+    end: { utc: '', lock: 'unlocked' },
+    duration: { val: null, lock: 'unlocked' },
+    isQueued: true,
+    openEditor: true
+  };
 
-    segments.unshift(seg);
-
+  segments.unshift(seg);
 }
-
-
-
-
-

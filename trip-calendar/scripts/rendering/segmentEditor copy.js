@@ -112,9 +112,10 @@ function createEditorForm(seg) {
     const hasItems = seg.items && seg.items.length > 0;
     const collapsed = hasItems ? '' : 'collapsed';
 
-
     // TIME FIELDS (stop only)
-    timeFields = seg.type === 'stop' ? `
+    timeFields =
+      seg.type === 'stop'
+        ? `
       ${createTimeField('Start', 'start', localStart, 'start.lock', seg.start)}
       <label>Duration (hours)
         <div class="time-row">
@@ -140,7 +141,6 @@ function createEditorForm(seg) {
         </div>
         <ul class="constraint-list"></ul>
       </div>`;
-
 
     // Build the form
     form.innerHTML = `
@@ -213,7 +213,6 @@ function createEditorForm(seg) {
    Time / Lock / Clear Helpers
    =============================== */
 function createTimeField(label, name, value, lockField, timeElement) {
-  
   return `
     <label class="time-field">
       <span>${label}</span>

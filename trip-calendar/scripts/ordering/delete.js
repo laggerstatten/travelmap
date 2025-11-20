@@ -24,7 +24,7 @@ function deleteSegmentById(id) {
 }
 
 function removeSegmentFromList(list, seg) {
-  const idx = list.findIndex(s => s.id === seg.id);
+  const idx = list.findIndex((s) => s.id === seg.id);
   if (idx === -1) {
     return {
       list,
@@ -37,7 +37,7 @@ function removeSegmentFromList(list, seg) {
   const prev = list[idx - 1] || null;
   const next = list[idx + 1] || null;
 
-  const [removed] = list.splice(idx, 1);  // mutates list
+  const [removed] = list.splice(idx, 1); // mutates list
 
   return {
     list,
@@ -50,7 +50,12 @@ function removeSegmentFromList(list, seg) {
 async function deletePlacedStop(seg) {
   let list = loadSegments();
   list = removeSlackAndOverlap(list);
-  let { list: newList, removed, prevId, nextId } = removeSegmentFromList(list, seg);
+  let {
+    list: newList,
+    removed,
+    prevId,
+    nextId
+  } = removeSegmentFromList(list, seg);
 
   // Heal
   newList = await healRouteIfNeeded(newList, prevId, nextId);
@@ -69,4 +74,3 @@ function deleteQueuedStop(seg) {
   renderTimeline(newList);
   renderMap(newList);
 }
-

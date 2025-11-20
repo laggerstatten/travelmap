@@ -6,7 +6,7 @@ async function insertQueuedSegment(seg, card) {
   segs = removeSlackAndOverlap(segs);
   segs = await insertStopInNearestRoute(seg, segs);
 
-  segs = await runPipeline(segs); // test 
+  segs = await runPipeline(segs); // test
 
   saveSegments(segs);
   renderTimeline(segs);
@@ -14,17 +14,22 @@ async function insertQueuedSegment(seg, card) {
 }
 
 function pushToQueueTop(list, seg) {
-    const idx = list.findIndex(s => s.id === seg.id);
-    if (idx !== -1) {
-        list.splice(idx, 1);
-        list.unshift(seg);
-    }
+  const idx = list.findIndex((s) => s.id === seg.id);
+  if (idx !== -1) {
+    list.splice(idx, 1);
+    list.unshift(seg);
+  }
 }
 
 async function movePlacedStopToQueue(seg) {
   let list = loadSegments();
   list = removeSlackAndOverlap(list);
-  let { list: newList, removed, prevId, nextId } = removeSegmentFromList(list, seg);
+  let {
+    list: newList,
+    removed,
+    prevId,
+    nextId
+  } = removeSegmentFromList(list, seg);
 
   // Heal
   newList = await healRouteIfNeeded(newList, prevId, nextId);
@@ -41,4 +46,3 @@ async function movePlacedStopToQueue(seg) {
   renderTimeline(newList);
   renderMap(newList);
 }
-

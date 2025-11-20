@@ -1,102 +1,125 @@
 <!DOCTYPE html>
 <html>
-<head>
-<meta charset="utf-8" />
-<title>Mapbox Directions Sandbox</title>
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<script src="https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.js"></script>
-<link href="https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.css" rel="stylesheet" />
-<style>
-  html, body { margin: 0; padding: 0; height: 100%; }
-  #map { width: 100%; height: 100%; }
-  .controls {
-    position: absolute; top: 10px; left: 10px;
-    background: rgba(255,255,255,0.9);
-    border-radius: 4px;
-    padding: 6px 10px;
-    font-family: sans-serif;
-  }
-  button { margin: 2px; }
-</style>
-</head>
-<body>
-<div id="map"></div>
-<div class="controls">
-  <div><strong>Mode:</strong></div>
-  <button id="addWaypoint">Add Waypoint</button>
-  <button id="addExclude">Add Exclude</button>
-  <div style="margin-top:6px"><small>Click 1 = start, 2 = end</small></div>
-</div>
+  <head>
+    <meta charset="utf-8" />
+    <title>Mapbox Directions Sandbox</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.js"></script>
+    <link
+      href="https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.css"
+      rel="stylesheet"
+    />
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+      }
+      #map {
+        width: 100%;
+        height: 100%;
+      }
+      .controls {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        background: rgba(255, 255, 255, 0.9);
+        border-radius: 4px;
+        padding: 6px 10px;
+        font-family: sans-serif;
+      }
+      button {
+        margin: 2px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
+    <div class="controls">
+      <div><strong>Mode:</strong></div>
+      <button id="addWaypoint">Add Waypoint</button>
+      <button id="addExclude">Add Exclude</button>
+      <div style="margin-top: 6px"><small>Click 1 = start, 2 = end</small></div>
+    </div>
 
-<script>
-mapboxgl.accessToken = 'pk.eyJ1IjoiZXJpY3NjaGFsbCIsImEiOiJjbDBsbmpvNHYwY3JhM2N0a2Ribm1rZ2k5In0.XY-ziSu8DLnv5UIstoSGRQ';
+    <script>
+      mapboxgl.accessToken =
+        'pk.eyJ1IjoiZXJpY3NjaGFsbCIsImEiOiJjbDBsbmpvNHYwY3JhM2N0a2Ribm1rZ2k5In0.XY-ziSu8DLnv5UIstoSGRQ';
 
-const map = new mapboxgl.Map({
-  container: 'map',
-  style: 'mapbox://styles/mapbox/streets-v12',
-  center: [-98.5, 39.8],
-  zoom: 4
-});
+      const map = new mapboxgl.Map({
+        container: 'map',
+        style: 'mapbox://styles/mapbox/streets-v12',
+        center: [-98.5, 39.8],
+        zoom: 4
+      });
 
-let points = [];         // start, via, end
-let excludes = [];       // list of [lon,lat]
-let mode = 'waypoint';   // current mode
+      let points = []; // start, via, end
+      let excludes = []; // list of [lon,lat]
+      let mode = 'waypoint'; // current mode
 
-document.getElementById('addWaypoint').onclick = () => mode = 'waypoint';
-document.getElementById('addExclude').onclick = () => mode = 'exclude';
+      document.getElementById('addWaypoint').onclick = () =>
+        (mode = 'waypoint');
+      document.getElementById('addExclude').onclick = () => (mode = 'exclude');
 
-map.on('click', async (e) => {
-  const lngLat = [e.lngLat.lng, e.lngLat.lat];
+      map.on('click', async (e) => {
+        const lngLat = [e.lngLat.lng, e.lngLat.lat];
 
-  if (points.length < 2) {
-    // first two clicks are start and end
-    points.push(lngLat);
-    new mapboxgl.Marker({ color: points.length === 1 ? 'green' : 'blue' })
-      .setLngLat(lngLat).addTo(map);
-  } else if (mode === 'waypoint') {
-    points.splice(points.length - 1, 0, lngLat);
-    new mapboxgl.Marker({ color: 'orange' }).setLngLat(lngLat).addTo(map);
-  } else if (mode === 'exclude') {
-    excludes.push(lngLat);
-    new mapboxgl.Marker({ color: 'red' }).setLngLat(lngLat).addTo(map);
-  }
+        if (points.length < 2) {
+          // first two clicks are start and end
+          points.push(lngLat);
+          new mapboxgl.Marker({ color: points.length === 1 ? 'green' : 'blue' })
+            .setLngLat(lngLat)
+            .addTo(map);
+        } else if (mode === 'waypoint') {
+          points.splice(points.length - 1, 0, lngLat);
+          new mapboxgl.Marker({ color: 'orange' }).setLngLat(lngLat).addTo(map);
+        } else if (mode === 'exclude') {
+          excludes.push(lngLat);
+          new mapboxgl.Marker({ color: 'red' }).setLngLat(lngLat).addTo(map);
+        }
 
-  if (points.length >= 2) await updateRoute();
-});
+        if (points.length >= 2) await updateRoute();
+      });
 
-async function updateRoute() {
-  const coordString = points.map(p => p.join(',')).join(';');
-  const radiuses = points.map((p,i)=> (i===0||i===points.length-1?10:100)).join(';');
-  const waypoint_indices = `0;${points.length-1}`;
+      async function updateRoute() {
+        const coordString = points.map((p) => p.join(',')).join(';');
+        const radiuses = points
+          .map((p, i) => (i === 0 || i === points.length - 1 ? 10 : 100))
+          .join(';');
+        const waypoint_indices = `0;${points.length - 1}`;
 
-  // Build exclude string for point-based excludes
-  const excludePoints = excludes.map(p => `point(${p[0]} ${p[1]})`).join(',');
-  const excludeParam = excludePoints ? `&exclude=${encodeURIComponent(excludePoints)}` : '';
+        // Build exclude string for point-based excludes
+        const excludePoints = excludes
+          .map((p) => `point(${p[0]} ${p[1]})`)
+          .join(',');
+        const excludeParam = excludePoints
+          ? `&exclude=${encodeURIComponent(excludePoints)}`
+          : '';
 
-  //const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${coordString}?geometries=geojson&overview=full&radiuses=${radiuses}&waypoint_indices=${waypoint_indices}${excludeParam}&access_token=${mapboxgl.accessToken}`;
-  const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${coordString}?geometries=geojson&overview=full&access_token=${mapboxgl.accessToken}`;
+        //const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${coordString}?geometries=geojson&overview=full&radiuses=${radiuses}&waypoint_indices=${waypoint_indices}${excludeParam}&access_token=${mapboxgl.accessToken}`;
+        const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${coordString}?geometries=geojson&overview=full&access_token=${mapboxgl.accessToken}`;
 
+        const res = await fetch(url);
+        const data = await res.json();
 
-  const res = await fetch(url);
-  const data = await res.json();
+        if (!data.routes || !data.routes[0]) return;
 
-  if (!data.routes || !data.routes[0]) return;
+        const route = data.routes[0].geometry;
+        const sourceData = { type: 'Feature', geometry: route };
 
-  const route = data.routes[0].geometry;
-  const sourceData = { type: 'Feature', geometry: route };
-
-  if (map.getSource('route')) {
-    map.getSource('route').setData(sourceData);
-  } else {
-    map.addSource('route', { type: 'geojson', data: sourceData });
-    map.addLayer({
-      id: 'route-line',
-      type: 'line',
-      source: 'route',
-      paint: { 'line-color': '#0074D9', 'line-width': 4 }
-    });
-  }
-}
-</script>
-</body>
+        if (map.getSource('route')) {
+          map.getSource('route').setData(sourceData);
+        } else {
+          map.addSource('route', { type: 'geojson', data: sourceData });
+          map.addLayer({
+            id: 'route-line',
+            type: 'line',
+            source: 'route',
+            paint: { 'line-color': '#0074D9', 'line-width': 4 }
+          });
+        }
+      }
+    </script>
+  </body>
 </html>

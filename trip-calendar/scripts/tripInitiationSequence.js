@@ -2,7 +2,6 @@
    Trip Initialization (Async)
    =============================== */
 async function initTrip() {
-
   let segs = loadSegments();
 
   // queue anchors in-memory, then persist once
@@ -14,7 +13,7 @@ async function initTrip() {
 
   segs = loadSegments();
 
-  segs = await runPipeline(segs); // test 
+  segs = await runPipeline(segs); // test
   saveSegments(segs);
   renderTimeline(segs);
   renderMap(segs);
@@ -27,7 +26,9 @@ function waitForTripAnchorsReady() {
   return new Promise((resolve) => {
     const check = () => {
       const segs = loadSegments();
-      const startReady = segs.some((s) => s.type === 'trip_start' && !s.isQueued);
+      const startReady = segs.some(
+        (s) => s.type === 'trip_start' && !s.isQueued
+      );
       const endReady = segs.some((s) => s.type === 'trip_end' && !s.isQueued);
       if (startReady && endReady) resolve();
       else requestAnimationFrame(check);

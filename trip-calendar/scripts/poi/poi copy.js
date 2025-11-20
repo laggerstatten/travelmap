@@ -151,5 +151,3 @@ async function updateAZATable(segments) {
     tbody.appendChild(tr);
   }
 }
-
-

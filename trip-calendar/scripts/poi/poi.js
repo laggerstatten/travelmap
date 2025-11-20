@@ -1,6 +1,5 @@
 let azaMarkers = [];
 
-
 function updateStopDropdown(list) {
   //console.log(list);
   const select = document.getElementById('poi-stop-select');
@@ -8,9 +7,11 @@ function updateStopDropdown(list) {
   let segments = [...list];
   //console.log(segments);
   segments.forEach((seg) => {
-    if (seg.type === 'stop' ||
-        seg.type === 'trip_start' ||
-        seg.type === 'trip_end') {
+    if (
+      seg.type === 'stop' ||
+      seg.type === 'trip_start' ||
+      seg.type === 'trip_end'
+    ) {
       const opt = document.createElement('option');
       opt.value = seg.id;
       opt.textContent = seg.name || 'Stop ' + seg.id;
@@ -93,7 +94,6 @@ async function markVisited(aza_id) {
   }
 }
 
-
 async function fetchAZA(lat, lng) {
   // --- FETCH AZA WITHIN 500 MILES ---
   try {
@@ -120,7 +120,8 @@ async function fetchAZA(lat, lng) {
   }
 }
 
-async function fetchAZARoute(lineString) {  // note the smaller search radius
+async function fetchAZARoute(lineString) {
+  // note the smaller search radius
   // --- FETCH AZA WITHIN 200 MILES ---
   try {
     const res = await fetch(GET_NEAR_AZA_URL, {
@@ -142,7 +143,7 @@ async function fetchAZARoute(lineString) {  // note the smaller search radius
     //updateAZATable(resultList || []);
 
     updateAZATable(resultList);
-    addAZAMarkers(resultList); 
+    addAZAMarkers(resultList);
   } catch (err) {
     console.error('Error retrieving AZA or drive times:', err);
   }
@@ -193,7 +194,7 @@ async function fetchAZAMatrix(resultList, lng, lat) {
     addAZAMarkers(allResults);
   } else {
     updateAZATable([]);
-    clearAZAMarkers(); 
+    clearAZAMarkers();
   }
 }
 
@@ -224,18 +225,19 @@ function updateAZATable(rows) {
     <td>${r.State}</td>
     <td>${timeLabel}</td>
     <td>${r.drive_distance_mi ? r.drive_distance_mi.toFixed(1) : ''}</td>
-    <td><button class="visit-btn">${visitedAZAs.has(r.aza_id) ? '✓' : 'Mark Visited'
+    <td><button class="visit-btn">${
+      visitedAZAs.has(r.aza_id) ? '✓' : 'Mark Visited'
     }</button></td>
   `;
 
     // --- Mark Visited ---
-      const visitBtn = tr.querySelector('.visit-btn');
-      visitBtn.addEventListener('click', async (e) => {
-        e.stopPropagation();
-        await markVisited(r.aza_id);
-        await loadVisited();
-        updateAZATable(rows);
-      });
+    const visitBtn = tr.querySelector('.visit-btn');
+    visitBtn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      await markVisited(r.aza_id);
+      await loadVisited();
+      updateAZATable(rows);
+    });
 
     // Store destination coordinates
     tr.dataset.lon = r.CenterPointLong;
@@ -249,7 +251,6 @@ function updateAZATable(rows) {
       e.stopPropagation();
       await queueStopFromPOI(r);
     });
-
   });
 }
 
@@ -273,7 +274,7 @@ async function queueStopFromPOI(poi) {
   try {
     seg.timeZone = await getTimeZone(seg.coordinates);
   } catch (err) {
-    console.warn("Timezone lookup failed:", err);
+    console.warn('Timezone lookup failed:', err);
   }
 
   // Save + re-render
@@ -293,7 +294,7 @@ function getFullRouteLineString(segments, maxPoints = 40) {
 
   for (const seg of ordered) {
     if (
-      seg.type === "drive" &&
+      seg.type === 'drive' &&
       seg.routeGeometry &&
       Array.isArray(seg.routeGeometry.coordinates)
     ) {
@@ -323,7 +324,7 @@ function getFullRouteLineString(segments, maxPoints = 40) {
   const downsampled = downsampleCoordinates(fullCoords, maxPoints);
 
   return {
-    type: "LineString",
+    type: 'LineString',
     coordinates: downsampled
   };
 }
@@ -350,23 +351,23 @@ function downsampleCoordinates(coords, maxPoints) {
 }
 
 function clearAZAMarkers() {
-  azaMarkers.forEach(m => m.remove());
+  azaMarkers.forEach((m) => m.remove());
   azaMarkers = [];
 }
 
 function addAZAMarkers(resultList) {
   clearAZAMarkers();
 
-  resultList.forEach(r => {
+  resultList.forEach((r) => {
     if (!r.CenterPointLat || !r.CenterPointLong) return;
 
-    const marker = new mapboxgl.Marker({ color: "#0088ff" })
+    const marker = new mapboxgl.Marker({ color: '#0088ff' })
       .setLngLat([r.CenterPointLong, r.CenterPointLat])
       .setPopup(
         new mapboxgl.Popup({ offset: 24 }).setHTML(`
-          <strong>${r.ZooName || "AZA Facility"}</strong><br/>
-          ${r.City || ""}, ${r.State || ""}<br/>
-          ${r.drive_time_min ? `${r.drive_time_min.toFixed(0)} min` : ""}
+          <strong>${r.ZooName || 'AZA Facility'}</strong><br/>
+          ${r.City || ''}, ${r.State || ''}<br/>
+          ${r.drive_time_min ? `${r.drive_time_min.toFixed(0)} min` : ''}
         `)
       )
       .addTo(mapInstance);

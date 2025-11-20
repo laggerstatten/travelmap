@@ -1,202 +1,211 @@
 <!DOCTYPE html>
 <html lang="en">
-
-<head>
+  <head>
     <title>Attractions</title>
-    <meta charset='utf-8'>
-    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
-    <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet">
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="initial-scale=1,maximum-scale=1,user-scalable=no"
+    />
+    <link
+      href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css"
+      rel="stylesheet"
+    />
     <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
     <style>
-        body {
-            margin: 0;
-            padding: 0;
-        }
-        
-        #map {
-            position: absolute;
-            top: 0;
-            bottom: 0;
-            width: 100%;
-        }
-    </style>
-</head>
+      body {
+        margin: 0;
+        padding: 0;
+      }
 
-<body>
+      #map {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 100%;
+      }
+    </style>
+  </head>
+
+  <body>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <style>
-        #menu {
-            position: absolute;
-            background: #efefef;
-            padding: 10px;
-            font-family: 'Open Sans', sans-serif;
-        }
+      #menu {
+        position: absolute;
+        background: #efefef;
+        padding: 10px;
+        font-family: 'Open Sans', sans-serif;
+      }
     </style>
 
     <div id="map"></div>
 
     <div id="menu">
-        <input id="cl0o3orgw000314te6oodkezq" type="radio" name="rtoggle" value="satellite_geom" checked="checked">
-        <label for="cl0o3orgw000314te6oodkezq">Satellite Geom</label>
+      <input
+        id="cl0o3orgw000314te6oodkezq"
+        type="radio"
+        name="rtoggle"
+        value="satellite_geom"
+        checked="checked"
+      />
+      <label for="cl0o3orgw000314te6oodkezq">Satellite Geom</label>
 
-        <input id="clvvt5o32098a01nucx668i03" type="radio" name="rtoggle" value="nav_bare">
-        <label for="clvvt5o32098a01nucx668i03">Navigation No Boundary/POI</label>
+      <input
+        id="clvvt5o32098a01nucx668i03"
+        type="radio"
+        name="rtoggle"
+        value="nav_bare"
+      />
+      <label for="clvvt5o32098a01nucx668i03">Navigation No Boundary/POI</label>
 
-        <input id="cl7pshdpb000015mwy3tpm9y2" type="radio" name="rtoggle" value="physical">
-        <label for="cl7pshdpb000015mwy3tpm9y2">Physical</label>
+      <input
+        id="cl7pshdpb000015mwy3tpm9y2"
+        type="radio"
+        name="rtoggle"
+        value="physical"
+      />
+      <label for="cl7pshdpb000015mwy3tpm9y2">Physical</label>
 
-        <input id="clvx84fcd070101ph21dfavmf" type="radio" name="rtoggle" value="satellite_rebuild">
-        <label for="clvx84fcd070101ph21dfavmf">Satellite Rebuild</label>
+      <input
+        id="clvx84fcd070101ph21dfavmf"
+        type="radio"
+        name="rtoggle"
+        value="satellite_rebuild"
+      />
+      <label for="clvx84fcd070101ph21dfavmf">Satellite Rebuild</label>
     </div>
     <script>
-        mapboxgl.accessToken = MAPBOX_TOKEN; //TOKEN
-        const map = new mapboxgl.Map({
-            container: 'map',
-            // Satellite Geom v3.3
-            style: 'mapbox://styles/ericschall/cl0o3orgw000314te6oodkezq', // imagery + geometry
-            center: [-103.59179687498357, 40.66995747013945],
-            zoom: 3
+      mapboxgl.accessToken = MAPBOX_TOKEN; //TOKEN
+      const map = new mapboxgl.Map({
+        container: 'map',
+        // Satellite Geom v3.3
+        style: 'mapbox://styles/ericschall/cl0o3orgw000314te6oodkezq', // imagery + geometry
+        center: [-103.59179687498357, 40.66995747013945],
+        zoom: 3
+      });
+
+      // Reload source and layer
+      async function addAdditionalSourceAndLayer() {
+        // Load data from file
+
+        // Load data: AZA -- GeoJSON data from external file
+        const response_AZA = await fetch('geodata/AZA.geojson');
+        const AZA_geojsonData = await response_AZA.json();
+
+        // Load data: APGA -- GeoJSON data from external file
+        const response_APGA = await fetch('geodata/garden-map-data.json');
+        const APGA_geojsonData = await response_APGA.json();
+
+        // Load data: AAM -- GeoJSON data from external file
+
+        // Load data: Obs -- GeoJSON data from external file
+
+        // Load data: Stad -- GeoJSON data from external file
+
+        // Load data: Capitol -- GeoJSON data from external file
+        const Capitol_geojsonData =
+          'https://services1.arcgis.com/Hp6G80Pky0om7QvQ/arcgis/rest/services/StateCapitolBuildings/FeatureServer/0/query?f=pgeojson&where=1=1';
+
+        // Load data: Court -- GeoJSON data from external file
+        //const Court_geojsonData = "https://carto.nationalmap.gov/arcgis/rest/services/structures/MapServer/40/query?where=1%3D1&geometryType=esriGeometryEnvelope&returnGeometry=true&featureEncoding=esriDefault&f=geojson";
+
+        // Load data: PLib -- GeoJSON data from external file
+
+        // Load data: Light -- GeoJSON data from external file
+
+        // Add data to map
+
+        // Add data: AZA -- GeoJSON source with loaded data
+        map.addSource('AZA', {
+          type: 'geojson',
+          data: AZA_geojsonData
         });
 
-        // Reload source and layer
-        async function addAdditionalSourceAndLayer() {
+        // Add data: APGA -- GeoJSON source with loaded data
+        map.addSource('APGA', {
+          type: 'geojson',
+          data: APGA_geojsonData
+        });
 
-            // Load data from file
+        // Add data: AAM -- GeoJSON source with loaded data
 
-            // Load data: AZA -- GeoJSON data from external file
-            const response_AZA = await fetch('geodata/AZA.geojson');
-            const AZA_geojsonData = await response_AZA.json();
+        // Add data: Obs -- GeoJSON source with loaded data
 
-            // Load data: APGA -- GeoJSON data from external file
-            const response_APGA = await fetch('geodata/garden-map-data.json');
-            const APGA_geojsonData = await response_APGA.json();
+        // Add data: Stad -- GeoJSON source with loaded data
 
-
-            // Load data: AAM -- GeoJSON data from external file
-
-
-            // Load data: Obs -- GeoJSON data from external file
-
-
-            // Load data: Stad -- GeoJSON data from external file
-
-
-            // Load data: Capitol -- GeoJSON data from external file
-            const Capitol_geojsonData = "https://services1.arcgis.com/Hp6G80Pky0om7QvQ/arcgis/rest/services/StateCapitolBuildings/FeatureServer/0/query?f=pgeojson&where=1=1";
-
-            // Load data: Court -- GeoJSON data from external file
-            //const Court_geojsonData = "https://carto.nationalmap.gov/arcgis/rest/services/structures/MapServer/40/query?where=1%3D1&geometryType=esriGeometryEnvelope&returnGeometry=true&featureEncoding=esriDefault&f=geojson";
-
-            // Load data: PLib -- GeoJSON data from external file
-
-
-            // Load data: Light -- GeoJSON data from external file
-
-
-
-            // Add data to map
-
-            // Add data: AZA -- GeoJSON source with loaded data
-            map.addSource('AZA', {
-                'type': 'geojson',
-                'data': AZA_geojsonData
-            });
-
-            // Add data: APGA -- GeoJSON source with loaded data
-            map.addSource('APGA', {
-                'type': 'geojson',
-                'data': APGA_geojsonData
-            });
-
-            // Add data: AAM -- GeoJSON source with loaded data
-
-
-            // Add data: Obs -- GeoJSON source with loaded data
-
-
-            // Add data: Stad -- GeoJSON source with loaded data
-
-
-            // Add data: Capitol -- GeoJSON source with loaded data
-            /**
+        // Add data: Capitol -- GeoJSON source with loaded data
+        /**
                 map.addSource('Capitol', {
                     'type': 'geojson',
                     'data': Capitol_geojsonData
                 });
             */
 
-            // Add data: Court -- GeoJSON source with loaded data
-            /**
+        // Add data: Court -- GeoJSON source with loaded data
+        /**
                 map.addSource('Court', {
                     'type': 'geojson',
                     'data': Court_geojsonData
                 });
             */
 
-            // Add data: PLib -- GeoJSON source with loaded data
+        // Add data: PLib -- GeoJSON source with loaded data
 
+        // Add data: Light -- GeoJSON source with loaded data
 
-            // Add data: Light -- GeoJSON source with loaded data
+        // Add symbology / labeling layers
 
+        // Symbology/Labeling for AZA layer
+        map.addLayer({
+          id: 'AZA',
+          type: 'symbol',
+          source: 'AZA',
+          layout: {
+            'icon-image': `zoo`,
+            //'icon-image': `star (1)`,
+            'icon-allow-overlap': true,
+            'text-field': ['get', 'Name'],
+            'text-font': ['Open Sans Semibold', 'Arial Unicode MS Bold'],
+            'text-size': 11,
+            'text-letter-spacing': 0.05,
+            'text-offset': [0, 1.5]
+          },
+          paint: {
+            'text-color': '#202',
+            'text-halo-color': '#fff',
+            'text-halo-width': 2
+          }
+        });
 
+        // Symbology/Labeling for APGA layer
+        map.addLayer({
+          id: 'APGA',
+          type: 'symbol',
+          source: 'APGA',
+          layout: {
+            'icon-image': `garden`,
+            'icon-allow-overlap': true,
+            'text-field': ['get', 'name'],
+            'text-font': ['Open Sans Semibold', 'Arial Unicode MS Bold'],
+            'text-size': 11,
+            'text-letter-spacing': 0.05,
+            'text-offset': [0, 1.5]
+          },
+          paint: {
+            'text-color': '#202',
+            'text-halo-color': '#fff',
+            'text-halo-width': 2
+          }
+        });
 
+        // Symbology/Labeling for AAM layer
 
-            // Add symbology / labeling layers
+        // Symbology/Labeling for Obs layer
 
-            // Symbology/Labeling for AZA layer
-            map.addLayer({
-                'id': 'AZA',
-                'type': 'symbol',
-                'source': 'AZA',
-                'layout': {
-                    'icon-image': `zoo`,
-                    //'icon-image': `star (1)`,
-                    'icon-allow-overlap': true,
-                    'text-field': ['get', 'Name'],
-                    'text-font': ['Open Sans Semibold', 'Arial Unicode MS Bold'],
-                    'text-size': 11,
-                    'text-letter-spacing': 0.05,
-                    'text-offset': [0, 1.5]
-                },
-                'paint': {
-                    'text-color': '#202',
-                    'text-halo-color': '#fff',
-                    'text-halo-width': 2
-                }
-            });
+        // Symbology/Labeling for Stad layer
 
-            // Symbology/Labeling for APGA layer
-            map.addLayer({
-                'id': 'APGA',
-                'type': 'symbol',
-                'source': 'APGA',
-                'layout': {
-                    'icon-image': `garden`,
-                    'icon-allow-overlap': true,
-                    'text-field': ['get', 'name'],
-                    'text-font': ['Open Sans Semibold', 'Arial Unicode MS Bold'],
-                    'text-size': 11,
-                    'text-letter-spacing': 0.05,
-                    'text-offset': [0, 1.5]
-                },
-                'paint': {
-                    'text-color': '#202',
-                    'text-halo-color': '#fff',
-                    'text-halo-width': 2
-                }
-            });
-
-            // Symbology/Labeling for AAM layer
-
-
-            // Symbology/Labeling for Obs layer
-
-
-            // Symbology/Labeling for Stad layer
-
-
-            // Symbology/Labeling for Capitol layer
-            /**
+        // Symbology/Labeling for Capitol layer
+        /**
                 map.addLayer({
                     'id': 'Capitol',
                     'type': 'circle',
@@ -209,8 +218,8 @@
                 });
             */
 
-            // Symbology/Labeling for Court layer
-            /**
+        // Symbology/Labeling for Court layer
+        /**
                 map.addLayer({
                     'id': 'Court',
                     'type': 'circle',
@@ -223,51 +232,44 @@
                 });
             */
 
-            // Symbology/Labeling for PLib layer
+        // Symbology/Labeling for PLib layer
 
+        // Symbology/Labeling for Light layer
+      }
 
-            // Symbology/Labeling for Light layer
+      // Add source and layer whenever base style is loaded
+      map.on('style.load', async () => {
+        addAdditionalSourceAndLayer();
+      });
 
+      // basemap switcher function
+      const layerList = document.getElementById('menu');
+      const inputs = layerList.getElementsByTagName('input');
 
-        }
+      for (const input of inputs) {
+        input.onclick = (layer) => {
+          const layerId = layer.target.id;
+          map.setStyle('mapbox://styles/ericschall/' + layerId);
+        };
+      }
 
-
-        // Add source and layer whenever base style is loaded
-        map.on('style.load', async() => {
-            addAdditionalSourceAndLayer();
+      map.on('load', async () => {
+        map.addSource('arcgis-tiles', {
+          type: 'raster',
+          tiles: [
+            'https://tiles.arcgis.com/tiles/P3ePLMYs2RVChkJx/arcgis/rest/services/NatGeoStyleBase/MapServer/tile/{z}/{y}/{x}'
+          ],
+          tileSize: 256
         });
 
-        // basemap switcher function
-        const layerList = document.getElementById('menu');
-        const inputs = layerList.getElementsByTagName('input');
-
-        for (const input of inputs) {
-            input.onclick = (layer) => {
-                const layerId = layer.target.id;
-                map.setStyle('mapbox://styles/ericschall/' + layerId);
-            };
-        }
-
-        map.on('load', async() => {
-
-            map.addSource('arcgis-tiles', {
-                type: 'raster',
-                tiles: [
-                    'https://tiles.arcgis.com/tiles/P3ePLMYs2RVChkJx/arcgis/rest/services/NatGeoStyleBase/MapServer/tile/{z}/{y}/{x}'
-                ],
-                tileSize: 256
-            });
-
-            map.addLayer({
-                id: 'arcgis-tiles-layer',
-                type: 'raster',
-                source: 'arcgis-tiles',
-                minzoom: 0,
-                maxzoom: 22
-            });
-
+        map.addLayer({
+          id: 'arcgis-tiles-layer',
+          type: 'raster',
+          source: 'arcgis-tiles',
+          minzoom: 0,
+          maxzoom: 22
         });
+      });
     </script>
-</body>
-
+  </body>
 </html>

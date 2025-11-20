@@ -1,6 +1,6 @@
 function getOverlapResolutionOptions(seg, role) {
   const options = [];
-  const overlap = seg.overlapEmitters ?.find(e => e.role === role);
+  const overlap = seg.overlapEmitters?.find((e) => e.role === role);
   if (!overlap) return options;
 
   const overlapMin = overlap.overlapMinutes;
@@ -11,42 +11,63 @@ function getOverlapResolutionOptions(seg, role) {
   const canShrink = durMin > 0 && overlapMin < durMin * 0.75;
 
   const add = (action, label, feasibility = 'ok', reason = '') =>
-    options.push({ action, label, feasibility, reason, role, roundedMin, roundedHr });
+    options.push({
+      action,
+      label,
+      feasibility,
+      reason,
+      role,
+      roundedMin,
+      roundedHr
+    });
 
   switch (seg.type) {
     case 'trip_start':
-    case 'trip_end':
-      {
-        const move = role === 'left' ? 'moveEarlier' : 'moveLater';
-        const locked = role === 'left' ? (seg.start ?.lock === 'hard') : (seg.end ?.lock === 'hard');
-        if (locked) add(move, `🔒 Unlock & ${move} (~${roundedHr}h)`, 'unlock', 'Boundary locked');
-        else add(move, `${role === 'left' ? '⬅' : '➡'} Move (~${roundedHr}h)`);
-        break;
-      }
-    case 'stop':
-      {
-        if (role === 'left') {
-          const locked = seg.end ?.lock === 'hard';
-          if (locked) add('moveEarlier', '🔒 Unlock & Nudge Earlier', 'unlock', 'End locked');
-          else add('moveEarlier', `⬅ Nudge Earlier (~${roundedHr}h)`);
-          if (canShrink) {
-            const dLocked = seg.duration ?.lock === 'hard';
-            if (dLocked) add('shrink', '🔒 Unlock & Shorten', 'unlock', 'Duration locked');
-            else add('shrink', `↔ Shorten (~${roundedHr}h)`);
-          }
-        } else {
-          const locked = seg.start ?.lock === 'hard';
-          if (locked) add('moveLater', '🔒 Unlock & Nudge Later', 'unlock', 'Start locked');
-          else add('moveLater', `➡ Nudge Later (~${roundedHr}h)`);
-          if (canShrink) {
-            const dLocked = seg.duration ?.lock === 'hard';
-            if (dLocked) add('shrink', '🔒 Unlock & Shorten', 'unlock', 'Duration locked');
-            else add('shrink', `↔ Shorten (~${roundedHr}h)`);
-          }
+    case 'trip_end': {
+      const move = role === 'left' ? 'moveEarlier' : 'moveLater';
+      const locked =
+        role === 'left' ? seg.start?.lock === 'hard' : seg.end?.lock === 'hard';
+      if (locked)
+        add(
+          move,
+          `🔒 Unlock & ${move} (~${roundedHr}h)`,
+          'unlock',
+          'Boundary locked'
+        );
+      else add(move, `${role === 'left' ? '⬅' : '➡'} Move (~${roundedHr}h)`);
+      break;
+    }
+    case 'stop': {
+      if (role === 'left') {
+        const locked = seg.end?.lock === 'hard';
+        if (locked)
+          add(
+            'moveEarlier',
+            '🔒 Unlock & Nudge Earlier',
+            'unlock',
+            'End locked'
+          );
+        else add('moveEarlier', `⬅ Nudge Earlier (~${roundedHr}h)`);
+        if (canShrink) {
+          const dLocked = seg.duration?.lock === 'hard';
+          if (dLocked)
+            add('shrink', '🔒 Unlock & Shorten', 'unlock', 'Duration locked');
+          else add('shrink', `↔ Shorten (~${roundedHr}h)`);
         }
-        break;
+      } else {
+        const locked = seg.start?.lock === 'hard';
+        if (locked)
+          add('moveLater', '🔒 Unlock & Nudge Later', 'unlock', 'Start locked');
+        else add('moveLater', `➡ Nudge Later (~${roundedHr}h)`);
+        if (canShrink) {
+          const dLocked = seg.duration?.lock === 'hard';
+          if (dLocked)
+            add('shrink', '🔒 Unlock & Shorten', 'unlock', 'Duration locked');
+          else add('shrink', `↔ Shorten (~${roundedHr}h)`);
+        }
       }
-
+      break;
+    }
   }
 
   return options;
@@ -57,9 +78,9 @@ function getUnlockAndQueueOptions(seg) {
 
   // Only show if any lock is hard
   const anyLocked =
-    seg.start ?.lock === 'hard' ||
-      seg.end ?.lock === 'hard' ||
-        seg.duration ?.lock === 'hard';
+    seg.start?.lock === 'hard' ||
+    seg.end?.lock === 'hard' ||
+    seg.duration?.lock === 'hard';
 
   if (anyLocked) {
     opts.push({
@@ -106,13 +127,25 @@ async function resolveOverlapAction(seg, opt) {
   const formData = {};
 
   if (opt.action === 'moveEarlier') {
-    formData.start = utcToLocalInput(addMinutes(seg.start.utc, -roundedMin), seg.timeZone);
-    formData.end = utcToLocalInput(addMinutes(seg.end.utc, -roundedMin), seg.timeZone);
+    formData.start = utcToLocalInput(
+      addMinutes(seg.start.utc, -roundedMin),
+      seg.timeZone
+    );
+    formData.end = utcToLocalInput(
+      addMinutes(seg.end.utc, -roundedMin),
+      seg.timeZone
+    );
   }
 
   if (opt.action === 'moveLater') {
-    formData.start = utcToLocalInput(addMinutes(seg.start.utc, roundedMin), seg.timeZone);
-    formData.end = utcToLocalInput(addMinutes(seg.end.utc, roundedMin), seg.timeZone);
+    formData.start = utcToLocalInput(
+      addMinutes(seg.start.utc, roundedMin),
+      seg.timeZone
+    );
+    formData.end = utcToLocalInput(
+      addMinutes(seg.end.utc, roundedMin),
+      seg.timeZone
+    );
   }
 
   if (opt.action === 'shrink') {
@@ -126,11 +159,17 @@ async function resolveOverlapAction(seg, opt) {
     // right side shrink ⇒ keep END fixed, move START later
     if (opt.role === 'left') {
       formData.start = utcToLocalInput(seg.start.utc, seg.timeZone);
-      formData.end = utcToLocalInput(endFromDuration(seg.start.utc, newDurHr), seg.timeZone);
+      formData.end = utcToLocalInput(
+        endFromDuration(seg.start.utc, newDurHr),
+        seg.timeZone
+      );
       formData.duration = newDurHr.toFixed(2);
     } else {
       formData.end = utcToLocalInput(seg.end.utc, seg.timeZone);
-      formData.start = utcToLocalInput(startFromDuration(seg.end.utc, newDurHr), seg.timeZone);
+      formData.start = utcToLocalInput(
+        startFromDuration(seg.end.utc, newDurHr),
+        seg.timeZone
+      );
       formData.duration = newDurHr.toFixed(2);
     }
   }
@@ -151,10 +190,8 @@ async function resolveOverlapAction(seg, opt) {
 
   // Persist + recompute
   let list = loadSegments();
-  const idx = list.findIndex(s => s.id === seg.id);
+  const idx = list.findIndex((s) => s.id === seg.id);
   if (idx !== -1) list[idx] = seg;
-
-
 
   /**
     list = removeSlackAndOverlap(list);

@@ -7,7 +7,9 @@ const LOCK_RANK = { undefined: 0, auto: 1, unlocked: 1, soft: 2, hard: 3 };
 
 function canWrite(ep, seg) {
   const lock = ep?.lock || 'undefined';
-  if (seg?.isQueued) {    return false;  }
+  if (seg?.isQueued) {
+    return false;
+  }
   const can = LOCK_RANK[lock] <= LOCK_RANK.auto;
   return can;
 }
@@ -18,16 +20,15 @@ function canWrite(ep, seg) {
  * Does NOT modify utc values. Pure: returns a cloned array.
  */
 function annotateEmitters(segs) {
-
   normalizeSegments(segs);
 
   for (const s of segs) {
     s.start.meta = endpointMeta(s.start);
-    s.start.emitsForward  = s.start.meta.emitsForward;
+    s.start.emitsForward = s.start.meta.emitsForward;
     s.start.emitsBackward = s.start.meta.emitsBackward;
 
     s.end.meta = endpointMeta(s.end);
-    s.end.emitsForward  = s.end.meta.emitsForward;
+    s.end.emitsForward = s.end.meta.emitsForward;
     s.end.emitsBackward = s.end.meta.emitsBackward;
   }
   return segs;
@@ -42,7 +43,7 @@ function endpointMeta(ep) {
 
   // For debugging simplicity: a pinned endpoint is an emitter in BOTH directions.
   // (Later we can narrow this if you decide “start only emits fwd” / “end only emits back”.)
-  const emitsForward  = pinned;
+  const emitsForward = pinned;
   const emitsBackward = pinned;
 
   return { lock, rank, hasUtc, pinned, emitsForward, emitsBackward };
@@ -50,8 +51,8 @@ function endpointMeta(ep) {
 
 function normalizeSegments(segments) {
   for (const s of segments) {
-    s.start    ??= { utc: '', lock: 'undefined' };
-    s.end      ??= { utc: '', lock: 'undefined' };
+    s.start ??= { utc: '', lock: 'undefined' };
+    s.end ??= { utc: '', lock: 'undefined' };
     s.duration ??= { val: 0, lock: 'undefined' };
   }
 }
@@ -68,8 +69,10 @@ function determineEmitterDirections(segments, { priority = 'forward' } = {}) {
   // collect all emitters (pinned start or end)
   for (let i = 0; i < segs.length; i++) {
     const s = segs[i];
-    if (s.start.meta.pinned) emitters.push({ idx: i, side: 'start', rank: s.start.meta.rank });
-    if (s.end.meta.pinned)   emitters.push({ idx: i, side: 'end',   rank: s.end.meta.rank });
+    if (s.start.meta.pinned)
+      emitters.push({ idx: i, side: 'start', rank: s.start.meta.rank });
+    if (s.end.meta.pinned)
+      emitters.push({ idx: i, side: 'end', rank: s.end.meta.rank });
   }
 
   // For quick lookup, we can flatten to array of {indexInSegments, side, rank}
@@ -112,7 +115,7 @@ function determineEmitterDirections(segments, { priority = 'forward' } = {}) {
     if (downstream) {
       if (e.rank > downstream.rank) willForward = true;
       else if (e.rank < downstream.rank) willForward = false;
-      else willForward = (priority === 'forward');
+      else willForward = priority === 'forward';
     } else {
       // no downstream pin → forward until trip end
       willForward = true;
@@ -122,7 +125,7 @@ function determineEmitterDirections(segments, { priority = 'forward' } = {}) {
     if (upstream) {
       if (e.rank > upstream.rank) willBackward = true;
       else if (e.rank < upstream.rank) willBackward = false;
-      else willBackward = (priority === 'backward');
+      else willBackward = priority === 'backward';
     } else {
       // no upstream pin → backward until trip start
       willBackward = true;
@@ -157,12 +160,12 @@ function propagateForward(segs) {
   for (let i = 0; i < segs.length; i++) {
     const s = segs[i];
 
-    const emitFromStart = s.start?.meta?.willEmitForward && s.start?.meta?.pinned;
-    const emitFromEnd   = s.end?.meta?.willEmitForward && s.end?.meta?.pinned;
+    const emitFromStart =
+      s.start?.meta?.willEmitForward && s.start?.meta?.pinned;
+    const emitFromEnd = s.end?.meta?.willEmitForward && s.end?.meta?.pinned;
     if (!emitFromStart && !emitFromEnd) continue;
 
-
-    const cursorField = emitFromStart ? "start" : "end";
+    const cursorField = emitFromStart ? 'start' : 'end';
     let cursor = s[cursorField].utc;
     const rank = s[cursorField].meta.rank;
 
@@ -206,12 +209,12 @@ function propagateBackward(segs) {
   for (let i = segs.length - 1; i >= 0; i--) {
     const s = segs[i];
 
-    const emitFromEnd   = s.end?.meta?.willEmitBackward && s.end?.meta?.pinned;
-    const emitFromStart = s.start?.meta?.willEmitBackward && s.start?.meta?.pinned;
+    const emitFromEnd = s.end?.meta?.willEmitBackward && s.end?.meta?.pinned;
+    const emitFromStart =
+      s.start?.meta?.willEmitBackward && s.start?.meta?.pinned;
     if (!emitFromEnd && !emitFromStart) continue;
 
-
-    const cursorField = emitFromEnd ? "end" : "start";
+    const cursorField = emitFromEnd ? 'end' : 'start';
     let cursor = s[cursorField].utc;
     const rank = s[cursorField].meta.rank;
 
@@ -267,9 +270,12 @@ function segDurationMinutes(seg) {
 function findNearestEmitterLeft(idx, segments) {
   for (let i = idx - 1; i >= 0; i--) {
     const s = segments[i];
-    if (isEmitter(s.end, 'forward'))     return { seg: s, kind: 'end',   field: s.end };
-    if (isEmitter(s.start, 'forward'))   return { seg: s, kind: 'start', field: s.start };
-    if (isEmitter(s.duration, 'forward'))return { seg: s, kind: 'duration', field: s.duration };
+    if (isEmitter(s.end, 'forward'))
+      return { seg: s, kind: 'end', field: s.end };
+    if (isEmitter(s.start, 'forward'))
+      return { seg: s, kind: 'start', field: s.start };
+    if (isEmitter(s.duration, 'forward'))
+      return { seg: s, kind: 'duration', field: s.duration };
   }
   return null;
 }
@@ -277,19 +283,21 @@ function findNearestEmitterLeft(idx, segments) {
 function findNearestEmitterRight(idx, segments) {
   for (let i = idx + 1; i < segments.length; i++) {
     const s = segments[i];
-    if (isEmitter(s.start, 'backward'))    return { seg: s, kind: 'start', field: s.start };
-    if (isEmitter(s.end, 'backward'))      return { seg: s, kind: 'end',   field: s.end };
-    if (isEmitter(s.duration, 'backward')) return { seg: s, kind: 'duration', field: s.duration };
+    if (isEmitter(s.start, 'backward'))
+      return { seg: s, kind: 'start', field: s.start };
+    if (isEmitter(s.end, 'backward'))
+      return { seg: s, kind: 'end', field: s.end };
+    if (isEmitter(s.duration, 'backward'))
+      return { seg: s, kind: 'duration', field: s.duration };
   }
   return null;
 }
 
 function isEmitter(f, dir) {
-    if (!boundaryLocked(f)) return false;
-    return dir === 'forward' ? !!f.emitsForward : !!f.emitsBackward;
+  if (!boundaryLocked(f)) return false;
+  return dir === 'forward' ? !!f.emitsForward : !!f.emitsBackward;
 }
 
-function boundaryLocked(f) { 
-  return !!(f && f.lock && f.lock !== 'unlocked'); 
+function boundaryLocked(f) {
+  return !!(f && f.lock && f.lock !== 'unlocked');
 }
-

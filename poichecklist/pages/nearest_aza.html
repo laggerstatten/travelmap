@@ -1,214 +1,215 @@
 <!DOCTYPE html>
 <html lang="en">
-
-<head>
+  <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Nearest AZA Zoos</title>
 
     <!-- Mapbox Search JS -->
-    <script id="search-js" defer src="https://api.mapbox.com/search-js/v1.5.0/web.js"></script>
+    <script
+      id="search-js"
+      defer
+      src="https://api.mapbox.com/search-js/v1.5.0/web.js"
+    ></script>
 
     <style>
-        body {
-            font-family: system-ui, sans-serif;
-            padding: 2rem;
-        }
-        
-        mapbox-search-box {
-            max-width: 400px;
-            display: block;
-            margin-bottom: 1rem;
-        }
-        
-        #auth {
-            margin-bottom: 1rem;
-        }
-        
-        table {
-            border-collapse: collapse;
-            width: 100%;
-            max-width: 700px;
-        }
-        
-        th,
-        td {
-            border: 1px solid #ccc;
-            padding: 6px 8px;
-            text-align: left;
-        }
-        
-        th {
-            background: #f0f0f0;
-        }
-    </style>
-</head>
+      body {
+        font-family: system-ui, sans-serif;
+        padding: 2rem;
+      }
 
-<body>
+      mapbox-search-box {
+        max-width: 400px;
+        display: block;
+        margin-bottom: 1rem;
+      }
+
+      #auth {
+        margin-bottom: 1rem;
+      }
+
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        max-width: 700px;
+      }
+
+      th,
+      td {
+        border: 1px solid #ccc;
+        padding: 6px 8px;
+        text-align: left;
+      }
+
+      th {
+        background: #f0f0f0;
+      }
+    </style>
+  </head>
+
+  <body>
     <h1>Find Nearest AZA Zoos</h1>
 
     <!-- 🔐 GitHub Login -->
     <div id="auth">
-        <button id="login">Login with GitHub</button>
-        <button id="logout" style="display:none;">Logout</button>
-        <p id="auth-status">Not logged in</p>
+      <button id="login">Login with GitHub</button>
+      <button id="logout" style="display: none">Logout</button>
+      <p id="auth-status">Not logged in</p>
     </div>
 
     <!-- ✅ Mapbox Search Box -->
-    <mapbox-search-box access-token="pk.eyJ1IjoiZXJpY3NjaGFsbCIsImEiOiJjbWhjdG51eGYwNnRtMmlwcmkyMGVpbGtwIn0.XhVB83AFwyB1L1zykB3oig" proximity="0,0"></mapbox-search-box>
+    <mapbox-search-box
+      access-token="pk.eyJ1IjoiZXJpY3NjaGFsbCIsImEiOiJjbWhjdG51eGYwNnRtMmlwcmkyMGVpbGtwIn0.XhVB83AFwyB1L1zykB3oig"
+      proximity="0,0"
+    ></mapbox-search-box>
 
-    <label><input type="checkbox" id="show-unvisited"> Show only unvisited</label>
+    <label
+      ><input type="checkbox" id="show-unvisited" /> Show only unvisited</label
+    >
 
     <h2>Results</h2>
     <table id="results">
-        <thead>
-            <tr>
-                <th>Zoo</th>
-                <th>City</th>
-                <th>State</th>
-                <th>Distance (mi)</th>
-                <th>Visited</th>
-            </tr>
-        </thead>
-        <tbody></tbody>
+      <thead>
+        <tr>
+          <th>Zoo</th>
+          <th>City</th>
+          <th>State</th>
+          <th>Distance (mi)</th>
+          <th>Visited</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
     </table>
 
     <!-- Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <script>
-        // Initialize Supabase
-        const supabase = window.supabase.createClient(
-            'https://czuldnytepaujjkjpwqi.supabase.co',
-            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN6dWxkbnl0ZXBhdWpqa2pwd3FpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE2NzE0NTQsImV4cCI6MjA3NzI0NzQ1NH0.8OPIxFz3bHcxQEebxwt6j4USC-8AYjRjzPhuoxtrblo'
+      // Initialize Supabase
+      const supabase = window.supabase.createClient(
+        'https://czuldnytepaujjkjpwqi.supabase.co',
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN6dWxkbnl0ZXBhdWpqa2pwd3FpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE2NzE0NTQsImV4cCI6MjA3NzI0NzQ1NH0.8OPIxFz3bHcxQEebxwt6j4USC-8AYjRjzPhuoxtrblo'
+      );
+
+      // 🔹 GitHub Auth
+      const loginBtn = document.getElementById('login');
+      const logoutBtn = document.getElementById('logout');
+      const statusEl = document.getElementById('auth-status');
+
+      loginBtn.addEventListener('click', async () => {
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider: 'github',
+          options: {
+            redirectTo:
+              'https://laggerstatten.github.io/travelmap/pages/nearest_aza.html'
+          }
+        });
+        if (error) console.error('Login error:', error);
+      });
+
+      logoutBtn.addEventListener('click', async () => {
+        await supabase.auth.signOut();
+        location.reload();
+      });
+
+      supabase.auth.onAuthStateChange((_event, session) => {
+        const loggedIn = !!session;
+        loginBtn.style.display = loggedIn ? 'none' : 'inline-block';
+        logoutBtn.style.display = loggedIn ? 'inline-block' : 'none';
+        statusEl.textContent = loggedIn
+          ? `Logged in as ${session.user.user_metadata.user_name}`
+          : 'Not logged in';
+      });
+
+      // 🔹 Query RPC to get zoos ordered by distance
+      async function findZoos(lat, lon) {
+        const { data, error } = await supabase.rpc('get_aza_nearby', {
+          lat_input: lat,
+          lon_input: lon
+        });
+        if (error) {
+          console.error('Error fetching zoos:', error);
+          return [];
+        }
+        return data;
+      }
+
+      // 🔹 Toggle visited status
+      async function toggleVisited(aza_id, checked) {
+        const { error } = await supabase.from('visited').upsert(
+          {
+            aza_id,
+            visited: checked
+          },
+          {
+            onConflict: 'aza_id'
+          }
         );
+        if (error) console.error('Error saving visited:', error);
+      }
 
-        // 🔹 GitHub Auth
-        const loginBtn = document.getElementById("login");
-        const logoutBtn = document.getElementById("logout");
-        const statusEl = document.getElementById("auth-status");
+      // 🔹 Display results
+      async function runZooSearch(lat, lon) {
+        const showUnvisited = document.getElementById('show-unvisited').checked;
+        const results = await findZoos(lat, lon);
+        const tbody = document.querySelector('#results tbody');
+        tbody.innerHTML = '';
 
-        loginBtn.addEventListener("click", async() => {
-            const {
-                data,
-                error
-            } = await supabase.auth.signInWithOAuth({
-                provider: "github",
-                options: {
-                    redirectTo: 'https://laggerstatten.github.io/travelmap/pages/nearest_aza.html'
-                },
-            });
-            if (error) console.error("Login error:", error);
-        });
+        const filtered = showUnvisited
+          ? results.filter((r) => !r.visited)
+          : results;
 
-        logoutBtn.addEventListener("click", async() => {
-            await supabase.auth.signOut();
-            location.reload();
-        });
-
-        supabase.auth.onAuthStateChange((_event, session) => {
-            const loggedIn = !!session;
-            loginBtn.style.display = loggedIn ? "none" : "inline-block";
-            logoutBtn.style.display = loggedIn ? "inline-block" : "none";
-            statusEl.textContent = loggedIn ?
-                `Logged in as ${session.user.user_metadata.user_name}` :
-                "Not logged in";
-        });
-
-        // 🔹 Query RPC to get zoos ordered by distance
-        async function findZoos(lat, lon) {
-            const {
-                data,
-                error
-            } = await supabase.rpc("get_aza_nearby", {
-                lat_input: lat,
-                lon_input: lon,
-            });
-            if (error) {
-                console.error("Error fetching zoos:", error);
-                return [];
-            }
-            return data;
-        }
-
-        // 🔹 Toggle visited status
-        async function toggleVisited(aza_id, checked) {
-            const {
-                error
-            } = await supabase
-                .from("visited")
-                .upsert({
-                    aza_id,
-                    visited: checked
-                }, {
-                    onConflict: "aza_id"
-                });
-            if (error) console.error("Error saving visited:", error);
-        }
-
-        // 🔹 Display results
-        async function runZooSearch(lat, lon) {
-            const showUnvisited = document.getElementById("show-unvisited").checked;
-            const results = await findZoos(lat, lon);
-            const tbody = document.querySelector("#results tbody");
-            tbody.innerHTML = "";
-
-            const filtered = showUnvisited ? results.filter((r) => !r.visited) : results;
-
-            filtered.forEach((r) => {
-                const tr = document.createElement("tr");
-                tr.innerHTML = `
+        filtered.forEach((r) => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
           <td>${r.name}</td>
           <td>${r.city}</td>
           <td>${r.state}</td>
           <td>${r.distance_miles.toFixed(1)}</td>
-          <td><input type="checkbox" ${r.visited ? "checked" : ""}></td>
+          <td><input type="checkbox" ${r.visited ? 'checked' : ''}></td>
         `;
-                const checkbox = tr.querySelector("input");
-                checkbox.addEventListener("change", async(e) => {
-                    const {
-                        data: session
-                    } = await supabase.auth.getSession();
-                    if (!session || !session.session) {
-                        alert("You must be logged in to edit.");
-                        e.target.checked = !e.target.checked;
-                        return;
-                    }
-                    await toggleVisited(r.aza_id, e.target.checked);
-                    await runZooSearch(lat, lon);
-                });
-                tbody.appendChild(tr);
-            });
-        }
+          const checkbox = tr.querySelector('input');
+          checkbox.addEventListener('change', async (e) => {
+            const { data: session } = await supabase.auth.getSession();
+            if (!session || !session.session) {
+              alert('You must be logged in to edit.');
+              e.target.checked = !e.target.checked;
+              return;
+            }
+            await toggleVisited(r.aza_id, e.target.checked);
+            await runZooSearch(lat, lon);
+          });
+          tbody.appendChild(tr);
+        });
+      }
 
-        // 🔹 Load Mapbox SearchBox
-        const script = document.getElementById("search-js");
-        script.onload = function() {
-            const searchBox = document.querySelector("mapbox-search-box");
-            searchBox.options = {
-                language: "en",
-                country: "us"
-            };
-
-            searchBox.addEventListener("retrieve", async(e) => {
-                const detail = e.detail;
-                const feature =
-                    detail && detail.features && detail.features.length > 0 ?
-                    detail.features[0] :
-                    null;
-
-                if (!feature || !feature.geometry || !feature.geometry.coordinates) {
-                    console.warn("No valid location selected:", e);
-                    return;
-                }
-
-                const [lon, lat] = feature.geometry.coordinates;
-                console.log(`Selected: ${feature.properties.name} → ${lat}, ${lon}`);
-
-                await runZooSearch(lat, lon);
-            });
+      // 🔹 Load Mapbox SearchBox
+      const script = document.getElementById('search-js');
+      script.onload = function () {
+        const searchBox = document.querySelector('mapbox-search-box');
+        searchBox.options = {
+          language: 'en',
+          country: 'us'
         };
-    </script>
-</body>
 
+        searchBox.addEventListener('retrieve', async (e) => {
+          const detail = e.detail;
+          const feature =
+            detail && detail.features && detail.features.length > 0
+              ? detail.features[0]
+              : null;
+
+          if (!feature || !feature.geometry || !feature.geometry.coordinates) {
+            console.warn('No valid location selected:', e);
+            return;
+          }
+
+          const [lon, lat] = feature.geometry.coordinates;
+          console.log(`Selected: ${feature.properties.name} → ${lat}, ${lon}`);
+
+          await runZooSearch(lat, lon);
+        });
+      };
+    </script>
+  </body>
 </html>

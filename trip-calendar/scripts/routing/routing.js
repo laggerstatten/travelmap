@@ -1,9 +1,9 @@
 function clearAutoDrives(list) {
-    let segments = [...list];
-    segments = segments.filter(
-        (seg) => !(seg.type === 'drive' && seg.autoDrive && !seg.manualEdit)
-    );
-    return segments;
+  let segments = [...list];
+  segments = segments.filter(
+    (seg) => !(seg.type === 'drive' && seg.autoDrive && !seg.manualEdit)
+  );
+  return segments;
 }
 
 /* ===============================
@@ -12,8 +12,8 @@ function clearAutoDrives(list) {
 
 async function validateAndRepair(list) {
   // --- split into placed timeline vs queued ---
-  const placed = list.filter(seg => !seg.isQueued); // check for errors
-  const queued = list.filter(seg => seg.isQueued);
+  const placed = list.filter((seg) => !seg.isQueued); // check for errors
+  const queued = list.filter((seg) => seg.isQueued);
   // Work only on placed segments
   let segments = [...placed];
 
@@ -30,7 +30,7 @@ async function validateAndRepair(list) {
   segments = await generateRoutes(segments);
 
   const finalList = [...queued, ...segments];
-  
+
   return finalList;
 }
 
@@ -69,7 +69,7 @@ function removeAdjacentDrives(list) {
  * CREATE segment with drive type
  *
  * @param {*} list
- * @return {*} 
+ * @return {*}
  */
 function insertDriveSegments(list) {
   let i = 0;
@@ -100,7 +100,7 @@ function insertDriveSegments(list) {
  * UPDATE segment
  *
  * @param {*} list
- * @return {*} 
+ * @return {*}
  */
 async function generateRoutes(list) {
   //const segments = sortByDateInPlace([...list]);
@@ -154,7 +154,7 @@ async function insertStopInNearestRoute(stop, list) {
     timeWindow = [...segments];
 
     if (stop.start) delete stop.start.utc;
-    if (stop.end)   delete stop.end.utc;
+    if (stop.end) delete stop.end.utc;
   }
 
   const drives = timeWindow.filter(
@@ -162,7 +162,7 @@ async function insertStopInNearestRoute(stop, list) {
   );
 
   if (!drives.length) {
-    console.warn("No drives found — appending stop.");
+    console.warn('No drives found — appending stop.');
     segments.push(stop);
     return segments;
   }
@@ -171,19 +171,19 @@ async function insertStopInNearestRoute(stop, list) {
   // 1. Find the best drive segment by ID (not index)
   // ------------------------------------------------
   let bestDrive = null;
-  let bestDist  = Infinity;
+  let bestDist = Infinity;
 
   for (const d of drives) {
     const coords = d.routeGeometry?.coordinates;
     if (!coords?.length) continue;
 
     const mid = coords[Math.floor(coords.length / 2)];
-    const dx  = stop.coordinates[0] - mid[0];
-    const dy  = stop.coordinates[1] - mid[1];
-    const dist = Math.sqrt(dx*dx + dy*dy);
+    const dx = stop.coordinates[0] - mid[0];
+    const dy = stop.coordinates[1] - mid[1];
+    const dist = Math.sqrt(dx * dx + dy * dy);
 
     if (dist < bestDist) {
-      bestDist  = dist;
+      bestDist = dist;
       bestDrive = d;
     }
   }
@@ -222,8 +222,7 @@ function removeAdjacentDrivesById(segments, idA, idB) {
   const second = segments[secondIdx];
 
   const areAdjacent = secondIdx === firstIdx + 1;
-  const bothDrives =
-    first?.type === "drive" && second?.type === "drive";
+  const bothDrives = first?.type === 'drive' && second?.type === 'drive';
 
   if (areAdjacent && bothDrives) {
     // mutate list in place: remove both
@@ -236,8 +235,8 @@ function removeAdjacentDrivesById(segments, idA, idB) {
 }
 
 function insertDriveBetweenById(segments, idA, idB) {
-  const idxA = segments.findIndex(s => s.id === idA);
-  const idxB = segments.findIndex(s => s.id === idB);
+  const idxA = segments.findIndex((s) => s.id === idA);
+  const idxB = segments.findIndex((s) => s.id === idB);
 
   if (idxA === -1 || idxB === -1) {
     // They were already modified/removed earlier
@@ -245,33 +244,31 @@ function insertDriveBetweenById(segments, idA, idB) {
   }
 
   // normalize order
-  const firstIdx  = Math.min(idxA, idxB);
+  const firstIdx = Math.min(idxA, idxB);
   const secondIdx = Math.max(idxA, idxB);
 
-  const first  = segments[firstIdx];
+  const first = segments[firstIdx];
   const second = segments[secondIdx];
 
   const areAdjacent = secondIdx === firstIdx + 1;
   if (!areAdjacent) return false;
 
   // The rule: insert a drive only if both are non-drive
-  const shouldInsert =
-    first?.type !== "drive" &&
-    second?.type !== "drive";
+  const shouldInsert = first?.type !== 'drive' && second?.type !== 'drive';
 
   if (!shouldInsert) return false;
 
   // Create new drive segment
   const driveSeg = {
     id: newId(),
-    name: `Drive from ${first.name || "current stop"} to ${
-      second.name || "next stop"
+    name: `Drive from ${first.name || 'current stop'} to ${
+      second.name || 'next stop'
     }`,
-    type: "drive",
+    type: 'drive',
     autoDrive: true,
     manualEdit: false,
     originId: first.id,
-    destinationId: second.id,
+    destinationId: second.id
   };
 
   // Mutate list IN PLACE
@@ -282,13 +279,13 @@ function insertDriveBetweenById(segments, idA, idB) {
 }
 
 async function insertStopInRouteById(segments, stopId, driveId, stopObj) {
-  let driveIdx = segments.findIndex(s => s.id === driveId);
+  let driveIdx = segments.findIndex((s) => s.id === driveId);
   if (driveIdx === -1) return segments;
 
   const drive = segments[driveIdx];
 
-  const origin = segments.find(s => s.id === drive.originId);
-  const destination = segments.find(s => s.id === drive.destinationId);
+  const origin = segments.find((s) => s.id === drive.originId);
+  const destination = segments.find((s) => s.id === drive.destinationId);
 
   if (!origin || !destination) return segments;
   if (!origin.coordinates || !destination.coordinates) return segments;
@@ -316,7 +313,7 @@ async function insertStopInRouteById(segments, stopId, driveId, stopObj) {
     originId: origin.id,
     destinationId: stopObj.id,
     originTz: origin.timeZone,
-    destinationTz: stopObj.timeZone,
+    destinationTz: stopObj.timeZone
   };
 
   const newDrive2 = {
@@ -332,20 +329,20 @@ async function insertStopInRouteById(segments, stopId, driveId, stopObj) {
     originId: stopObj.id,
     destinationId: destination.id,
     originTz: stopObj.timeZone,
-    destinationTz: destination.timeZone,
+    destinationTz: destination.timeZone
   };
 
   // --------------------------------------------
   // Remove a temporary instance of the stop (if it exists)
   // --------------------------------------------
-  const tempStopIdx = segments.findIndex(s => s.id === stopId);
+  const tempStopIdx = segments.findIndex((s) => s.id === stopId);
   if (tempStopIdx !== -1) segments.splice(tempStopIdx, 1);
 
   // --------------------------------------------
   // Replace the original drive with:
   //   [ newDrive1, stopObj, newDrive2 ]
   // --------------------------------------------
-  driveIdx = segments.findIndex(s => s.id === driveId);
+  driveIdx = segments.findIndex((s) => s.id === driveId);
   if (driveIdx === -1) return segments;
   segments.splice(driveIdx, 1, newDrive1, stopObj, newDrive2);
 
@@ -353,11 +350,11 @@ async function insertStopInRouteById(segments, stopId, driveId, stopObj) {
 }
 
 async function healRouteIfNeeded(list, prevId, nextId) {
-  const left = prevId ? list.find(s => s.id === prevId) : null;
-  const right = nextId ? list.find(s => s.id === nextId) : null;
+  const left = prevId ? list.find((s) => s.id === prevId) : null;
+  const right = nextId ? list.find((s) => s.id === nextId) : null;
 
   // Only heal if both neighbors are drives
-  if (left?.type === "drive" && right?.type === "drive") {
+  if (left?.type === 'drive' && right?.type === 'drive') {
     return await healRouteBetweenDrives(left.id, right.id, list);
   }
 
@@ -365,18 +362,18 @@ async function healRouteIfNeeded(list, prevId, nextId) {
 }
 
 async function healRouteBetweenDrives(leftDriveId, rightDriveId, list) {
-  const leftIdx = list.findIndex(s => s.id === leftDriveId);
-  const rightIdx = list.findIndex(s => s.id === rightDriveId);
+  const leftIdx = list.findIndex((s) => s.id === leftDriveId);
+  const rightIdx = list.findIndex((s) => s.id === rightDriveId);
 
   if (leftIdx === -1 || rightIdx === -1) return list;
 
   const left = list[leftIdx];
   const right = list[rightIdx];
 
-  if (left.type !== "drive" || right.type !== "drive") return list;
+  if (left.type !== 'drive' || right.type !== 'drive') return list;
 
-  const origin = list.find(s => s.id === left.originId);
-  const destination = list.find(s => s.id === right.destinationId);
+  const origin = list.find((s) => s.id === left.originId);
+  const destination = list.find((s) => s.id === right.destinationId);
 
   if (!origin || !destination) return list;
 
@@ -385,18 +382,18 @@ async function healRouteBetweenDrives(leftDriveId, rightDriveId, list) {
 
   const newDrive = {
     id: newId(),
-    type: "drive",
+    type: 'drive',
     autoDrive: true,
     name: `Drive from ${origin.name} to ${destination.name}`,
     routeGeometry: r.geometry,
     distanceMi: r.distance_mi.toFixed(1),
     durationMin: r.duration_min.toFixed(0),
     durationHr: (r.duration_min / 60).toFixed(2),
-    duration: { val: (r.duration_min / 60).toFixed(2), lock: "hard" },
+    duration: { val: (r.duration_min / 60).toFixed(2), lock: 'hard' },
     originId: origin.id,
     destinationId: destination.id,
     originTz: origin.timeZone,
-    destinationTz: destination.timeZone,
+    destinationTz: destination.timeZone
   };
 
   // ------------------------

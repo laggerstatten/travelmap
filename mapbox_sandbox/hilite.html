@@ -106,8 +106,7 @@
 
           // Update filter
           //map.setFilter('highlight', ['==', ['get', FIELD_NAME], value]);
-          map.setFilter("highlight", ["==", ["get", FIELD_NAME], raw]);
-
+          map.setFilter('highlight', ['==', ['get', FIELD_NAME], raw]);
 
           // Query visible features to zoom to them
           const matches = map.queryRenderedFeatures({ layers: ['highlight'] });

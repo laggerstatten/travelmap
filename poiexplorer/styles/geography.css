@@ -1,23 +1,23 @@
 body {
-    margin: 0;
-    padding: 0;
-    display: flex;
-    flex-direction: row;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: row;
 }
 
 #map {
-    flex: 3;
-    height: 100vh;
+  flex: 3;
+  height: 100vh;
 }
 
 .map-overlay {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    background-color: #efefef;
-    padding: 10px;
-    box-sizing: border-box;
-    overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background-color: #efefef;
+  padding: 10px;
+  box-sizing: border-box;
+  overflow-y: auto;
 }
 
 /**
@@ -77,44 +77,44 @@ body {
 */
 
 #layertogglemenu {
-    background: #fff;
-    padding: 10px;
-    border-radius: 5px;
-    margin-top: 10px;
-    font-family: 'Open Sans', sans-serif;
+  background: #fff;
+  padding: 10px;
+  border-radius: 5px;
+  margin-top: 10px;
+  font-family: 'Open Sans', sans-serif;
 }
 
 #layertogglemenu a {
-    font-size: 13px;
-    color: #404040;
-    display: block;
-    margin: 0;
-    padding: 10px;
-    text-decoration: none;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.25);
-    text-align: center;
+  font-size: 13px;
+  color: #404040;
+  display: block;
+  margin: 0;
+  padding: 10px;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.25);
+  text-align: center;
 }
 
 #layertogglemenu a:last-child {
-    border: none;
+  border: none;
 }
 
 #layertogglemenu a:hover {
-    background-color: #f8f8f8;
-    color: #404040;
+  background-color: #f8f8f8;
+  color: #404040;
 }
 
 #layertogglemenu a.active {
-    background-color: #3887be;
-    color: #ffffff;
+  background-color: #3887be;
+  color: #ffffff;
 }
 
 #layertogglemenu a.active:hover {
-    background: #3074a4;
+  background: #3074a4;
 }
 
 #button-container {
-    display: flex;
-    flex-direction: column;
-    margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  margin-top: 10px;
 }

@@ -340,7 +340,6 @@ function attachConstraintEditor(form, seg) {
       const cid = builder.dataset.cid;
       const c = seg.constraints.find((x) => x.cid === cid);
 
-
       // Generate OSM string
       builder.querySelector('.oh-generate').onclick = () => {
         const rows = [...builder.querySelectorAll('.oh-row')];

@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-
-<head>
+  <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AZA Zoos + Visits</title>
@@ -13,7 +12,10 @@
     <script src="scripts/buildUAPopup.js"></script>
 
     <!-- Mapbox -->
-    <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet" />
+    <link
+      href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css"
+      rel="stylesheet"
+    />
     <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
 
     <!-- Mapbox Search Box -->
@@ -23,348 +25,345 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: 'Open Sans', sans-serif;
-            overflow: hidden;
-        }
-        
-        #map {
-            position: absolute;
-            top: 0;
-            bottom: 0;
-            width: 100%;
-            z-index: 1;
-        }
-        
-        #search-box {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            z-index: 10;
-            width: 320px;
-        }
-        
-        #auth {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            z-index: 11;
-            background: rgba(255, 255, 255, 0.9);
-            padding: 6px 10px;
-            border-radius: 6px;
-            font-size: 13px;
-            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
-        }
-        
-        #auth button {
-            margin: 0 4px;
-            padding: 4px 8px;
-        }
-        /* Drawer styling */
-        
-        #result-panel {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: rgba(255, 255, 255, 0.97);
-            box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.25);
-            max-height: 50%;
-            transform: translateY(60%);
-            transition: transform 0.4s ease-in-out;
-            overflow: auto;
-            z-index: 20;
-            padding: 10px;
-            border-top-left-radius: 8px;
-            border-top-right-radius: 8px;
-        }
-        
-        #result-panel.open {
-            transform: translateY(0);
-        }
-        
-        #result-toggle {
-            position: absolute;
-            top: 5px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #333;
-            color: #fff;
-            border-radius: 10px 10px 0 0;
-            padding: 6px 16px;
-            cursor: pointer;
-            font-size: 13px;
-            font-weight: 600;
-            user-select: none;
-            z-index: 25;
-            box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.25);
-        }
-        
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 14px;
-        }
-        
-        th,
-        td {
-            border-bottom: 1px solid #ccc;
-            text-align: left;
-            padding: 6px;
-        }
-        
-        th {
-            background-color: #f2f2f2;
-        }
-        
-        tr:hover {
-            background-color: #f0f8ff;
-            cursor: pointer;
-        }
-        
-        .visited {
-            background-color: #dff0d8 !important;
-        }
-    </style>
-</head>
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: 'Open Sans', sans-serif;
+        overflow: hidden;
+      }
 
-<body>
+      #map {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 100%;
+        z-index: 1;
+      }
+
+      #search-box {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        z-index: 10;
+        width: 320px;
+      }
+
+      #auth {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 11;
+        background: rgba(255, 255, 255, 0.9);
+        padding: 6px 10px;
+        border-radius: 6px;
+        font-size: 13px;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+      }
+
+      #auth button {
+        margin: 0 4px;
+        padding: 4px 8px;
+      }
+      /* Drawer styling */
+
+      #result-panel {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: rgba(255, 255, 255, 0.97);
+        box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.25);
+        max-height: 50%;
+        transform: translateY(60%);
+        transition: transform 0.4s ease-in-out;
+        overflow: auto;
+        z-index: 20;
+        padding: 10px;
+        border-top-left-radius: 8px;
+        border-top-right-radius: 8px;
+      }
+
+      #result-panel.open {
+        transform: translateY(0);
+      }
+
+      #result-toggle {
+        position: absolute;
+        top: 5px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #333;
+        color: #fff;
+        border-radius: 10px 10px 0 0;
+        padding: 6px 16px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 600;
+        user-select: none;
+        z-index: 25;
+        box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.25);
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+      }
+
+      th,
+      td {
+        border-bottom: 1px solid #ccc;
+        text-align: left;
+        padding: 6px;
+      }
+
+      th {
+        background-color: #f2f2f2;
+      }
+
+      tr:hover {
+        background-color: #f0f8ff;
+        cursor: pointer;
+      }
+
+      .visited {
+        background-color: #dff0d8 !important;
+      }
+    </style>
+  </head>
+
+  <body>
     <div id="search-box"></div>
     <div id="auth">
-        <button id="login">Login with GitHub</button>
-        <button id="logout" style="display: none">Logout</button>
-        <span id="auth-status">Not logged in</span>
+      <button id="login">Login with GitHub</button>
+      <button id="logout" style="display: none">Logout</button>
+      <span id="auth-status">Not logged in</span>
     </div>
     <div id="map"></div>
 
     <!-- Drawer -->
     <div id="result-panel">
-        <div id="result-toggle">▲ Show Results</div>
-        <h3>AZA Zoos (within 500 mi)</h3>
-        <table id="aza-table">
-            <thead>
-                <tr>
-                    <th>Make Origin</th>
-                    <th>Name</th>
-                    <th>City</th>
-                    <th>State</th>
-                    <th>Drive Time (min)</th>
-                    <th>Distance (mi)</th>
-                    <th>Visited</th>
-                </tr>
-            </thead>
-            <tbody></tbody>
-        </table>
+      <div id="result-toggle">▲ Show Results</div>
+      <h3>AZA Zoos (within 500 mi)</h3>
+      <table id="aza-table">
+        <thead>
+          <tr>
+            <th>Make Origin</th>
+            <th>Name</th>
+            <th>City</th>
+            <th>State</th>
+            <th>Drive Time (min)</th>
+            <th>Distance (mi)</th>
+            <th>Visited</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
     </div>
 
     <script>
-        var currentUser = null;
-        var USER_ID = null;
+      var currentUser = null;
+      var USER_ID = null;
 
-        // --- Supabase setup ---
-        const supabase = window.supabase.createClient(
-            SUPABASE_URL,
-            SUPABASE_ANON_KEY
-        );
+      // --- Supabase setup ---
+      const supabase = window.supabase.createClient(
+        SUPABASE_URL,
+        SUPABASE_ANON_KEY
+      );
 
-        const loginBtn = document.getElementById('login');
-        const logoutBtn = document.getElementById('logout');
-        const statusEl = document.getElementById('auth-status');
+      const loginBtn = document.getElementById('login');
+      const logoutBtn = document.getElementById('logout');
+      const statusEl = document.getElementById('auth-status');
 
-        loginBtn.addEventListener('click', async() => {
-            const {
-                error
-            } = await supabase.auth.signInWithOAuth({
-                provider: 'github',
-                options: {
-                    redirectTo: window.location.href,
-                    auth_params: {
-                        prompt: 'select_account'
-                    }
-                }
-            });
-            if (error) console.error('Login error:', error);
-        });
-
-        logoutBtn.addEventListener('click', async function() {
-            await supabase.auth.signOut();
-        });
-
-        supabase.auth.onAuthStateChange(function(event, session) {
-            if (
-                (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') &&
-                window.location.hash.includes('access_token')
-            ) {
-                const baseUrl = window.location.href.split('#')[0];
-                window.history.replaceState({}, document.title, baseUrl);
+      loginBtn.addEventListener('click', async () => {
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: 'github',
+          options: {
+            redirectTo: window.location.href,
+            auth_params: {
+              prompt: 'select_account'
             }
-
-            if (session && session.user) {
-                currentUser = session.user;
-                USER_ID = currentUser.id;
-                console.log('Logged in as:', USER_ID);
-                if (typeof loadVisited === 'function') {
-                    loadVisited();
-                }
-            } else {
-                currentUser = null;
-                USER_ID = null;
-                if (typeof visitedAZAs !== 'undefined') {
-                    visitedAZAs = new Set();
-                }
-            }
-
-            const loggedIn = currentUser !== null;
-            loginBtn.style.display = loggedIn ? 'none' : 'inline-block';
-            logoutBtn.style.display = loggedIn ? 'inline-block' : 'none';
-            statusEl.textContent = loggedIn ?
-                'Logged in as ' + currentUser.user_metadata.user_name :
-                'Not logged in';
+          }
         });
+        if (error) console.error('Login error:', error);
+      });
 
-        // --- Map + search setup ---
-        mapboxgl.accessToken = MAPBOX_TOKEN;
-        const map = new mapboxgl.Map({
-            container: 'map',
-            style: 'mapbox://styles/ericschall/clvvt5o32098a01nucx668i03',
-            center: [-103.59, 40.67],
-            zoom: 3
-        });
+      logoutBtn.addEventListener('click', async function () {
+        await supabase.auth.signOut();
+      });
 
-        const searchBox = new MapboxSearchBox();
-        searchBox.accessToken = mapboxgl.accessToken;
-
-        searchBox.options = {
-            language: 'en',
-            country: 'us',
-            types: ['place', 'region'],
-            proximity: [-98.5, 39.5],
-            limit: 5
-        };
-
-        document.getElementById('search-box').appendChild(searchBox);
-
-        let marker = null;
-        let popup = null;
-        let originLng = null;
-        let originLat = null;
-        const routeLayerId = 'route-line';
-        let visitedAZAs = new Set();
-
-        const resultPanel = document.getElementById('result-panel');
-        const resultToggle = document.getElementById('result-toggle');
-
-        resultToggle.addEventListener('click', function() {
-            const isOpen = resultPanel.classList.contains('open');
-            if (isOpen) {
-                resultPanel.classList.remove('open');
-                resultToggle.textContent = '▲ Show Results';
-            } else {
-                resultPanel.classList.add('open');
-                resultToggle.textContent = '▼ Hide Results';
-            }
-        });
-
-        function openDrawer() {
-            const isOpen = resultPanel.classList.contains('open');
-            if (!isOpen) {
-                resultPanel.classList.add('open');
-                resultToggle.textContent = '▼ Hide Results';
-            }
+      supabase.auth.onAuthStateChange(function (event, session) {
+        if (
+          (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') &&
+          window.location.hash.includes('access_token')
+        ) {
+          const baseUrl = window.location.href.split('#')[0];
+          window.history.replaceState({}, document.title, baseUrl);
         }
 
-        function closeDrawer() {
-            const isOpen = resultPanel.classList.contains('open');
-            if (isOpen) {
-                resultPanel.classList.remove('open');
-                resultToggle.textContent = '▲ Show Results';
-            }
+        if (session && session.user) {
+          currentUser = session.user;
+          USER_ID = currentUser.id;
+          console.log('Logged in as:', USER_ID);
+          if (typeof loadVisited === 'function') {
+            loadVisited();
+          }
+        } else {
+          currentUser = null;
+          USER_ID = null;
+          if (typeof visitedAZAs !== 'undefined') {
+            visitedAZAs = new Set();
+          }
         }
 
-        // --- Search handler ---
-        let lastSearchCoords = null;
+        const loggedIn = currentUser !== null;
+        loginBtn.style.display = loggedIn ? 'none' : 'inline-block';
+        logoutBtn.style.display = loggedIn ? 'inline-block' : 'none';
+        statusEl.textContent = loggedIn
+          ? 'Logged in as ' + currentUser.user_metadata.user_name
+          : 'Not logged in';
+      });
 
-        searchBox.addEventListener('retrieve', async function(e) {
-            let feature = null;
-            if (
-                e &&
-                e.detail &&
-                e.detail.features &&
-                e.detail.features.length > 0
-            ) {
-                feature = e.detail.features[0];
-            }
-            if (!feature) {
-                console.warn('No valid location selected');
-                return;
-            }
+      // --- Map + search setup ---
+      mapboxgl.accessToken = MAPBOX_TOKEN;
+      const map = new mapboxgl.Map({
+        container: 'map',
+        style: 'mapbox://styles/ericschall/clvvt5o32098a01nucx668i03',
+        center: [-103.59, 40.67],
+        zoom: 3
+      });
 
-            const [lng, lat] = feature.geometry.coordinates;
-            const rounded = [Number(lng.toFixed(4)), Number(lat.toFixed(4))];
+      const searchBox = new MapboxSearchBox();
+      searchBox.accessToken = mapboxgl.accessToken;
 
-            if (
-                lastSearchCoords &&
-                rounded[0] === lastSearchCoords[0] &&
-                rounded[1] === lastSearchCoords[1]
-            ) {
-                console.log('Ignoring duplicate searchBox retrieve event');
-                return;
-            }
+      searchBox.options = {
+        language: 'en',
+        country: 'us',
+        types: ['place', 'region'],
+        proximity: [-98.5, 39.5],
+        limit: 5
+      };
 
-            lastSearchCoords = rounded;
+      document.getElementById('search-box').appendChild(searchBox);
 
-            console.log(`Selected: ${feature.properties?.name} → ${lat}, ${lng}`);
-            originLng = lng;
-            originLat = lat;
+      let marker = null;
+      let popup = null;
+      let originLng = null;
+      let originLat = null;
+      const routeLayerId = 'route-line';
+      let visitedAZAs = new Set();
 
-            if (marker) {
-                marker.remove();
-            }
-            const newMarker = new mapboxgl.Marker({
-                color: '#FF5E00'
-            });
-            newMarker.setLngLat([lng, lat]);
-            newMarker.addTo(map);
-            marker = newMarker;
+      const resultPanel = document.getElementById('result-panel');
+      const resultToggle = document.getElementById('result-toggle');
 
-            map.flyTo({
-                center: [lng, lat],
-                zoom: 8
-            });
+      resultToggle.addEventListener('click', function () {
+        const isOpen = resultPanel.classList.contains('open');
+        if (isOpen) {
+          resultPanel.classList.remove('open');
+          resultToggle.textContent = '▲ Show Results';
+        } else {
+          resultPanel.classList.add('open');
+          resultToggle.textContent = '▼ Hide Results';
+        }
+      });
 
-            const info = await identifyLocation(lng, lat);
-            console.log('Location info:', info);
+      function openDrawer() {
+        const isOpen = resultPanel.classList.contains('open');
+        if (!isOpen) {
+          resultPanel.classList.add('open');
+          resultToggle.textContent = '▼ Hide Results';
+        }
+      }
 
-            buildUAPopup(info, lng, lat);
+      function closeDrawer() {
+        const isOpen = resultPanel.classList.contains('open');
+        if (isOpen) {
+          resultPanel.classList.remove('open');
+          resultToggle.textContent = '▲ Show Results';
+        }
+      }
 
-            await loadVisited();
-            await fetchAZA(lat, lng);
+      // --- Search handler ---
+      let lastSearchCoords = null;
+
+      searchBox.addEventListener('retrieve', async function (e) {
+        let feature = null;
+        if (
+          e &&
+          e.detail &&
+          e.detail.features &&
+          e.detail.features.length > 0
+        ) {
+          feature = e.detail.features[0];
+        }
+        if (!feature) {
+          console.warn('No valid location selected');
+          return;
+        }
+
+        const [lng, lat] = feature.geometry.coordinates;
+        const rounded = [Number(lng.toFixed(4)), Number(lat.toFixed(4))];
+
+        if (
+          lastSearchCoords &&
+          rounded[0] === lastSearchCoords[0] &&
+          rounded[1] === lastSearchCoords[1]
+        ) {
+          console.log('Ignoring duplicate searchBox retrieve event');
+          return;
+        }
+
+        lastSearchCoords = rounded;
+
+        console.log(`Selected: ${feature.properties?.name} → ${lat}, ${lng}`);
+        originLng = lng;
+        originLat = lat;
+
+        if (marker) {
+          marker.remove();
+        }
+        const newMarker = new mapboxgl.Marker({
+          color: '#FF5E00'
+        });
+        newMarker.setLngLat([lng, lat]);
+        newMarker.addTo(map);
+        marker = newMarker;
+
+        map.flyTo({
+          center: [lng, lat],
+          zoom: 8
         });
 
-        async function identifyLocation(lng, lat) {
-            // --- IDENTIFY LOCATION ---
+        const info = await identifyLocation(lng, lat);
+        console.log('Location info:', info);
 
-            try {
-                const res = await fetch(SUPABASE_IDENTIFY_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        lng,
-                        lat
-                    })
-                });
-                const info = await res.json();
-                return info;
-            } catch (err) {
-                console.error('Identify call failed:', err);
-                return null;
-            }
+        buildUAPopup(info, lng, lat);
+
+        await loadVisited();
+        await fetchAZA(lat, lng);
+      });
+
+      async function identifyLocation(lng, lat) {
+        // --- IDENTIFY LOCATION ---
+
+        try {
+          const res = await fetch(SUPABASE_IDENTIFY_URL, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              lng,
+              lat
+            })
+          });
+          const info = await res.json();
+          return info;
+        } catch (err) {
+          console.error('Identify call failed:', err);
+          return null;
         }
+      }
     </script>
-</body>
-
+  </body>
 </html>

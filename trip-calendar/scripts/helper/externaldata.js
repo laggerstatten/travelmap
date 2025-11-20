@@ -1,24 +1,25 @@
 async function getRouteInfo(origin, destination) {
-    const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${origin.coordinates[0]},${origin.coordinates[1]};${destination.coordinates[0]},${destination.coordinates[1]}?geometries=geojson&overview=full&access_token=${mapboxgl.accessToken}`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error("Directions API request failed");
-    const data = await res.json();
+  const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${origin.coordinates[0]},${origin.coordinates[1]};${destination.coordinates[0]},${destination.coordinates[1]}?geometries=geojson&overview=full&access_token=${mapboxgl.accessToken}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Directions API request failed');
+  const data = await res.json();
 
-    const route = data.routes ?.[0];
-    if (!route) return null;
+  const route = data.routes?.[0];
+  if (!route) return null;
 
-    return {
-        geometry: route.geometry, // GeoJSON line
-        distance_mi: route.distance / 1609.34,
-        duration_min: route.duration / 60,
-    };
+  return {
+    geometry: route.geometry, // GeoJSON line
+    distance_mi: route.distance / 1609.34,
+    duration_min: route.duration / 60
+  };
 }
 
 async function getTimeZone(coordinates) {
-    const url = `https://api.timezonedb.com/v2.1/get-time-zone?key=${TIMEZONE_TOKEN}&format=json&by=position&lat=${coordinates[1]}&lng=${coordinates[0]}`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error("Timezone API failed");
-    const data = await res.json();
-    if (data.status !== "OK") throw new Error("Invalid response: " + data.message);
-    return data.zoneName; // e.g. "America/New_York"
+  const url = `https://api.timezonedb.com/v2.1/get-time-zone?key=${TIMEZONE_TOKEN}&format=json&by=position&lat=${coordinates[1]}&lng=${coordinates[0]}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Timezone API failed');
+  const data = await res.json();
+  if (data.status !== 'OK')
+    throw new Error('Invalid response: ' + data.message);
+  return data.zoneName; // e.g. "America/New_York"
 }

@@ -10,8 +10,7 @@ function renderCard(seg, segments) {
     .map((k) => seg[k]?.lock === 'hard')
     .filter(Boolean).length;
   if (lockedCount >= 2) card.classList.add('constrained');
-  if (!seg.type === 'stop')
-    card.classList.add('constrained');
+  if (!seg.type === 'stop') card.classList.add('constrained');
 
   let title = seg.name || '(untitled)';
   let meta = '';
@@ -128,8 +127,8 @@ function renderCard(seg, segments) {
       // Drive
       // ───────────────────────────────
       const startStr = showDate(seg.start?.utc, seg.originTz);
-      const endStr = showDate(seg.end?.utc, seg.destinationTz);      
-      title = segLabel(seg, segments)
+      const endStr = showDate(seg.end?.utc, seg.destinationTz);
+      title = segLabel(seg, segments);
       let durText = seg.durationMin ? formatDurationMin(seg.durationMin) : '';
       meta = `${startStr}<br>${seg.distanceMi} mi • ${durText}<br>${endStr}`;
       card.innerHTML = `
@@ -142,7 +141,8 @@ function renderCard(seg, segments) {
       break;
 
     case 'slack': {
-      const hours = seg.duration?.val?.toFixed(2) ?? (seg.minutes / 60).toFixed(2);
+      const hours =
+        seg.duration?.val?.toFixed(2) ?? (seg.minutes / 60).toFixed(2);
       const startStr = fmtDate(seg.start?.utc, seg.slackInfo.tz);
       const endStr = fmtDate(seg.end?.utc, seg.slackInfo.tz);
 
@@ -155,12 +155,21 @@ function renderCard(seg, segments) {
     }
 
     case 'overlap': {
-      const hours = seg.duration?.val?.toFixed(2) ?? (seg.minutes / 60).toFixed(2);
+      const hours =
+        seg.duration?.val?.toFixed(2) ?? (seg.minutes / 60).toFixed(2);
       const startStr = fmtDate(seg.start?.utc, seg.overlapInfo.tz);
-      const endStr   = fmtDate(seg.end?.utc, seg.overlapInfo.tz);
+      const endStr = fmtDate(seg.end?.utc, seg.overlapInfo.tz);
 
-      const leftTxt  = seg.overlapInfo.leftAnchor  ? `${seg.overlapInfo.leftAnchor.seg.name || '(unnamed)'} • ${seg.overlapInfo.leftAnchor.kind} ${lockIcons(seg.overlapInfo.leftAnchor.field)}` : '—';
-      const rightTxt = seg.overlapInfo.rightAnchor ? `${seg.overlapInfo.rightAnchor.seg.name || '(unnamed)'} • ${seg.overlapInfo.rightAnchor.kind} ${lockIcons(seg.overlapInfo.rightAnchor.field)}`: '—';
+      const leftTxt = seg.overlapInfo.leftAnchor
+        ? `${seg.overlapInfo.leftAnchor.seg.name || '(unnamed)'} • ${
+            seg.overlapInfo.leftAnchor.kind
+          } ${lockIcons(seg.overlapInfo.leftAnchor.field)}`
+        : '—';
+      const rightTxt = seg.overlapInfo.rightAnchor
+        ? `${seg.overlapInfo.rightAnchor.seg.name || '(unnamed)'} • ${
+            seg.overlapInfo.rightAnchor.kind
+          } ${lockIcons(seg.overlapInfo.rightAnchor.field)}`
+        : '—';
 
       card.innerHTML = `
         <div class="title">Overlap (${hours}h)</div>
@@ -173,7 +182,6 @@ function renderCard(seg, segments) {
       `;
       break;
     }
-
   }
 
   if (card.querySelector('.card-footer')) {
@@ -188,7 +196,7 @@ function renderCard(seg, segments) {
 
     // Summarize emitters (for banner text)
     const details = seg.overlapEmitters
-      .map(e => {
+      .map((e) => {
         const mins = e.overlapMinutes?.toFixed?.(0) ?? '?';
         const hrs = (e.overlapMinutes / 60).toFixed(2);
         return `${e.role} (${mins} min / ${hrs} h via ${e.affectedField})`;
@@ -208,12 +216,14 @@ function renderCard(seg, segments) {
 
     // Collect all dynamic options based on each emitter
     const allOptions = [
-      ...seg.overlapEmitters.flatMap(e => getOverlapResolutionOptions(seg, e.role)),
+      ...seg.overlapEmitters.flatMap((e) =>
+        getOverlapResolutionOptions(seg, e.role)
+      ),
       ...getUnlockAndQueueOptions(seg)
     ];
 
     // Render buttons dynamically
-    allOptions.forEach(opt => {
+    allOptions.forEach((opt) => {
       const btn = document.createElement('button');
       btn.textContent = opt.label;
       btn.classList.add('resolve-btn', `resolve-${opt.action}`);
@@ -224,15 +234,9 @@ function renderCard(seg, segments) {
     });
 
     card.appendChild(indicator);
-
-
   }
 
   if (seg.openEditor && !card.querySelector('.oncard-editor'))
     buildOnCardEditor(seg, card);
   return card;
 }
-
-
-
-

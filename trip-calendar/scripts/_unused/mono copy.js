@@ -44,8 +44,6 @@ function nudgeEvent(event, minutes, cascade = false) {
   console.log(`🕓 Nudged ${event.name} by ${minutes} min (cascade=${cascade})`);
 }
 
-
-
 /* ===============================
    Fill FORWARD (UTC) — Lock-Aware
    =============================== */
@@ -53,8 +51,8 @@ function fillForward(fromSegment) {
   const idx = segments.findIndex((ev) => ev.id === fromSegment.id);
   if (idx === -1) return;
 
-  const fromStart = fromSegment.start ?.utc;
-  const fromEnd = fromSegment.end ?.utc;
+  const fromStart = fromSegment.start?.utc;
+  const fromEnd = fromSegment.end?.utc;
   let cursor = fromEnd || fromStart;
   if (!cursor) return;
 
@@ -64,7 +62,7 @@ function fillForward(fromSegment) {
     // --- normalize nested objects ---
     seg.start ??= { utc: '', lock: 'unlocked' };
     seg.end ??= { utc: '', lock: 'unlocked' };
-    seg.duration??= { val: null, lock: 'unlocked' };
+    seg.duration ??= { val: null, lock: 'unlocked' };
 
     // --- Skip slack / overlap segments ---
     if (seg.type === 'slack' || seg.type === 'overlap') continue;
@@ -110,8 +108,8 @@ function fillBackward(fromSegment) {
   const idx = segments.findIndex((ev) => ev.id === fromSegment.id);
   if (idx === -1) return;
 
-  const fromStart = fromSegment.start ?.utc;
-  const fromEnd = fromSegment.end ?.utc;
+  const fromStart = fromSegment.start?.utc;
+  const fromEnd = fromSegment.end?.utc;
   let cursor = fromStart || fromEnd;
   if (!cursor) return;
 
@@ -157,7 +155,3 @@ function fillBackward(fromSegment) {
   save();
   renderTimeline();
 }
-
-
-
-
