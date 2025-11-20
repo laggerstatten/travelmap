@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>D3 Hourly Temperature Heatmap + Sunlight Overlay</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/luxon@3.4.4/build/global/luxon.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/suncalc/1.9.0/suncalc.min.js"></script>
+
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+      }
+
+      .cell-temp {
+        stroke: none;
+      }
+      .cell-insolation {
+        stroke: none;
+        opacity: 0.35;
+      }
+      .ins-night {
+        fill: #000;
+        opacity: 0.35;
+      }
+      .ins-twilight {
+        fill: #888;
+        opacity: 0.25;
+      }
+      .ins-day {
+        fill: transparent;
+      }
+
+      .tooltip {
+        position: absolute;
+        background: rgba(0, 0, 0, 0.75);
+        color: white;
+        padding: 5px 8px;
+        border-radius: 3px;
+        font-size: 11px;
+        pointer-events: none;
+        display: none;
+      }
+    </style>
+  </head>
+
+  <body>
+    <h2>Find Nearest Hourly Normals Stations</h2>
+
+    <label
+      >Lat:
+      <input id="lat" type="number" value="29.5" step="0.0001" />
+    </label>
+
+    <label
+      >Lon:
+      <input id="lon" type="number" value="-98.5" step="0.0001" />
+    </label>
+
+    <button id="search">Find Stations</button>
+
+    <div id="results" style="margin-top: 15px"></div>
+
+    <h2>Hourly Temperature Heatmap</h2>
+    <div id="chart"></div>
+    <div id="tooltip" class="tooltip"></div>
+
+    <script>
+      // =====================================================================
+      // GLOBALS
+      // =====================================================================
+
+      let stationInventory = [];
+      const TIMEZONE_TOKEN = '9QEU1A5823HR';
+      const width = 1100;
+      const height = 500;
+      const margin = { top: 30, right: 20, bottom: 50, left: 50 };
+
+      const tooltip = d3.select('#tooltip');
+
+      // =====================================================================
+      // LOAD INVENTORY
+      // =====================================================================
+
+      async function loadInventory() {
+        const url =
+          'https://www.ncei.noaa.gov/data/normals-hourly/2006-2020/doc/hly_inventory_15yr.txt';
+
+        const text = await fetch(url).then((r) => r.text());
+
+        const lines = text.trim().split('\n');
+
+        stationInventory = lines
+          .map((line) => {
+            const parts = line.trim().split(/\s+/);
+
+            const station = parts[0];
+            const lat = parseFloat(parts[1]);
+            const lon = parseFloat(parts[2]);
+            const elev = parseFloat(parts[3]);
+
+            const country = parts[4];
+
+            // Remaining tokens after country
+            const rest = parts.slice(5);
+
+            // Flags are at end: either GSN, HCN, WBAN, or numbers
+            // Find where flags likely begin
+            let flagIndex = rest.length;
+            for (let i = rest.length - 1; i >= 0; i--) {
+              if (
+                rest[i].match(/^[0-9]+$/) || // WBAN numbers
+                rest[i].match(/^(GSN|HCN|R|SOD)$/) // flag words
+              ) {
+                flagIndex = i;
+              } else {
+                break;
+              }
+            }
+
+            const nameTokens = rest.slice(0, flagIndex);
+            const name = nameTokens.join(' ');
+
+            return {
+              STATION: station,
+              LAT: lat,
+              LON: lon,
+              ELEV: elev,
+              COUNTRY: country,
+              NAME: name
+            };
+          })
+          .filter(
+            (r) =>
+              !isNaN(r.LAT) && !isNaN(r.LON) && typeof r.STATION === 'string'
+          );
+      }
+
+      // =====================================================================
+      // FIND NEAREST STATIONS
+      // =====================================================================
+
+      function haversine(lat1, lon1, lat2, lon2) {
+        const R = 6371;
+        const toRad = (d) => (d * Math.PI) / 180;
+        const dLat = toRad(lat2 - lat1);
+        const dLon = toRad(lon2 - lon1);
+        const a =
+          Math.sin(dLat / 2) ** 2 +
+          Math.cos(toRad(lat1)) *
+            Math.cos(toRad(lat2)) *
+            Math.sin(dLon / 2) ** 2;
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      }
+
+      async function getTimeZone(coordinates) {
+        const url = `https://api.timezonedb.com/v2.1/get-time-zone?key=${TIMEZONE_TOKEN}&format=json&by=position&lat=${coordinates[1]}&lng=${coordinates[0]}`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('Timezone API failed');
+        const data = await res.json();
+        if (data.status !== 'OK')
+          throw new Error('Invalid response: ' + data.message);
+        return data.zoneName; // e.g. "America/New_York"
+      }
+
+      // New function to handle the shift and merge
+      function processData(temps, insol, timeZone) {
+        const tempsMap = new Map();
+
+        // 1. Shift Temperature Data from LST to LAT
+        temps.forEach((d) => {
+          const date = luxon.DateTime.fromObject(
+            {
+              year: 2001,
+              month: d.month,
+              day: d.day
+            },
+            { zone: timeZone }
+          );
+
+          let finalHour = d.hour;
+
+          // Check if the hour falls within the DST period for that date
+          if (date.isInDST) {
+            // Shift LST hour forward by 1 to get the LAT hour
+            finalHour = (d.hour + 1) % 24;
+          }
+
+          // Create a unique key for merging: DOY + Hour (now in LAT)
+          const key = `${d.doy}-${finalHour}`;
+          tempsMap.set(key, d);
+        });
+
+        // 2. Merge with Insolation Data (which is already in LAT)
+        const mergedData = insol.map((d) => {
+          const key = `${d.doy}-${d.hour}`; // Insolation hour is already LAT
+          const tempRecord = tempsMap.get(key);
+
+          if (tempRecord) {
+            return {
+              doy: d.doy,
+              hour: d.hour,
+              phase: d.phase,
+              // Use the temperature from the shifted record
+              temp: tempRecord.temp
+            };
+          }
+          // Handle cases where temperature data is missing (e.g., leap day)
+          return {
+            doy: d.doy,
+            hour: d.hour,
+            phase: d.phase,
+            temp: NaN
+          };
+        });
+
+        return mergedData;
+      }
+
+      // ------------------------------------------------------------
+      // Generate insolation grid for a station
+      // Same logic as your Python Astral script
+      // ------------------------------------------------------------
+
+      async function generateInsolationGrid(lat, lon, timeZone) {
+        const result = [];
+        const year = 2001;
+
+        for (let doy = 1; doy <= 365; doy++) {
+          // 1. Create a Luxon DateTime for the start of the day in the local timezone (our date anchor)
+          const localDayStart = luxon.DateTime.fromObject(
+            { year, ordinal: doy },
+            { zone: timeZone }
+          ).startOf('day');
+
+          // 2. Use UTC Noon for SunCalc input (stable calculation)
+          const dateUTCNoon = localDayStart
+            .setZone('utc', { keepLocalTime: true })
+            .set({ hour: 12 });
+          const sunTimes = SunCalc.getTimes(dateUTCNoon.toJSDate(), lat, lon);
+
+          // 3. Convert Sun Times to local Luxon objects
+          // These contain the full date and time of the event
+          const dawn = luxon.DateTime.fromJSDate(sunTimes.dawn).setZone(
+            timeZone
+          );
+          const sunrise = luxon.DateTime.fromJSDate(sunTimes.sunrise).setZone(
+            timeZone
+          );
+          const sunset = luxon.DateTime.fromJSDate(sunTimes.sunset).setZone(
+            timeZone
+          );
+          const dusk = luxon.DateTime.fromJSDate(sunTimes.dusk).setZone(
+            timeZone
+          );
+
+          // 4. Loop through a synthetic 24-hour day
+          for (let hour = 0; hour < 24; hour++) {
+            // Synthetic local-hour timestamp (mimics Python's dawn.replace(hour=hour))
+            // This takes the DATE from localDayStart and replaces the TIME with the loop hour.
+            const t = localDayStart.set({ hour, minute: 0, second: 0 });
+
+            if (!t.isValid) continue;
+
+            let phase = 'night';
+            const tValue = t.valueOf();
+
+            // Comparison is against the absolute time of the events
+            if (tValue >= dawn.valueOf() && tValue < sunrise.valueOf()) {
+              phase = 'twilight';
+            } else if (
+              tValue >= sunrise.valueOf() &&
+              tValue < sunset.valueOf()
+            ) {
+              phase = 'day';
+            } else if (tValue >= sunset.valueOf() && tValue < dusk.valueOf()) {
+              phase = 'twilight';
+            }
+            // All other times are implicitly 'night' (before dawn or after dusk)
+
+            result.push({
+              doy,
+              month: localDayStart.month,
+              day: localDayStart.day,
+              hour,
+              phase,
+              datetime: t.toISO()
+            });
+          }
+        }
+
+        return result;
+      }
+
+      function nearestStations(lat, lon, n = 3) {
+        const scored = stationInventory.map((r) => ({
+          station: r.STATION,
+          name: r.NAME,
+          lat: r.LAT,
+          lon: r.LON,
+          elev: r.ELEVATION,
+          dist: haversine(lat, lon, r.LAT, r.LON)
+        }));
+
+        scored.sort((a, b) => a.dist - b.dist);
+        console.log(scored);
+        return scored.slice(0, n);
+      }
+
+      // =====================================================================
+      // LOAD HOURLY NORMALS CSV FOR SELECTED STATION
+      // =====================================================================
+
+      async function getHourlyNormals(stationId) {
+        const url = `https://www.ncei.noaa.gov/data/normals-hourly/2006-2020/access/${stationId}.csv`;
+
+        const csvText = await fetch(url).then((r) => r.text());
+
+        const parsed = Papa.parse(csvText, {
+          header: true,
+          dynamicTyping: true,
+          skipEmptyLines: true,
+          transformHeader: (h) => h.trim(),
+          transform: (v) =>
+            typeof v === 'string' ? v.trim().replace(/^"|"$/g, '') : v
+        });
+
+        const rows = parsed.data;
+
+        // filter out sentinel values
+        const cleaned = rows.filter(
+          (r) =>
+            r.day !== 99 &&
+            r.hour !== 99 &&
+            !isNaN(r.month) &&
+            !isNaN(r.day) &&
+            !isNaN(r.hour)
+        );
+
+        return cleaned.map((r) => {
+          const doy = luxon.DateTime.fromObject({
+            year: 2001,
+            month: r.month,
+            day: r.day
+          }).ordinal;
+
+          return {
+            // Data in LST (Local Standard Time) format
+            doy,
+            month: r.month, // Keep month/day for DST check later
+            day: r.day,
+            hour: r.hour,
+            temp: r['HLY-TEMP-NORMAL']
+          };
+        });
+      }
+
+      // =====================================================================
+      // HEATMAP RENDERER
+      // =====================================================================
+
+      // Temperature categories
+      function tempCategory(t) {
+        if (t < 15) return 'frigid';
+        if (t < 32) return 'freezing';
+        if (t < 45) return 'very cold';
+        if (t < 55) return 'cold';
+        if (t < 65) return 'cool';
+        if (t < 75) return 'comfortable';
+        if (t < 85) return 'warm';
+        if (t < 95) return 'hot';
+        return 'sweltering';
+      }
+
+      const catColor = {
+        frigid: '#6bb5d8',
+        freezing: '#9ccde2',
+        'very cold': '#a3d9a5',
+        cold: '#7cbc65',
+        cool: '#b0cc85',
+        comfortable: '#ecdca0',
+        warm: '#d59a7d',
+        hot: '#c25c48',
+        sweltering: '#9e3d32'
+      };
+
+      function renderHeatmap(mergedData) {
+        d3.select('#chart').html('');
+
+        // Set up domain ranges
+        const days = d3.range(1, 366);
+        const hours = d3.range(0, 24);
+
+        const x = d3
+          .scaleBand()
+          .domain(days)
+          .range([margin.left, width - margin.right]);
+
+        const y = d3
+          .scaleBand()
+          .domain(hours)
+          .range([margin.top, height - margin.bottom]);
+
+        const svg = d3
+          .select('#chart')
+          .append('svg')
+          .attr('width', width)
+          .attr('height', height);
+
+        // -----------------------
+        // TEMPERATURE HEATMAP
+        //------------------------
+        svg
+          .selectAll('.cell-temp')
+          .data(mergedData)
+          .join('rect')
+          .attr('class', 'cell-temp')
+          .attr('x', (d) => x(d.doy))
+          .attr('y', (d) => y(d.hour))
+          .attr('width', x.bandwidth())
+          .attr('height', y.bandwidth())
+          .attr('fill', (d) => {
+            if (isNaN(d.temp)) return '#444';
+            return catColor[tempCategory(d.temp)];
+          })
+          .on('mousemove', (event, d) => {
+            const cat = tempCategory(d.temp);
+            tooltip
+              .style('display', 'block')
+              .style('left', event.pageX + 12 + 'px')
+              .style('top', event.pageY + 12 + 'px')
+              .html(
+                `Day: ${d.doy}<br>
+                        Hour: ${d.hour}:00<br>
+                        Temp: ${d.temp?.toFixed(1)}°F<br>
+                        <b>${cat}</b>`
+              );
+          })
+          .on('mouseout', () => tooltip.style('display', 'none'));
+
+        // -----------------------
+        // INSOLATION OVERLAY
+        // -----------------------
+        svg
+          .selectAll('.cell-insolation')
+          .data(mergedData)
+          .join('rect')
+          .attr('class', 'cell-insolation')
+          .attr('x', (d) => x(d.doy))
+          .attr('y', (d) => y(d.hour))
+          .attr('width', x.bandwidth())
+          .attr('height', y.bandwidth())
+          .attr('class', (d) => {
+            if (d.phase === 'night') return 'cell-insolation ins-night';
+            if (d.phase === 'twilight') return 'cell-insolation ins-twilight';
+            return 'cell-insolation ins-day'; // transparent
+          });
+
+        // -----------------------------------
+        // DISCRETE LEGEND (now works correctly)
+        // -----------------------------------
+        const legend = svg
+          .append('g')
+          .attr('class', 'legend')
+          .attr('transform', `translate(${margin.left}, ${height - 20})`);
+
+        const categories = [
+          'frigid',
+          'freezing',
+          'very cold',
+          'cold',
+          'cool',
+          'comfortable',
+          'warm',
+          'hot',
+          'sweltering'
+        ];
+
+        const boxSize = 12;
+
+        categories.forEach((cat, i) => {
+          const g = legend
+            .append('g')
+            .attr('transform', `translate(${i * 95}, 0)`);
+
+          g.append('rect')
+            .attr('width', boxSize)
+            .attr('height', boxSize)
+            .attr('fill', catColor[cat])
+            .attr('stroke', '#333');
+
+          g.append('text')
+            .attr('x', boxSize + 4)
+            .attr('y', boxSize - 2)
+            .style('font-size', '10px')
+            .text(cat);
+        });
+
+        // -----------------------
+        // AXES
+        // -----------------------
+        const monthTicks = [
+          { doy: 1, label: 'Jan' },
+          { doy: 32, label: 'Feb' },
+          { doy: 60, label: 'Mar' },
+          { doy: 91, label: 'Apr' },
+          { doy: 121, label: 'May' },
+          { doy: 152, label: 'Jun' },
+          { doy: 182, label: 'Jul' },
+          { doy: 213, label: 'Aug' },
+          { doy: 244, label: 'Sep' },
+          { doy: 274, label: 'Oct' },
+          { doy: 305, label: 'Nov' },
+          { doy: 335, label: 'Dec' }
+        ];
+
+        svg
+          .append('g')
+          .attr('transform', `translate(0, ${height - margin.bottom})`)
+          .call(
+            d3
+              .axisBottom(x)
+              .tickValues(monthTicks.map((m) => m.doy))
+              .tickFormat((d, i) => monthTicks[i].label)
+          );
+
+        svg
+          .append('g')
+          .attr('transform', `translate(${margin.left}, 0)`)
+          .call(d3.axisLeft(y).tickValues([0, 6, 12, 18]));
+      }
+
+      // =====================================================================
+      // WIRES UP BUTTON
+      // =====================================================================
+
+      document.getElementById('search').onclick = async () => {
+        if (stationInventory.length === 0) await loadInventory();
+
+        const lat = parseFloat(document.getElementById('lat').value);
+        const lon = parseFloat(document.getElementById('lon').value);
+        console.log(lat);
+        const nearest = nearestStations(lat, lon);
+
+        document.getElementById('results').innerHTML = `
+          <h4>Nearest Stations</h4>
+          <ol>
+          ${nearest
+            .map(
+              (s) => `
+            <li>
+              <b>${s.station}</b> — ${s.name}<br>
+              Dist: ${s.dist.toFixed(1)} km<br>
+              <button onclick="loadStation('${s.station}')">
+                Load Heatmap
+              </button>
+            </li>
+          `
+            )
+            .join('')}
+          </ol>
+        `;
+      };
+
+      // When user clicks "Load Heatmap"
+      // Modified loadStation function
+      async function loadStation(stationId) {
+        const station = stationInventory.find((s) => s.STATION === stationId);
+
+        // Get time zone once
+        const tz = await getTimeZone([station.LON, station.LAT]);
+
+        // 1. Load data without shifting
+        const temps = await getHourlyNormals(stationId);
+
+        // 2. Generate solar data (already in LAT/DST-aware time)
+        const insol = await generateInsolationGrid(
+          station.LAT,
+          station.LON,
+          tz
+        );
+
+        // 3. Process, shift, and merge the data
+        const finalData = processData(temps, insol, tz);
+
+        // 4. Render the combined data
+        renderHeatmap(finalData, insol); // Pass the merged data set
+      }
+    </script>
+  </body>
+</html>

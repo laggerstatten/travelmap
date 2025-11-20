@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Highlight Attribute (Style-Embedded Tileset)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Mapbox GL -->
+    <link
+      href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css"
+      rel="stylesheet"
+    />
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+
+    <!-- Turf for fitBounds -->
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+
+    <style>
+      body {
+        margin: 0;
+        font-family: sans-serif;
+      }
+      #controls {
+        padding: 8px;
+        background: #fafafa;
+        border-bottom: 1px solid #ccc;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      #map {
+        height: calc(100vh - 50px);
+      }
+      input {
+        padding: 6px;
+        font-size: 14px;
+      }
+      button {
+        padding: 6px 12px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <!-- Simple Header -->
+    <div id="controls">
+      <input id="attrInput" placeholder="Enter attribute…" />
+      <button id="goBtn">Highlight</button>
+      <div id="status"></div>
+    </div>
+
+    <!-- Map Container -->
+    <div id="map"></div>
+
+    <script>
+      // ----------------------------------------------------
+      // REQUIRED: Fill these in based on your style JSON
+      // ----------------------------------------------------
+      const MAPBOX_TOKEN =
+        'pk.eyJ1IjoiZXJpY3NjaGFsbCIsImEiOiJjbDBsbmpvNHYwY3JhM2N0a2Ribm1rZ2k5In0.XY-ziSu8DLnv5UIstoSGRQ';
+      const MAPBOX_STYLE_URL =
+        'mapbox://styles/ericschall/clvx84fcd070101ph21dfavmf';
+
+      const SOURCE_ID = 'composite'; // e.g., "mytileset-source"
+      const SOURCE_LAYER = 'tl_2021_us_uac10-5e7qe2'; // e.g., "counties"
+      const FIELD_NAME = 'GEOID10'; // e.g., "FIPS"
+      // ----------------------------------------------------
+
+      mapboxgl.accessToken = MAPBOX_TOKEN;
+
+      const map = new mapboxgl.Map({
+        container: 'map',
+        style: MAPBOX_STYLE_URL,
+        center: [-98, 38],
+        zoom: 4
+      });
+
+      map.on('load', () => {
+        // Create highlight layer referencing existing source
+        map.addLayer({
+          id: 'highlight',
+          type: 'line',
+          source: SOURCE_ID,
+          'source-layer': SOURCE_LAYER,
+          paint: {
+            'line-color': '#ff0000',
+            'line-width': 4
+          },
+          filter: ['==', ['get', FIELD_NAME], '__no_match__']
+        });
+
+        map.on('click', (e) => {
+          const feats = map.queryRenderedFeatures(e.point, {
+            layers: ['tl-2021-us-uac10-5e7qe2']
+          });
+
+          console.log('Clicked features:', feats);
+        });
+
+        document.getElementById('goBtn').onclick = () => {
+          const status = document.getElementById('status');
+          const raw = document.getElementById('attrInput').value.trim();
+          if (!raw) return;
+
+          const value = isNaN(raw) ? raw : Number(raw);
+
+          // Update filter
+          //map.setFilter('highlight', ['==', ['get', FIELD_NAME], value]);
+          map.setFilter("highlight", ["==", ["get", FIELD_NAME], raw]);
+
+
+          // Query visible features to zoom to them
+          const matches = map.queryRenderedFeatures({ layers: ['highlight'] });
+
+          if (!matches.length) {
+            status.textContent = 'No match found.';
+            return;
+          }
+
+          status.textContent = `${matches.length} match(es)`;
+
+          // Fit to result
+          const fc = {
+            type: 'FeatureCollection',
+            features: matches.map((f) => ({
+              type: 'Feature',
+              geometry: f.geometry,
+              properties: f.properties
+            }))
+          };
+
+          const bbox = turf.bbox(fc);
+          map.fitBounds(bbox, { padding: 40 });
+        };
+      });
+    </script>
+  </body>
+</html>
