@@ -9,7 +9,7 @@ async function insertQueuedSegment(seg, card) {
   segs = await runPipeline(segs); // test
 
   saveSegments(segs);
-  renderTimeline(segs);
+  renderTimeline(segs); //TODO POI table update?
   renderMap(segs);
 }
 
@@ -43,6 +43,6 @@ async function movePlacedStopToQueue(seg) {
   newList = await runPipeline(newList); // test
 
   saveSegments(newList);
-  renderTimeline(newList);
+  renderTimeline(newList); //TODO POI table update?
   renderMap(newList);
 }

@@ -78,7 +78,7 @@ function handleEditorSubmit(editor, seg, card) {
 
     // do validation functions need to auto run here?
     // list = await runPipeline(list); // test
-    renderTimeline(syncGlobal());
+    renderTimeline(syncGlobal()); //TODO POI table update?
     renderMap(syncGlobal());
     card.classList.remove('editing');
 

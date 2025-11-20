@@ -197,7 +197,7 @@ async function reorderFromDOM(calendar, movedId) {
           console.warn(
             'Blocked: cannot drag stop across slack on the far side of its own outgoing drive.'
           );
-          renderTimeline(list);
+          renderTimeline(list); //TODO POI table update
           renderMap(list);
           return;
         }
@@ -243,7 +243,7 @@ async function reorderFromDOM(calendar, movedId) {
           console.warn(
             'Blocked: cannot drag stop across slack on the far side of its own incoming drive.'
           );
-          renderTimeline(list);
+          renderTimeline(list); //TODO POI table update
           renderMap(list);
           return;
         }
@@ -262,7 +262,7 @@ async function reorderFromDOM(calendar, movedId) {
       console.warn(
         'Blocked: cannot place stop between its origin and its incoming drive.'
       );
-      renderTimeline(list);
+      renderTimeline(list); //TODO POI table update
       renderMap(list);
       return;
     }
@@ -279,7 +279,7 @@ async function reorderFromDOM(calendar, movedId) {
       console.warn(
         'Blocked: cannot place stop between its outgoing drive and its destination.'
       );
-      renderTimeline(list);
+      renderTimeline(list); //TODO POI table update
       renderMap(list);
       return;
     }
@@ -404,7 +404,7 @@ async function movePlacedStopById(stopId, beforeId) {
   console.log('========== END MOVE ==========');
 
   saveSegments(list);
-  renderTimeline(list);
+  renderTimeline(list); //TODO POI table update
   renderMap(list);
 
   return list;

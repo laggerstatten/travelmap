@@ -53,7 +53,7 @@ async function rerouteDrive(seg) {
 
   // Save + redraw everything
   saveSegments(list);
-  renderTimeline(list);
+  renderTimeline(list); //TODO POI table update?
   renderMap(list);
 }
 

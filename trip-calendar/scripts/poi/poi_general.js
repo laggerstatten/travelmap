@@ -1,11 +1,9 @@
-let azaMarkers = [];
+let poiMarkers = [];
 
 function updateStopDropdown(list) {
-  //console.log(list);
   const select = document.getElementById('poi-stop-select');
   select.innerHTML = '';
   let segments = [...list];
-  //console.log(segments);
   segments.forEach((seg) => {
     if (
       seg.type === 'stop' ||
@@ -27,22 +25,22 @@ async function runPOISearch() {
 
   if (mode === 'center') {
     const c = mapInstance.getCenter();
-    fetchAZA(c.lat, c.lng);
+    fetchPOI(c.lat, c.lng);
   } else if (mode === 'stop') {
     const stopId = document.getElementById('poi-stop-select').value;
     const seg = loadSegments().find((s) => s.id === stopId);
-    fetchAZA(seg.coordinates[1], seg.coordinates[0]);
+    fetchPOI(seg.coordinates[1], seg.coordinates[0]);
   } else if (mode === 'route') {
     const fullRoute = getFullRouteLineString(loadSegments());
-    fetchAZARoute(fullRoute);
+    fetchPOIRoute(fullRoute);
   }
 }
 
 async function loadVisited() {
   if (!USER_ID) {
     console.warn('No logged-in user — skipping loadVisited');
-    visitedAZAs = new Set();
-    return visitedAZAs;
+    visitedPOIs = new Set();
+    return visitedPOIs;
   }
 
   try {
@@ -55,34 +53,34 @@ async function loadVisited() {
     var json = await res.json();
 
     if (json && json.success && Array.isArray(json.results)) {
-      visitedAZAs = new Set(
+      visitedPOIs = new Set(
         json.results.map(function (r) {
-          return r.aza_id;
+          return r.aza_id; //FIXME confirm field name
         })
       );
     } else {
       console.warn('Unexpected response from get-user-visits:', json);
-      visitedAZAs = new Set();
+      visitedPOIs = new Set();
     }
 
-    console.log('Visited zoos:', visitedAZAs);
-    return visitedAZAs;
+    console.log('Visited POIs:', visitedPOIs);
+    return visitedPOIs;
   } catch (err) {
     console.error('Failed to load visited:', err);
-    visitedAZAs = new Set();
-    return visitedAZAs;
+    visitedPOIs = new Set();
+    return visitedPOIs;
   }
 }
 
 async function markVisited(aza_id) {
   // --- Mark zoo as visited ---
   try {
-    const res = await fetch(UPDATE_AZA_VISIT_URL, {
+    const res = await fetch(UPDATE_POI_VISIT_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
+      body: JSON.stringify({ //TODO add more parameters
         user_id: USER_ID,
         aza_id
       })
@@ -94,62 +92,55 @@ async function markVisited(aza_id) {
   }
 }
 
-async function fetchAZA(lat, lng) {
-  // --- FETCH AZA WITHIN 500 MILES ---
+async function fetchPOI(lat, lng) {
+  // --- FETCH POI WITHIN 500 MILES ---
   try {
-    const res = await fetch(GET_NEAR_AZA_URL, {
+    const res = await fetch(GET_NEAR_POI_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
+      body: JSON.stringify({ //TODO add more parameters
         lat: lat,
         lng: lng,
         radius_miles: 500
       })
     });
     const json = await res.json();
-    console.log('AZA within 500 miles:', json);
     const resultList = json.results || [];
 
-    fetchAZAMatrix(resultList, lng, lat);
+    fetchPOIMatrix(resultList, lng, lat);
 
-    //updateAZATable(resultList || []);
   } catch (err) {
-    console.error('Error retrieving AZA or drive times:', err);
+    console.error('Error retrieving POI or drive times:', err);
   }
 }
 
-async function fetchAZARoute(lineString) {
+async function fetchPOIRoute(lineString) {
   // note the smaller search radius
-  // --- FETCH AZA WITHIN 200 MILES ---
+  // --- FETCH POI WITHIN 200 MILES ---
   try {
-    const res = await fetch(GET_NEAR_AZA_URL, {
+    const res = await fetch(GET_NEAR_POI_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
+      body: JSON.stringify({ //TODO add more parameters
         lineString: lineString,
         radius_miles: 200
       })
     });
     const json = await res.json();
-    console.log('AZA within 500 miles:', json);
     const resultList = json.results || [];
-
-    //fetchAZAMatrix(resultList, lng, lat);
-
-    //updateAZATable(resultList || []);
 
     updateAZATable(resultList);
     addAZAMarkers(resultList);
   } catch (err) {
-    console.error('Error retrieving AZA or drive times:', err);
+    console.error('Error retrieving POI or drive times:', err);
   }
 }
 
-async function fetchAZAMatrix(resultList, lng, lat) {
+async function fetchPOIMatrix(resultList, lng, lat) {
   // --- MATRIX API CALL ---
   if (resultList.length > 0) {
     // Define batch size (max 24 destinations per request)
@@ -160,7 +151,7 @@ async function fetchAZAMatrix(resultList, lng, lat) {
     for (let i = 0; i < resultList.length; i += batchSize) {
       const batch = resultList.slice(i, i + batchSize);
       const coordsStr = [lng + ',' + lat]
-        .concat(batch.map((r) => `${r.CenterPointLong},${r.CenterPointLat}`))
+        .concat(batch.map((r) => `${r.CenterPointLong},${r.CenterPointLat}`)) //TODO standardize lat/lon naming
         .join(';');
 
       const matrixUrl = `https://api.mapbox.com/directions-matrix/v1/mapbox/driving/${coordsStr}?annotations=duration,distance&access_token=${MAPBOX_TOKEN}`;
@@ -190,16 +181,16 @@ async function fetchAZAMatrix(resultList, lng, lat) {
 
     // Combine and sort
     allResults.sort((a, b) => a.drive_time_min - b.drive_time_min);
-    updateAZATable(allResults);
-    addAZAMarkers(allResults);
+    updateAZATable(allResults); //FIXME surround with if based on POI type
+    addAZAMarkers(allResults); //FIXME surround with if based on POI type
   } else {
-    updateAZATable([]);
-    clearAZAMarkers();
+    updateAZATable([]); //FIXME surround with if based on POI type
+    clearPOIMarkers();
   }
 }
 
 // render table
-function updateAZATable(rows) {
+function updateAZATable(rows) { // MAY NEED TO MAKE VERSION FOR EACH POI TYPE
   // --- UPDATE TABLE ---
   const tbody = document.querySelector('#aza-table tbody');
   tbody.innerHTML = '';
@@ -213,7 +204,7 @@ function updateAZATable(rows) {
 
   rows.forEach((r) => {
     const tr = document.createElement('tr');
-    if (visitedAZAs.has(r.aza_id)) tr.classList.add('visited');
+    if (visitedPOIs.has(r.aza_id)) tr.classList.add('visited'); //FIXME confirm field name
     const hours = Math.floor(r.drive_time_min / 60);
     const mins = Math.round(r.drive_time_min % 60);
     const timeLabel = r.drive_time_min != null ? `${hours}h ${mins}m` : '';
@@ -226,7 +217,7 @@ function updateAZATable(rows) {
     <td>${timeLabel}</td>
     <td>${r.drive_distance_mi ? r.drive_distance_mi.toFixed(1) : ''}</td>
     <td><button class="visit-btn">${
-      visitedAZAs.has(r.aza_id) ? '✓' : 'Mark Visited'
+      visitedPOIs.has(r.aza_id) ? '✓' : 'Mark Visited' //FIXME confirm field name
     }</button></td>
   `;
 
@@ -279,7 +270,7 @@ async function queueStopFromPOI(poi) {
 
   // Save + re-render
   saveSegments(segs);
-  renderTimeline(syncGlobal()); //TODO POI table update
+  renderTimeline(syncGlobal());
   renderMap(syncGlobal());
 
   return seg;
@@ -350,13 +341,13 @@ function downsampleCoordinates(coords, maxPoints) {
   return result;
 }
 
-function clearAZAMarkers() {
-  azaMarkers.forEach((m) => m.remove());
-  azaMarkers = [];
+function clearPOIMarkers() {
+  poiMarkers.forEach((m) => m.remove());
+  poiMarkers = [];
 }
 
-function addAZAMarkers(resultList) {
-  clearAZAMarkers();
+function addAZAMarkers(resultList) { // MAY NEED TO MAKE VERSION FOR EACH POI TYPE
+  clearPOIMarkers();
 
   resultList.forEach((r) => {
     if (!r.CenterPointLat || !r.CenterPointLong) return;
@@ -372,6 +363,6 @@ function addAZAMarkers(resultList) {
       )
       .addTo(mapInstance);
 
-    azaMarkers.push(marker);
+    poiMarkers.push(marker);
   });
 }

@@ -9,7 +9,7 @@ function deleteSegment(seg, card) {
     segs = await runPipeline(segs); // test
 
     saveSegments(segs);
-    renderTimeline(segs);
+    renderTimeline(segs); //TODO POI table update
     renderMap(segs);
   })();
 }
@@ -63,7 +63,7 @@ async function deletePlacedStop(seg) {
   newList = await runPipeline(newList); // test
 
   saveSegments(newList);
-  renderTimeline(newList);
+  renderTimeline(newList); //TODO POI table update
   renderMap(newList);
 }
 
@@ -71,6 +71,6 @@ function deleteQueuedStop(seg) {
   let list = loadSegments();
   const { list: newList } = removeSegmentFromList(list, seg);
   saveSegments(newList);
-  renderTimeline(newList);
+  renderTimeline(newList); //TODO POI table update
   renderMap(newList);
 }

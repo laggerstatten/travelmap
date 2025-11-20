@@ -15,7 +15,7 @@ async function initTrip() {
 
   segs = await runPipeline(segs); // test
   saveSegments(segs);
-  renderTimeline(segs);
+  renderTimeline(segs); //TODO POI table update?
   renderMap(segs);
 }
 

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Register</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <style>
+      body {
+        font-family: sans-serif;
+        max-width: 400px;
+        margin: 40px auto;
+      }
+      input,
+      button {
+        width: 100%;
+        padding: 10px;
+        margin: 6px 0;
+        font-size: 1rem;
+      }
+      .provider-btn {
+        background: #eee;
+        border: 1px solid #ccc;
+        cursor: pointer;
+      }
+    </style>
+    <script src="../common/config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  </head>
+
+  <body>
+    <h2>Create an Account</h2>
+
+    <!-- OAuth -->
+    <button class="provider-btn" onclick="oauth('google')">
+      Continue with Google
+    </button>
+    <button class="provider-btn" onclick="oauth('github')">
+      Continue with GitHub
+    </button>
+
+    <p id="status"></p>
+
+    <script>
+      // ----------- CONFIG -----------
+
+      const supabaseClient = window.supabase.createClient(
+        SUPABASE_URL,
+        SUPABASE_ANON_KEY
+      );
+
+      // ----------- OAuth Login -----------
+      async function oauth(provider) {
+        const { error } = await supabaseClient.auth.signInWithOAuth({
+          provider,
+          options: {
+            redirectTo: window.location.origin + '/supabase_sandbox/auth.html'
+          }
+        });
+        if (error) status(`❌ ${error.message}`);
+      }
+
+      // ----------- Helper -----------
+      function status(msg) {
+        document.getElementById('status').textContent = msg;
+      }
+    </script>
+  </body>
+</html>

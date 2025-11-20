@@ -156,7 +156,7 @@
           let segs = loadSegments();
           queueStop(segs);
           saveSegments(segs);
-          renderTimeline(syncGlobal());
+          renderTimeline(syncGlobal()); //TODO POI tab update
           renderMap(syncGlobal());
         };
 
@@ -168,7 +168,7 @@
           segs = clearAutoDrives(segs);
           PIPELINELEVEL = '';
           saveSegments(segs);
-          renderTimeline(syncGlobal());
+          renderTimeline(syncGlobal()); //TODO POI tab update
           renderMap(syncGlobal());
         };
 
@@ -179,7 +179,7 @@
           segs = await validateAndRepair(segs);
           PIPELINELEVEL = 'routing';
           saveSegments(segs);
-          renderTimeline(syncGlobal());
+          renderTimeline(syncGlobal()); //TODO POI tab update
           renderMap(syncGlobal());
         };
 
@@ -195,7 +195,7 @@
             PIPELINELEVEL = 'routing';
           }
           saveSegments(segs);
-          renderTimeline(syncGlobal());
+          renderTimeline(syncGlobal()); //TODO POI tab update
           renderMap(syncGlobal());
         };
 
@@ -212,7 +212,7 @@
           segs = computeSlackAndOverlap(segs);
           PIPELINELEVEL = 'timing';
           saveSegments(segs);
-          renderTimeline(syncGlobal());
+          renderTimeline(syncGlobal()); //TODO POI tab update
           renderMap(syncGlobal());
         };
 
@@ -254,7 +254,7 @@
                   throw new Error('File does not contain an array');
                 saveSegments(parsed);
                 alert('Trip data imported successfully.');
-                renderTimeline(syncGlobal());
+                renderTimeline(syncGlobal()); //TODO POI tab update
                 renderMap(syncGlobal());
               } catch (err) {
                 alert('Import failed: ' + err.message);
