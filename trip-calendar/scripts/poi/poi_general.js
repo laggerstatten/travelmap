@@ -234,72 +234,85 @@ function renderPOIResults(provider, list) {
 
 function updatePOITable(provider, rows) {
   const tbody = document.querySelector('#poi-table tbody');
-  if (!tbody) {
-    console.warn('No #poi-table tbody found');
-    return;
-  }
-  tbody.innerHTML = '';
+  const thead = document.querySelector('#poi-table thead');
 
-  if (!rows || rows.length === 0) {
+  tbody.innerHTML = '';
+  thead.innerHTML = '';
+
+  // Build dynamic header row
+  const headerRow = document.createElement('tr');
+
+  // Always include “Add Stop”
+  const addStopTh = document.createElement('th');
+  addStopTh.textContent = '';
+  headerRow.appendChild(addStopTh);
+
+  // Provider-defined columns
+  provider.tableColumns.forEach((col) => {
+    const th = document.createElement('th');
+    th.textContent = col.label;
+    headerRow.appendChild(th);
+  });
+
+  // Optional visited column
+  if (provider.enableVisited) {
+    const th = document.createElement('th');
+    th.textContent = 'Visited';
+    headerRow.appendChild(th);
+  }
+
+  thead.appendChild(headerRow);
+
+  // Handle empty rows
+  if (!rows.length) {
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td colspan="7"><i>No POIs found within range.</i></td>`;
+    tr.innerHTML = `<td colspan="${provider.tableColumns.length + 2}">
+        <i>No POIs found.</i>
+      </td>`;
     tbody.appendChild(tr);
     return;
   }
 
+  // Populate rows
   rows.forEach((r) => {
     const tr = document.createElement('tr');
 
-    // row class for visited if provider supports it
-    if (provider.isVisited && provider.isVisited(r)) {
-      tr.classList.add('visited');
-    }
+    // Add stop button
+    const addTd = document.createElement('td');
+    const addBtn = document.createElement('button');
+    addBtn.textContent = 'Add Stop';
+    addBtn.className = 'queue-stop-btn';
+    addBtn.onclick = () => queueStopFromPOI(r, provider);
+    addTd.appendChild(addBtn);
+    tr.appendChild(addTd);
 
-    const driveTimeMin = r.drive_time_min ?? null;
-    const hours = driveTimeMin != null ? Math.floor(driveTimeMin / 60) : null;
-    const mins = driveTimeMin != null ? Math.round(driveTimeMin % 60) : null;
-    const timeLabel = driveTimeMin != null ? `${hours}h ${mins}m` : '';
-
-    const distanceLabel =
-      r.drive_distance_mi != null ? r.drive_distance_mi.toFixed(1) : '';
-
-    tr.innerHTML = `
-      <td><button class="queue-stop-btn">Add Stop</button></td>
-      <td>${provider.getName(r) || '(unnamed POI)'}</td>
-      <td>${provider.getCity ? provider.getCity(r) : ''}</td>
-      <td>${provider.getState ? provider.getState(r) : ''}</td>
-      <td>${timeLabel}</td>
-      <td>${distanceLabel}</td>
-      <td>
-        ${
-          provider.updateVisited
-            ? `<button class="visit-btn">${
-                provider.isVisited && provider.isVisited(r)
-                  ? '✓'
-                  : 'Mark Visited'
-              }</button>`
-            : ''
-        }
-      </td>
-    `;
-
-    // queue stop from POI
-    const addBtn = tr.querySelector('.queue-stop-btn');
-    addBtn.addEventListener('click', async (e) => {
-      e.stopPropagation();
-      await queueStopFromPOI(r, provider);
+    // Provider-defined columns
+    provider.tableColumns.forEach((col) => {
+      const td = document.createElement('td');
+      td.textContent = col.get(r) ?? '';
+      tr.appendChild(td);
     });
 
-    // visited handling
-    if (provider.updateVisited) {
-      const visitBtn = tr.querySelector('.visit-btn');
-      visitBtn.addEventListener('click', async (e) => {
+    // Visited column
+    if (provider.enableVisited) {
+      const td = document.createElement('td');
+      const btn = document.createElement('button');
+      btn.className = 'visit-btn';
+      btn.textContent = provider.isVisited(r) ? '✓' : 'Mark';
+
+      btn.onclick = async (e) => {
         e.stopPropagation();
         await provider.updateVisited(r);
-        // reload visited state if needed
         if (provider.loadVisited) await provider.loadVisited();
         updatePOITable(provider, rows);
-      });
+      };
+
+      td.appendChild(btn);
+      tr.appendChild(td);
+
+      if (provider.isVisited(r)) {
+        tr.classList.add('visited');
+      }
     }
 
     tbody.appendChild(tr);
@@ -388,6 +401,24 @@ const AZAProvider = {
   name: 'AZA Zoos',
   iconColor: '#0088ff',
 
+  tableColumns: [
+    { key: 'Name', label: 'Name', get: (r) => r.ZooName || r.Name },
+    { key: 'City', label: 'City', get: (r) => r.City },
+    { key: 'State', label: 'State', get: (r) => r.State },
+    {
+      key: 'Time',
+      label: 'Drive Time',
+      get: (r) => (r.drive_time_min ? formatTime(r.drive_time_min) : '')
+    },
+    {
+      key: 'Dist',
+      label: 'Distance',
+      get: (r) => (r.drive_distance_mi ? r.drive_distance_mi.toFixed(1) : '')
+    }
+  ],
+
+  enableVisited: true, // tells renderer to add visited column
+
   async loadVisited() {
     if (!USER_ID) {
       console.warn('No logged-in user — skipping AZA loadVisited');
@@ -475,12 +506,12 @@ const AZAProvider = {
         },
         body: JSON.stringify({
           lineString: line,
-          radius_miles: 200
+          radius_miles: 60
         })
       });
       const json = await res.json();
       const list = json.results || [];
-      console.log('AZA within 200 miles of route:', list.length);
+      console.log('AZA within 60 miles of route:', list.length);
       return list;
     } catch (err) {
       console.error('Error retrieving AZA along route:', err);
@@ -517,7 +548,7 @@ const AZAProvider = {
         }
 
         allResults.push(...batch);
-        
+
         await new Promise((res) => setTimeout(res, 250));
       } catch (err) {
         console.error(`AZA matrix batch ${i / batchSize + 1} failed:`, err);
@@ -628,7 +659,14 @@ const RecProvider = {
 
 // For now, default to AZA; you can switch via UI later:
 setPOIProvider(AZAProvider);
+//setPOIProvider(RecProvider);
 
 // Example: if you add a provider dropdown in UI,
 // you can call setPOIProvider(AZAProvider) or setPOIProvider(RecProvider)
 // based on user choice.
+
+function formatTime(mins) {
+  const h = Math.floor(mins / 60);
+  const m = Math.round(mins % 60);
+  return `${h}h ${m}m`;
+}
