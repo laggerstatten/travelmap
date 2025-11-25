@@ -86,6 +86,8 @@
     <script src="scripts/enrichment/insolation.js"></script>
 
     <script src="scripts/poi/poi_general.js"></script>
+    <script src="scripts/poi/poi_aza.js"></script>
+    <script src="scripts/poi/poi_rec.js"></script>
 
     <script>
       let segments = [];
@@ -93,9 +95,19 @@
       let mapReady = false;
       let pendingSegments = null;
 
-      mapboxgl.accessToken =
-        'pk.eyJ1IjoiZXJpY3NjaGFsbCIsImEiOiJjbDBsbmpvNHYwY3JhM2N0a2Ribm1rZ2k5In0.XY-ziSu8DLnv5UIstoSGRQ';
-      const TIMEZONE_TOKEN = '9QEU1A5823HR';
+      // ===========================================================
+      // INIT: choose a default provider
+      // ===========================================================
+
+      // For now, default to AZA; you can switch via UI later:
+      //setPOIProvider(AZAProvider);
+      setPOIProvider(RecProvider);
+
+      // Example: if you add a provider dropdown in UI,
+      // you can call setPOIProvider(AZAProvider) or setPOIProvider(RecProvider)
+      // based on user choice.
+
+      mapboxgl.accessToken = MAPBOX_TOKEN;
 
       const SEG_KEY = 'tripSegments';
 
