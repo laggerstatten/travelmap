@@ -38,53 +38,17 @@ function parseNextLink(linkHeader) {
   return null;
 }
 
-async function rec_loadDataset(datasetId) {
-  // 1. Initial URL setup (includes token and sort)
-  let nextUrl = `https://api.mapbox.com/datasets/v1/${USERNAME}/${datasetId}/features?access_token=${MAPBOX_TOKEN}&limit=100&sort=id`;
+async function tilequery(tilesetId, lng, lat, radiusMeters) {
+  const url =
+    `https://api.mapbox.com/v4/${tilesetId}/tilequery/` +
+    `${lng},${lat}.json?` +
+    `radius=${radiusMeters}` +
+    `&limit=50` +
+    `&access_token=${MAPBOX_TOKEN}`;
 
-  let allFeatures = [];
-
-  while (nextUrl) {
-    // *** CRITICAL STEP: Re-inject the token if the URL is from the Link header ***
-    if (!nextUrl.includes('access_token')) {
-      // Check if URL already has query parameters (uses ? or &)
-      const separator = nextUrl.includes('?') ? '&' : '?';
-
-      // Re-inject the token and username into the URL
-      nextUrl = nextUrl + separator + `access_token=${MAPBOX_TOKEN}`;
-    }
-
-    console.log(`Fetching features from: ${nextUrl}`);
-
-    const res = await fetch(nextUrl);
-
-    if (!res.ok) {
-      // Include the response body for better debugging in case of 401/403 errors
-      const errorBody = await res.text();
-      throw new Error(
-        `Mapbox API error: ${res.status} ${res.statusText}. Response body: ${errorBody}`
-      );
-    }
-
-    const json = await res.json();
-    const newFeatures = json.features || [];
-
-    allFeatures = allFeatures.concat(newFeatures);
-
-    // 1. Get the Link header
-    const linkHeader = res.headers.get('Link');
-
-    // 2. Parse the header to find the next URL
-    nextUrl = parseNextLink(linkHeader);
-
-    if (!nextUrl) {
-      console.log(
-        `Total collected features: ${allFeatures.length}. End of collection.`
-      );
-    }
-  }
-
-  return allFeatures;
+  const res = await fetch(url);
+  const json = await res.json();
+  return json.features || [];
 }
 
 function rec_mergeByGlobalID(rows, features) {
@@ -160,78 +124,338 @@ const RecProvider = {
   // FILTER NEAR A POINT
   // ------------------------------------------------------
   async fetchNearby({ lat, lng }) {
-    console.log(recAllGeometry);
-    //console.log(recSupabaseRows);
-    if (!recAllGeometry.length || !recSupabaseRows.length) {
-      console.warn('RecProvider: missing geometry or rows');
+    if (!recSupabaseRows.length) {
+      console.warn('Missing Supabase rows');
       return [];
     }
 
-    const origin = [lng, lat];
-    const maxMeters = 500 * 1609.34;
+    // Search radius (500 miles)
+    const radiusMeters = 500 * 1609.34;
+
+    // Query polygon and point tilesets
+    const polyFeatures = await tilequery(
+      'ericschall.cmi8i31ua5qx71npejrqno0oc-489b6',
+      lng,
+      lat,
+      radiusMeters
+    );
+    const pointFeatures = await tilequery(
+      'ericschall.cmi95pb28082r1oqn30xsfev5-9vxf6',
+      lng,
+      lat,
+      radiusMeters
+    );
+
+    const allFeatures = [...polyFeatures, ...pointFeatures];
+
     const nearby = [];
 
-    for (const feat of recAllGeometry) {
-      if (!feat.geometry) continue;
-
-      let centroid;
-      if (feat.geometry.type === 'Point') {
-        centroid = feat.geometry.coordinates;
-      } else {
-        try {
-          centroid = turf.centroid(feat).geometry.coordinates;
-        } catch {
-          continue;
-        }
-      }
-
-      const d = turf.distance(origin, centroid, { units: 'kilometers' }) * 1000;
-      if (d > maxMeters) continue;
-
+    for (const feat of allFeatures) {
       const gid = cleanID(feat.properties?.GlobalID);
       if (!gid) continue;
 
       const row = recSupabaseRows.find(
         (r) => cleanID(r.GlobalID) === gid || cleanID(r['GlobalID *']) === gid
       );
-
-      if (!row) {
-        const partial = recSupabaseRows.filter((r) =>
-          cleanID(r.GlobalID || '').includes(gid.slice(0, 6))
-        );
-
-        const raw = recSupabaseRows.find((r) =>
-          (r.GlobalID || '').includes('00F55BA0')
-        );
-
-        continue;
-      }
-
       if (!row) continue;
 
       nearby.push({
         ...row,
         _geometry: feat.geometry,
-        _centroid: centroid,
-        distance_m: d
+        _centroid: [feat.geometry.coordinates[0], feat.geometry.coordinates[1]],
+        distance_m: feat.properties.tilequery.distance
       });
     }
 
-    nearby.sort((a, b) => (a.distance_m || 0) - (b.distance_m || 0));
+    nearby.sort((a, b) => a.distance_m - b.distance_m);
     return nearby;
   },
 
   // ------------------------------------------------------
   // FILTER NEAR A ROUTE
   // ------------------------------------------------------
+
+  /**
+    async fetchRouteNearby({ line }) {
+      if (!line || !line.coordinates) return [];
+      if (!recSupabaseRows.length) return [];
+  
+      const coords = line.coordinates;
+  
+      // --- 1. Compute route centroid ---
+      const ls = turf.lineString(coords);
+      const centroid = turf.centroid(ls).geometry.coordinates;
+  
+      // --- 2. Compute max distance from centroid to route ---
+      let maxDistMeters = 0;
+      for (const c of coords) {
+        const d = turf.distance(centroid, c, { units: 'kilometers' }) * 1000;
+        if (d > maxDistMeters) maxDistMeters = d;
+      }
+  
+      // --- 3. Add corridor buffer ---
+      const corridorMeters = 60 * 1609.34; // 50 miles
+      const queryRadius = maxDistMeters;
+  
+      console.log('Tilequery radius:', (queryRadius / 1609.34).toFixed(1), 'mi');
+  
+      // --- 4. Single tilequery call for points ---
+      const pts = await tilequery(
+        'ericschall.cmi95pb28082r1oqn30xsfev5-9vxf6',
+        centroid[0],
+        centroid[1],
+        queryRadius
+      );
+  
+      // --- 5. Single tilequery call for polygons ---
+      const polys = await tilequery(
+        'ericschall.cmi8i31ua5qx71npejrqno0oc-489b6',
+        centroid[0],
+        centroid[1],
+        queryRadius
+      );
+  
+      // Merge features by GlobalID
+      const candidates = [...pts, ...polys];
+      console.log('Rec route candidates:', candidates);
+      // --- 6. Local filtering on frontend (cheap) ---
+      const results = [];
+  
+      for (const feat of candidates) {
+        const gid = cleanID(feat.properties?.GlobalID);
+        if (!gid) continue;
+  
+        const row = recSupabaseRows.find((r) => cleanID(r.GlobalID) === gid);
+        if (!row) continue;
+  
+        // point distance to line corridor
+        const distMeters = turf.pointToLineDistance(
+          turf.point(feat.geometry.coordinates),
+          line,
+          { units: 'meters' }
+        );
+  
+        if (distMeters <= corridorMeters) {
+          results.push({
+            ...row,
+            _geometry: feat.geometry,
+            _centroid: feat.geometry.coordinates,
+            distance_m: distMeters
+          });
+        }
+      }
+  
+      return results.sort((a, b) => a.distance_m - b.distance_m);
+    },
+  */
+
+  /**
+    async fetchRouteNearby({ line }) {
+      if (!line || !line.coordinates) return [];
+      if (!recSupabaseRows.length) return [];
+  
+      const coords = line.coordinates;
+      const lineLength = turf.length(
+        { type: 'LineString', coordinates: coords },
+        { units: 'miles' }
+      );
+  
+      // ------------------------------------------------------
+      // SMART SAMPLING: 5 points total
+      //   - start, 3 equally spaced interior points, end
+      // ------------------------------------------------------
+      const sampleCount = 5;
+      const samples = [];
+  
+      for (let i = 0; i < sampleCount; i++) {
+        const t = i / (sampleCount - 1);
+        const along = turf.along(
+          { type: 'LineString', coordinates: coords },
+          lineLength * t,
+          { units: 'miles' }
+        );
+        samples.push(along.geometry.coordinates);
+      }
+  
+      console.log('Route sample points:', samples.length);
+  
+      const searchMiles = 500;
+      const searchMeters = searchMiles * 1609.34;
+  
+      const results = new Map();
+  
+      // ------------------------------------------------------
+      // TILESET IDS (YOUR published tilesets)
+      // ------------------------------------------------------
+      const POINT_TILESET = 'ericschall.cmi95pb28082r1oqn30xsfev5-9vxf6';
+      const POLY_TILESET = 'ericschall.cmi8i31ua5qx71npejrqno0oc-489b6';
+  
+      // ------------------------------------------------------
+      // QUERY LOOP — 10 queries total (5 points × 2 tilesets)
+      // ------------------------------------------------------
+      for (const [lng, lat] of samples) {
+        const pRes = await tilequery(POINT_TILESET, lng, lat, searchMeters);
+        const gRes = await tilequery(POLY_TILESET, lng, lat, searchMeters);
+  
+        for (const feat of [...pRes, ...gRes]) {
+          const gid = cleanID(feat.properties?.GlobalID);
+          if (!gid) continue;
+  
+          // Dedup by GlobalID
+          if (!results.has(gid)) {
+            results.set(gid, feat);
+          }
+        }
+      }
+
+
+
+
+
+
+    console.log('Raw tilequery merged features:', results.size);
+
+    // ------------------------------------------------------
+    // MERGE WITH SUPABASE ROWS
+    // ------------------------------------------------------
+    const merged = [];
+
+    for (const feat of results.values()) {
+      const gid = cleanID(feat.properties.GlobalID);
+
+      const row = recSupabaseRows.find((r) => cleanID(r.GlobalID) === gid);
+      if (!row) continue;
+
+      merged.push({
+        ...row,
+        _geometry: feat.geometry,
+        _centroid:
+          feat.geometry.type === 'Point'
+            ? feat.geometry.coordinates
+            : turf.centroid(feat).geometry.coordinates,
+        distance_m: feat.properties.tilequery.distance
+      });
+    }
+
+    // Sort by distance
+    merged.sort((a, b) => a.distance_m - b.distance_m);
+
+    console.log('Final merged POIs:', merged.length);
+
+    return merged;
+  },  */
+
+  // ===========================================================
+  //  DISTANCE HELPERS (same math as your Deno edge function)
+  // ===========================================================
+
   async fetchRouteNearby({ line }) {
+    const R_MI = 3958.8;
+
+    function haversine(lat1, lon1, lat2, lon2) {
+      const dLat = ((lat2 - lat1) * Math.PI) / 180;
+      const dLon = ((lon2 - lon1) * Math.PI) / 180;
+      const r1 = (lat1 * Math.PI) / 180;
+      const r2 = (lat2 * Math.PI) / 180;
+
+      const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(r1) * Math.cos(r2) * Math.sin(dLon / 2) ** 2;
+
+      return 2 * R_MI * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    function toVec(lat, lon) {
+      lat *= Math.PI / 180;
+      lon *= Math.PI / 180;
+      return [
+        Math.cos(lat) * Math.cos(lon),
+        Math.cos(lat) * Math.sin(lon),
+        Math.sin(lat)
+      ];
+    }
+
+    function pointToSegmentDistance(lat, lon, A, B) {
+      const P = toVec(lat, lon);
+      const A3 = toVec(A[1], A[0]);
+      const B3 = toVec(B[1], B[0]);
+
+      const AB = [B3[0] - A3[0], B3[1] - A3[1], B3[2] - A3[2]];
+      const AP = [P[0] - A3[0], P[1] - A3[1], P[2] - A3[2]];
+      const ab2 = AB[0] ** 2 + AB[1] ** 2 + AB[2] ** 2;
+
+      // Segment is a point
+      if (ab2 === 0) return haversine(lat, lon, A[1], A[0]);
+
+      const t = Math.max(
+        0,
+        Math.min(1, (AP[0] * AB[0] + AP[1] * AB[1] + AP[2] * AB[2]) / ab2)
+      );
+
+      const C = [A3[0] + AB[0] * t, A3[1] + AB[1] * t, A3[2] + AB[2] * t];
+
+      const hyp = Math.sqrt(C[0] ** 2 + C[1] ** 2);
+      const latC = (Math.atan2(C[2], hyp) * 180) / Math.PI;
+      const lonC = (Math.atan2(C[1], C[0]) * 180) / Math.PI;
+
+      return haversine(lat, lon, latC, lonC);
+    }
+
+    function distanceToLineString(lat, lon, coords) {
+      let best = Infinity;
+      for (let i = 0; i < coords.length - 1; i++) {
+        const d = pointToSegmentDistance(lat, lon, coords[i], coords[i + 1]);
+        if (d < best) best = d;
+      }
+      return best;
+    }
+
     if (!line || !line.coordinates) return [];
-    if (!recAllGeometry.length || !recSupabaseRows.length) return [];
+    if (!recSupabaseRows.length) return [];
 
-    const results = [];
-    const maxMeters = 50 * 1609.34;
+    const coords = line.coordinates;
+    const corridorMiles = 120    ; // ← THIS IS YOUR FILTER DISTANCE
+    const sampleCount = 5; // ← YOU ALREADY USE THIS
+    const samples = downsampleCoordinates(coords, sampleCount);
 
-    for (const feat of recAllGeometry) {
+    console.log('Route sample points:', samples.length);
+
+    const collected = new Map();
+
+    // ============================
+    // 5 TILEQUERY CALLS ONLY
+    // (You already have the endpoints)
+    // ============================
+    for (const [lng, lat] of samples) {
+      const pts = await tilequery(
+        'ericschall.cmi95pb28082r1oqn30xsfev5-9vxf6',
+        lng,
+        lat,
+        corridorMiles * 1609.34 // meters
+      );
+
+      const polys = await tilequery(
+        'ericschall.cmi8i31ua5qx71npejrqno0oc-489b6',
+        lng,
+        lat,
+        corridorMiles * 1609.34
+      );
+
+      for (const feat of [...pts, ...polys]) {
+        const gid = cleanID(feat.properties?.GlobalID);
+        if (!gid) continue;
+        if (!collected.has(gid)) collected.set(gid, feat);
+      }
+    }
+
+    console.log('Tilequery raw collected:', collected.size);
+
+    // ===========================================================
+    // TRUE LINESTRING CORRIDOR FILTERING (same as your Deno logic)
+    // ===========================================================
+    const final = [];
+
+    for (const feat of collected.values()) {
       if (!feat.geometry) continue;
 
       let centroid;
@@ -245,30 +469,29 @@ const RecProvider = {
         }
       }
 
-      const distMeters = turf.pointToLineDistance(turf.point(centroid), line, {
-        units: 'meters'
-      });
+      const [lng, lat] = centroid;
 
-      if (distMeters > maxMeters) continue;
+      // Real distance (mile radius)
+      const distMiles = distanceToLineString(lat, lng, coords);
+      if (distMiles > corridorMiles) continue;
 
-      const gid = cleanID(feat.properties?.GlobalID);
-      if (!gid) continue;
-
-      const row = recSupabaseRows.find(
-        (r) => cleanID(r.GlobalID) === gid || cleanID(r['GlobalID *']) === gid
-      );
+      // match with Supabase row
+      const gid = cleanID(feat.properties.GlobalID);
+      const row = recSupabaseRows.find((r) => cleanID(r.GlobalID) === gid);
       if (!row) continue;
 
-      results.push({
+      final.push({
         ...row,
         _geometry: feat.geometry,
         _centroid: centroid,
-        distance_m: distMeters
+        distance_m: distMiles * 1609.34
       });
     }
 
-    results.sort((a, b) => (a.distance_m || 0) - (b.distance_m || 0));
-    return results;
+    final.sort((a, b) => a.distance_m - b.distance_m);
+
+    console.log('Final route-matched POIs:', final.length);
+    return final;
   },
 
   getLatLng(poi) {
@@ -311,68 +534,17 @@ const RecProvider = {
 // ===========================================================
 
 RecProvider.init = async function () {
-  console.log('RecProvider: initializing...');
+  console.log('RecProvider: initializing (tileset mode)…');
+
+  // 1. Load Supabase records ONCE (attributes only)
   recSupabaseRows = await rec_loadSupabaseRows();
+  console.log('Rec Supabase rows:', recSupabaseRows.length);
 
-  recPointFeatures = await rec_loadDataset(DATASET_POINTS);
-  recPolygonFeatures = await rec_loadDataset(DATASET_POLYGONS);
+  // 2. DO NOT LOAD MAPBOX DATASETS ANYMORE
+  //    tilequery loads geometry dynamically based on the user's location/route
 
-  const target = '00F55BA0-B9E8-4706-91A5-885F8DCBB392';
+  recAllGeometry = []; // legacy datasets disabled
+  recMerged = []; // merged only exists for dataset mode
 
-  const found = recSupabaseRows.find((r) => cleanID(r.GlobalID) === target);
-
-  console.log(
-    'CHECK SUPABASE FOR TARGET:',
-    target,
-    '→',
-    found ? 'FOUND' : 'NOT FOUND'
-  );
-
-  if (found) {
-    console.log('SUPABASE ROW:', found);
-  }
-
-  recAllGeometry = [...recPointFeatures, ...recPolygonFeatures];
-
-  const foundFeat = recAllGeometry.find(
-    (f) => cleanID(f.properties?.GlobalID) === target
-  );
-
-  console.log(
-    'CHECK MAPBOX FOR TARGET:',
-    target,
-    '→',
-    foundFeat ? 'FOUND' : 'NOT FOUND'
-  );
-
-  if (foundFeat) {
-    console.log('MAPBOX FEATURE:', foundFeat);
-  }
-
-  const TARGET = 'B9E8';
-
-  console.log('=== CHECKING FOR TARGET IN MAPBOX ===');
-  recAllGeometry.forEach((f, i) => {
-    const raw = f.properties?.GlobalID;
-    const cleaned = cleanID(raw);
-
-    if (
-      raw?.includes(TARGET) ||
-      cleaned === TARGET ||
-      cleaned.includes(TARGET) ||
-      raw?.replace(/[{}]/g, '') === TARGET
-    ) {
-      console.log('FOUND in recAllGeometry index:', i, {
-        raw,
-        cleaned,
-        feature: f
-      });
-    }
-  });
-
-  console.log('=== END MAPBOX TARGET CHECK ===');
-
-  recMerged = rec_mergeByGlobalID(recSupabaseRows, recAllGeometry);
-
-  console.log('Rec merged:', recMerged.length);
+  console.log('RecProvider ready (tileset mode).');
 };
