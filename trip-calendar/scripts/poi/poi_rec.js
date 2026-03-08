@@ -14,6 +14,7 @@ let recMerged = [];
 // ===========================================================
 
 async function rec_loadSupabaseRows() {
+  console.log('Supabase Client:', supabase);
   const { data, error } = await supabase
     .from('fedplace_combined')
     .select('*', { count: 'exact' })

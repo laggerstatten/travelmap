@@ -155,7 +155,9 @@ async function runPOISearch() {
   const modeEl = document.getElementById('poi-source');
   const mode = modeEl ? modeEl.value : 'center';
 
-  await RecProvider.init();
+  if (provider === RecProvider) {
+    await RecProvider.init();
+  }
 
   // optional visited
   if (provider.loadVisited) {
