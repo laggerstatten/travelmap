@@ -442,7 +442,7 @@
       var USER_ID = null;
 
       // --- Supabase setup ---
-      const supabase = window.supabase.createClient(
+      window.supabase = window.supabase.createClient(
         SUPABASE_URL,
         SUPABASE_ANON_KEY
       );

@@ -15,6 +15,9 @@ function cleanID(id) {
 
 // Downsample a LineString to avoid huge matrix calls
 function downsampleCoordinates(coords, maxPoints) {
+  console.log(
+    `Downsampling ${coords.length} coordinates to max ${maxPoints} points`
+  );
   if (!coords || coords.length <= maxPoints) return coords || [];
 
   const step = Math.max(1, Math.floor(coords.length / maxPoints));
@@ -30,7 +33,7 @@ function downsampleCoordinates(coords, maxPoints) {
   if (!lastR || lastR[0] !== last[0] || lastR[1] !== last[1]) {
     result.push(last);
   }
-
+  console.log(result);
   return result;
 }
 

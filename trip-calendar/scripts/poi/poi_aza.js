@@ -122,6 +122,9 @@ const AZAProvider = {
     }
   },
 
+  // ------------------------------------------------------
+  // FILTER NEAR A POINT
+  // ------------------------------------------------------
   async fetchNearby({ lat, lng }) {
     try {
       const res = await fetch(GET_NEAR_AZA_URL, {

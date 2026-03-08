@@ -120,6 +120,63 @@ const RecProvider = {
     { key: 'Agency', label: 'Agency', get: (r) => r.Agency }
   ],
 
+  enableVisited: true, // tells renderer to add visited column
+
+  async loadVisited() {
+    if (!USER_ID) {
+      console.warn('No logged-in user — skipping FED loadVisited');
+      visitedFederal = new Set();
+      return visitedFederal;
+    }
+
+    try {
+      const res = await fetch(GET_USER_VISITS_FEDERAL_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: USER_ID })
+      });
+
+      const json = await res.json();
+
+      if (json && json.success && Array.isArray(json.results)) {
+        visitedFederal = new Set(json.results.map((r) => r.GlobalID));
+      } else {
+        console.warn('Unexpected response from get-user-visits:', json);
+        visitedFederal = new Set();
+      }
+
+      console.log('Visited parks:', visitedFederal);
+      return visitedFederal;
+    } catch (err) {
+      console.error('Failed to load visited:', err);
+      visitedFederal = new Set();
+      return visitedFederal;
+    }
+  },
+
+  isVisited(poi) {
+    return visitedFederal.has(poi.GlobalID);
+  },
+
+  async updateVisited(poi) {
+    try {
+      const res = await fetch(UPDATE_FEDERAL_VISIT_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          user_id: USER_ID,
+          aza_id: poi.GlobalID
+        })
+      });
+      const json = await res.json();
+      console.log('Updated visit:', json);
+    } catch (err) {
+      console.error('Failed to update visit:', err);
+    }
+  },
+
   // ------------------------------------------------------
   // FILTER NEAR A POINT
   // ------------------------------------------------------
@@ -170,180 +227,6 @@ const RecProvider = {
     nearby.sort((a, b) => a.distance_m - b.distance_m);
     return nearby;
   },
-
-  // ------------------------------------------------------
-  // FILTER NEAR A ROUTE
-  // ------------------------------------------------------
-
-  /**
-    async fetchRouteNearby({ line }) {
-      if (!line || !line.coordinates) return [];
-      if (!recSupabaseRows.length) return [];
-  
-      const coords = line.coordinates;
-  
-      // --- 1. Compute route centroid ---
-      const ls = turf.lineString(coords);
-      const centroid = turf.centroid(ls).geometry.coordinates;
-  
-      // --- 2. Compute max distance from centroid to route ---
-      let maxDistMeters = 0;
-      for (const c of coords) {
-        const d = turf.distance(centroid, c, { units: 'kilometers' }) * 1000;
-        if (d > maxDistMeters) maxDistMeters = d;
-      }
-  
-      // --- 3. Add corridor buffer ---
-      const corridorMeters = 60 * 1609.34; // 50 miles
-      const queryRadius = maxDistMeters;
-  
-      console.log('Tilequery radius:', (queryRadius / 1609.34).toFixed(1), 'mi');
-  
-      // --- 4. Single tilequery call for points ---
-      const pts = await tilequery(
-        'ericschall.cmi95pb28082r1oqn30xsfev5-9vxf6',
-        centroid[0],
-        centroid[1],
-        queryRadius
-      );
-  
-      // --- 5. Single tilequery call for polygons ---
-      const polys = await tilequery(
-        'ericschall.cmi8i31ua5qx71npejrqno0oc-489b6',
-        centroid[0],
-        centroid[1],
-        queryRadius
-      );
-  
-      // Merge features by GlobalID
-      const candidates = [...pts, ...polys];
-      console.log('Rec route candidates:', candidates);
-      // --- 6. Local filtering on frontend (cheap) ---
-      const results = [];
-  
-      for (const feat of candidates) {
-        const gid = cleanID(feat.properties?.GlobalID);
-        if (!gid) continue;
-  
-        const row = recSupabaseRows.find((r) => cleanID(r.GlobalID) === gid);
-        if (!row) continue;
-  
-        // point distance to line corridor
-        const distMeters = turf.pointToLineDistance(
-          turf.point(feat.geometry.coordinates),
-          line,
-          { units: 'meters' }
-        );
-  
-        if (distMeters <= corridorMeters) {
-          results.push({
-            ...row,
-            _geometry: feat.geometry,
-            _centroid: feat.geometry.coordinates,
-            distance_m: distMeters
-          });
-        }
-      }
-  
-      return results.sort((a, b) => a.distance_m - b.distance_m);
-    },
-  */
-
-  /**
-    async fetchRouteNearby({ line }) {
-      if (!line || !line.coordinates) return [];
-      if (!recSupabaseRows.length) return [];
-  
-      const coords = line.coordinates;
-      const lineLength = turf.length(
-        { type: 'LineString', coordinates: coords },
-        { units: 'miles' }
-      );
-  
-      // ------------------------------------------------------
-      // SMART SAMPLING: 5 points total
-      //   - start, 3 equally spaced interior points, end
-      // ------------------------------------------------------
-      const sampleCount = 5;
-      const samples = [];
-  
-      for (let i = 0; i < sampleCount; i++) {
-        const t = i / (sampleCount - 1);
-        const along = turf.along(
-          { type: 'LineString', coordinates: coords },
-          lineLength * t,
-          { units: 'miles' }
-        );
-        samples.push(along.geometry.coordinates);
-      }
-  
-      console.log('Route sample points:', samples.length);
-  
-      const searchMiles = 500;
-      const searchMeters = searchMiles * 1609.34;
-  
-      const results = new Map();
-  
-      // ------------------------------------------------------
-      // TILESET IDS (YOUR published tilesets)
-      // ------------------------------------------------------
-      const POINT_TILESET = 'ericschall.cmi95pb28082r1oqn30xsfev5-9vxf6';
-      const POLY_TILESET = 'ericschall.cmi8i31ua5qx71npejrqno0oc-489b6';
-  
-      // ------------------------------------------------------
-      // QUERY LOOP — 10 queries total (5 points × 2 tilesets)
-      // ------------------------------------------------------
-      for (const [lng, lat] of samples) {
-        const pRes = await tilequery(POINT_TILESET, lng, lat, searchMeters);
-        const gRes = await tilequery(POLY_TILESET, lng, lat, searchMeters);
-  
-        for (const feat of [...pRes, ...gRes]) {
-          const gid = cleanID(feat.properties?.GlobalID);
-          if (!gid) continue;
-  
-          // Dedup by GlobalID
-          if (!results.has(gid)) {
-            results.set(gid, feat);
-          }
-        }
-      }
-
-
-
-
-
-
-    console.log('Raw tilequery merged features:', results.size);
-
-    // ------------------------------------------------------
-    // MERGE WITH SUPABASE ROWS
-    // ------------------------------------------------------
-    const merged = [];
-
-    for (const feat of results.values()) {
-      const gid = cleanID(feat.properties.GlobalID);
-
-      const row = recSupabaseRows.find((r) => cleanID(r.GlobalID) === gid);
-      if (!row) continue;
-
-      merged.push({
-        ...row,
-        _geometry: feat.geometry,
-        _centroid:
-          feat.geometry.type === 'Point'
-            ? feat.geometry.coordinates
-            : turf.centroid(feat).geometry.coordinates,
-        distance_m: feat.properties.tilequery.distance
-      });
-    }
-
-    // Sort by distance
-    merged.sort((a, b) => a.distance_m - b.distance_m);
-
-    console.log('Final merged POIs:', merged.length);
-
-    return merged;
-  },  */
 
   // ===========================================================
   //  DISTANCE HELPERS (same math as your Deno edge function)
@@ -414,8 +297,8 @@ const RecProvider = {
     if (!recSupabaseRows.length) return [];
 
     const coords = line.coordinates;
-    const corridorMiles = 120    ; // ← THIS IS YOUR FILTER DISTANCE
-    const sampleCount = 5; // ← YOU ALREADY USE THIS
+    const corridorMiles = 120; // ← THIS IS YOUR FILTER DISTANCE
+    const sampleCount = 20; // ← YOU ALREADY USE THIS -- this seems too low, as the route has already been downsampled previously -- changing from 5 to 20
     const samples = downsampleCoordinates(coords, sampleCount);
 
     console.log('Route sample points:', samples.length);
