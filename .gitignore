@@ -7,3 +7,6 @@ scripts/config.js
 trip-calendar/scripts/helper/config.js
 trip-calendar/scripts/poi/config.js
 /sandbox_supabase
+/edge_functions
+common/config.js
+common/config.js

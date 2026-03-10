@@ -2,25 +2,25 @@
 // STATE
 // ===========================================================
 
-// Global caches for recreation POIs
-let recSupabaseRows = [];
-let recPointFeatures = [];
-let recPolygonFeatures = [];
-let recAllGeometry = [];
-let recMerged = [];
+// Global caches for county POIs
+let countySupabaseRows = [];
+let countyPointFeatures = [];
+let countyPolygonFeatures = [];
+let countyAllGeometry = [];
+let countyMerged = [];
 
 // ===========================================================
-// HELPERS USED BY REC PROVIDER
+// HELPERS USED BY COUNTY PROVIDER
 // ===========================================================
 
-async function rec_loadSupabaseRows() {
+async function county_loadSupabaseRows() {
   const { data, error } = await supabase
-    .from('fedplace_combined')
+    .from('county_poi')
     .select('*', { count: 'exact' })
     .range(0, 4999);
 
   if (error) {
-    console.error('Rec Supabase error:', error);
+    console.error('County Supabase error:', error);
     return [];
   }
   return data;
@@ -51,13 +51,13 @@ async function tilequery(tilesetId, lng, lat, radiusMeters) {
   return json.features || [];
 }
 
-function rec_mergeByGlobalID(rows, features) {
+function county_mergeByGlobalID(rows, features) {
   const merged = [];
 
   for (const f of features) {
-    const gid = cleanID(f.properties.GlobalID);
+    const gid = cleanID(f.properties.GEOID);
     const row = rows.find(
-      (r) => cleanID(r.GlobalID) === gid || cleanID(r['GlobalID *']) === gid
+      (r) => cleanID(r.GEOID) === gid || cleanID(r['GEOID *']) === gid
     );
     if (!row) continue;
 
@@ -105,70 +105,82 @@ function rec_mergeByGlobalID(rows, features) {
 */
 
 // ===========================================================
-// RECREATION PROVIDER
+// COUNTY PROVIDER
 // ===========================================================
 
-const RecProvider = {
-  name: 'Recreation Sites',
+const CountyProvider = {
+  name: 'Counties',
   iconColor: '#00aa44',
 
   tableColumns: [
-    { key: 'Name', label: 'Name', get: (r) => r.UnitLabel },
-    { key: 'Name1', label: 'Name1', get: (r) => r.Unit1Label },
-    { key: 'Name2', label: 'Name2', get: (r) => r.Unit2Label },
-    { key: 'ShortLabel', label: 'ShortLabel', get: (r) => r.ShortLabel },
-    { key: 'Agency', label: 'Agency', get: (r) => r.Agency }
+    { key: 'Name', label: 'Name', get: (r) => r.NAME },
+    { key: 'State', label: 'State', get: (r) => r.STATE_NAME }
   ],
 
   enableVisited: true, // tells renderer to add visited column
 
   async loadVisited() {
     if (!USER_ID) {
-      console.warn('No logged-in user — skipping FED loadVisited');
-      visitedFederal = new Set();
-      return visitedFederal;
+      console.warn('No logged-in user — skipping COUNTY loadVisited');
+      visitedCounty = new Set();
+      return visitedCounty;
     }
 
     try {
-      const res = await fetch(GET_USER_VISITS_FEDERAL_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: USER_ID })
+      const {
+        data: { session }
+      } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        console.warn('No Supabase session/token — skipping COUNTY loadVisited');
+        visitedCounty = new Set();
+        return visitedCounty;
       }
-    );
+
+      const res = await fetch(
+        'https://czuldnytepaujjkjpwqi.functions.supabase.co/get-county-visit',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`
+          },
+          body: JSON.stringify({ user_id: USER_ID })
+        }
+      );
 
       const json = await res.json();
 
       if (json && json.success && Array.isArray(json.results)) {
-        visitedFederal = new Set(json.results.map((r) => r.GlobalID));
+        visitedCounty = new Set(json.results.map((r) => r.GEOID));
       } else {
-        console.warn('Unexpected response from get-user-visits:', json);
-        visitedFederal = new Set();
+        console.warn('Unexpected response from get-county-visit:', json);
+        visitedCounty = new Set();
       }
 
-      console.log('Visited parks:', visitedFederal);
-      return visitedFederal;
+      console.log('Visited counties:', visitedCounty);
+      return visitedCounty;
     } catch (err) {
       console.error('Failed to load visited:', err);
-      visitedFederal = new Set();
-      return visitedFederal;
+      visitedCounty = new Set();
+      return visitedCounty;
     }
   },
 
   isVisited(poi) {
-    return visitedFederal.has(poi.GlobalID);
+    return visitedCounty.has(poi.GEOID);
   },
 
   async updateVisited(poi) {
     try {
-      const res = await fetch(UPDATE_FEDERAL_VISIT_URL, {
+      const res = await fetch(UPDATE_COUNTY_VISIT_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           user_id: USER_ID,
-          rec_id: poi.GlobalID
+          county_id: poi.GEOID
         })
       });
       const json = await res.json();
@@ -182,7 +194,7 @@ const RecProvider = {
   // FILTER NEAR A POINT
   // ------------------------------------------------------
   async fetchNearby({ lat, lng }) {
-    if (!recSupabaseRows.length) {
+    if (!countySupabaseRows.length) {
       console.warn('Missing Supabase rows');
       return [];
     }
@@ -192,19 +204,13 @@ const RecProvider = {
 
     // Query polygon and point tilesets
     const polyFeatures = await tilequery(
-      'ericschall.cmi8i31ua5qx71npejrqno0oc-489b6',
-      lng,
-      lat,
-      radiusMeters
-    );
-    const pointFeatures = await tilequery(
-      'ericschall.cmi95pb28082r1oqn30xsfev5-9vxf6',
+      'ericschall.bbplizzd',
       lng,
       lat,
       radiusMeters
     );
 
-    const allFeatures = [...polyFeatures, ...pointFeatures];
+    const allFeatures = [...polyFeatures];
 
     const nearby = [];
 
@@ -212,7 +218,7 @@ const RecProvider = {
       const gid = cleanID(feat.properties?.GlobalID);
       if (!gid) continue;
 
-      const row = recSupabaseRows.find(
+      const row = countySupabaseRows.find(
         (r) => cleanID(r.GlobalID) === gid || cleanID(r['GlobalID *']) === gid
       );
       if (!row) continue;
@@ -295,10 +301,10 @@ const RecProvider = {
     }
 
     if (!line || !line.coordinates) return [];
-    if (!recSupabaseRows.length) return [];
+    if (!countySupabaseRows.length) return [];
 
     const coords = line.coordinates;
-    const corridorMiles = 120; // ← THIS IS YOUR FILTER DISTANCE
+    const corridorMiles = .1; // ← THIS IS YOUR FILTER DISTANCE
     const sampleCount = 20; // ← YOU ALREADY USE THIS -- this seems too low, as the route has already been downsampled previously -- changing from 5 to 20
     const samples = downsampleCoordinates(coords, sampleCount);
 
@@ -311,22 +317,16 @@ const RecProvider = {
     // (You already have the endpoints)
     // ============================
     for (const [lng, lat] of samples) {
-      const pts = await tilequery(
-        'ericschall.cmi95pb28082r1oqn30xsfev5-9vxf6',
-        lng,
-        lat,
-        corridorMiles * 1609.34 // meters
-      );
 
       const polys = await tilequery(
-        'ericschall.cmi8i31ua5qx71npejrqno0oc-489b6',
+        'ericschall.bbplizzd',
         lng,
         lat,
         corridorMiles * 1609.34
       );
 
-      for (const feat of [...pts, ...polys]) {
-        const gid = cleanID(feat.properties?.GlobalID);
+      for (const feat of [...polys]) {
+        const gid = cleanID(feat.properties?.GEOID);
         if (!gid) continue;
         if (!collected.has(gid)) collected.set(gid, feat);
       }
@@ -360,8 +360,8 @@ const RecProvider = {
       if (distMiles > corridorMiles) continue;
 
       // match with Supabase row
-      const gid = cleanID(feat.properties.GlobalID);
-      const row = recSupabaseRows.find((r) => cleanID(r.GlobalID) === gid);
+      const gid = cleanID(feat.properties.GEOID);
+      const row = countySupabaseRows.find((r) => cleanID(r.GEOID) === gid);
       if (!row) continue;
 
       final.push({
@@ -384,16 +384,14 @@ const RecProvider = {
   },
 
   getName(poi) {
-    return poi.Name || poi.UnitLabel || '(Recreation Site)';
+    return poi.NAME || '(County)';
   },
 
   getQueueName(poi) {
     return this.getName(poi);
   },
 
-  getCity(poi) {
-    return poi.City || '';
-  },
+
 
   getState(poi) {
     return poi.State || '';
@@ -407,28 +405,28 @@ const RecProvider = {
 
     return `
       <strong>${this.getName(poi)}</strong><br/>
-      ${this.getCity(poi)}, ${this.getState(poi)}<br/>
+      ${this.getState(poi)}<br/>
       ${miles}
     `;
   }
 };
 
 // ===========================================================
-// INIT MUST COME LAST — AFTER RecProvider EXISTS
+// INIT MUST COME LAST — AFTER CountyProvider EXISTS
 // ===========================================================
 
-RecProvider.init = async function () {
-  console.log('RecProvider: initializing (tileset mode)…');
+CountyProvider.init = async function () {
+  console.log('CountyProvider: initializing (tileset mode)…');
 
   // 1. Load Supabase records ONCE (attributes only)
-  recSupabaseRows = await rec_loadSupabaseRows();
-  console.log('Rec Supabase rows:', recSupabaseRows.length);
+  countySupabaseRows = await county_loadSupabaseRows();
+  console.log('County Supabase rows:', countySupabaseRows.length);
 
   // 2. DO NOT LOAD MAPBOX DATASETS ANYMORE
   //    tilequery loads geometry dynamically based on the user's location/route
 
-  recAllGeometry = []; // legacy datasets disabled
-  recMerged = []; // merged only exists for dataset mode
+  countyAllGeometry = []; // legacy datasets disabled
+  countyMerged = []; // merged only exists for dataset mode
 
-  console.log('RecProvider ready (tileset mode).');
+  console.log('CountyProvider ready (tileset mode).');
 };

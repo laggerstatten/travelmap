@@ -158,7 +158,11 @@ async function runPOISearch() {
   const modeEl = document.getElementById('poi-source');
   const mode = modeEl ? modeEl.value : 'center';
 
-  await RecProvider.init();
+  if (provider?.name == 'Recreation Sites') {
+    await RecProvider.init();
+  } else if (provider?.name === 'Counties') {
+    await CountyProvider.init();
+  }
 
   // optional visited
   if (provider.loadVisited) {

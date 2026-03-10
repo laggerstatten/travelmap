@@ -88,6 +88,7 @@
     <script src="scripts/poi/poi_general.js"></script>
     <script src="scripts/poi/poi_aza.js"></script>
     <script src="scripts/poi/poi_rec.js"></script>
+    <script src="scripts/poi/poi_county.js"></script>
 
     <script>
       let segments = [];
@@ -101,7 +102,8 @@
 
       // For now, default to AZA; you can switch via UI later:
       //setPOIProvider(AZAProvider);
-      setPOIProvider(RecProvider);
+      //setPOIProvider(RecProvider);
+      setPOIProvider(CountyProvider);
 
       // Example: if you add a provider dropdown in UI,
       // you can call setPOIProvider(AZAProvider) or setPOIProvider(RecProvider)
@@ -452,13 +454,17 @@
       const statusEl = document.getElementById('auth-status');
 
       loginBtn.addEventListener('click', async () => {
+        const redirectTo = window.location.origin + window.location.pathname;
+
+        console.log('OAuth redirectTo:', redirectTo);
+
         const { error } = await supabase.auth.signInWithOAuth({
           provider: 'github',
           options: {
-            redirectTo: window.location.href,
             auth_params: {
               prompt: 'select_account'
-            }
+            },
+            redirectTo
           }
         });
         if (error) console.error('Login error:', error);
