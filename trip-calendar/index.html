@@ -456,15 +456,13 @@
       loginBtn.addEventListener('click', async () => {
         const redirectTo = window.location.origin + window.location.pathname;
 
-        console.log('OAuth redirectTo:', redirectTo);
-
         const { error } = await supabase.auth.signInWithOAuth({
           provider: 'github',
           options: {
-            auth_params: {
+            redirectTo,
+            queryParams: {
               prompt: 'select_account'
-            },
-            redirectTo
+            }
           }
         });
         if (error) console.error('Login error:', error);

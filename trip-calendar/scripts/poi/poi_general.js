@@ -228,6 +228,7 @@ async function runPOISearch() {
 function renderPOIResults(provider, list) {
   updatePOITable(provider, list);
   addPOIMarkers(provider, list);
+  showReturnedCounties(list);
 }
 
 // ===========================================================

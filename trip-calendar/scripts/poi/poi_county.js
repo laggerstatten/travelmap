@@ -137,17 +137,16 @@ const CountyProvider = {
         return visitedCounty;
       }
 
-      const res = await fetch(
-        'https://czuldnytepaujjkjpwqi.functions.supabase.co/get-county-visit',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${session.access_token}`
-          },
-          body: JSON.stringify({ user_id: USER_ID })
-        }
-      );
+      const res = await fetch(GET_USER_VISITS_COUNTY_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          user_id: USER_ID
+        })
+      });
 
       const json = await res.json();
 
@@ -157,7 +156,6 @@ const CountyProvider = {
         console.warn('Unexpected response from get-county-visit:', json);
         visitedCounty = new Set();
       }
-
       console.log('Visited counties:', visitedCounty);
       return visitedCounty;
     } catch (err) {
@@ -173,10 +171,14 @@ const CountyProvider = {
 
   async updateVisited(poi) {
     try {
+      const {
+        data: { session }
+      } = await supabase.auth.getSession();
       const res = await fetch(UPDATE_COUNTY_VISIT_URL, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`
         },
         body: JSON.stringify({
           user_id: USER_ID,
@@ -304,7 +306,7 @@ const CountyProvider = {
     if (!countySupabaseRows.length) return [];
 
     const coords = line.coordinates;
-    const corridorMiles = .1; // ← THIS IS YOUR FILTER DISTANCE
+    const corridorMiles = 0.1; // ← THIS IS YOUR FILTER DISTANCE
     const sampleCount = 20; // ← YOU ALREADY USE THIS -- this seems too low, as the route has already been downsampled previously -- changing from 5 to 20
     const samples = downsampleCoordinates(coords, sampleCount);
 
@@ -317,7 +319,6 @@ const CountyProvider = {
     // (You already have the endpoints)
     // ============================
     for (const [lng, lat] of samples) {
-
       const polys = await tilequery(
         'ericschall.bbplizzd',
         lng,
@@ -391,8 +392,6 @@ const CountyProvider = {
     return this.getName(poi);
   },
 
-
-
   getState(poi) {
     return poi.State || '';
   },
@@ -410,6 +409,67 @@ const CountyProvider = {
     `;
   }
 };
+
+function showReturnedCounties(returnedResults) {
+  if (!mapInstance) return;
+
+  const allReturnedGeoids = (returnedResults || [])
+    .map((r) => String(r.GEOID).trim())
+    .filter(Boolean);
+
+  if (allReturnedGeoids.length === 0) {
+    // Hide everything if no results
+    mapInstance.setFilter('cb-2021-us-county-20m-2uhlw5', [
+      '==',
+      ['get', 'GEOID'],
+      ''
+    ]);
+    return;
+  }
+
+  // Filter against your Set
+  const currentlyVisitedGeoids = allReturnedGeoids.filter(
+    (geoid) => visitedCounty && visitedCounty.has(geoid)
+  );
+
+  // 1. Update the Filter
+  mapInstance.setFilter('cb-2021-us-county-20m-2uhlw5', [
+    'in',
+    ['get', 'GEOID'],
+    ['literal', allReturnedGeoids]
+  ]);
+
+  // 2. Build the Paint Expression carefully
+  let fillColorExpression;
+
+  if (currentlyVisitedGeoids.length > 0) {
+    fillColorExpression = [
+      'match',
+      ['get', 'GEOID'],
+      currentlyVisitedGeoids, // Some Mapbox versions prefer this as an array literal
+      '#2ecc71', // Visited (Green)
+      '#3498db' // Default (Blue)
+    ];
+  } else {
+    fillColorExpression = '#3498db'; // Fallback if none are visited
+  }
+
+  try {
+    mapInstance.setPaintProperty(
+      'cb-2021-us-county-20m-2uhlw5',
+      'fill-color',
+      fillColorExpression
+    );
+  } catch (e) {
+    console.error('Mapbox Paint Error:', e);
+    // If it STILL fails, fall back to a simple color to prevent the crash
+    mapInstance.setPaintProperty(
+      'cb-2021-us-county-20m-2uhlw5',
+      'fill-color',
+      '#3498db'
+    );
+  }
+}
 
 // ===========================================================
 // INIT MUST COME LAST — AFTER CountyProvider EXISTS

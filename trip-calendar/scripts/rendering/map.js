@@ -4,7 +4,7 @@
 function initMap() {
   mapInstance = new mapboxgl.Map({
     container: 'map',
-    style: 'mapbox://styles/mapbox/streets-v12',
+    style: 'mapbox://styles/ericschall/cmml6pdf4003f01s7bahz5a6r',
     center: [-98.5, 39.8],
     zoom: 3
   });
