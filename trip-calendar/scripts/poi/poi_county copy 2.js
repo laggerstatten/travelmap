@@ -307,7 +307,7 @@ const CountyProvider = {
 
     const coords = line.coordinates;
     const corridorMiles = 0.1; // ← THIS IS YOUR FILTER DISTANCE
-    const sampleCount = 500; // ← YOU ALREADY USE THIS -- this seems too low, as the route has already been downsampled previously -- changing from 5 to 20
+    const sampleCount = 20; // ← YOU ALREADY USE THIS -- this seems too low, as the route has already been downsampled previously -- changing from 5 to 20
     const samples = downsampleCoordinates(coords, sampleCount);
 
     console.log('Route sample points:', samples.length);
@@ -420,53 +420,38 @@ function showReturnedCounties(returnedResults) {
   const allVisitedGeoids = Array.from(visitedCounty || []);
 
   mapInstance.setFilter('cb-2021-us-county-20m-2uhlw5', null);
-
-  const isQueried = ['in', ['get', 'GEOID'], ['literal', allReturnedGeoids]];
-  const isVisited = ['in', ['get', 'GEOID'], ['literal', allVisitedGeoids]];
-
-  // 1. Color Logic
   const colorExpression = [
     'case',
-    ['all', isQueried, isVisited],
-    '#3498db', // Class 1
-    isQueried,
-    '#ee2727', // Class 2
-    isVisited,
-    '#44c90f', // Class 3
-    '#c7f011' // Class 4
-  ];
+    // CLASS 1: Queried AND Visited
+    [
+      'all',
+      ['in', ['get', 'GEOID'], ['literal', allReturnedGeoids]],
+      ['in', ['get', 'GEOID'], ['literal', allVisitedGeoids]]
+    ],
+    '#3498db',
 
-  // 2. Opacity Logic
-  const opacityExpression = [
-    'case',
-    isQueried,
-    0.8, // Class 1 & 2 (High visibility for search results)
-    isVisited,
-    0.4, // Class 3 (Subtle visibility for other visits)
-    0.1 // Class 4 (Ghosted background)
+    // CLASS 2: Queried AND NOT Visited
+    ['in', ['get', 'GEOID'], ['literal', allReturnedGeoids]],
+    '#ee2727',
+
+    // CLASS 3: NOT Queried AND Visited
+    ['in', ['get', 'GEOID'], ['literal', allVisitedGeoids]],
+    '#a9dfbf', // Faded Green
+
+    // CLASS 4: Default (Not Queried, Not Visited)
+    'rgba(226, 241, 7, 0.93)'
   ];
 
   try {
-    // Ensure the layer type is "fill" in Mapbox Studio for these to work
+    const propertyToUpdate = 'fill-color';
+
     mapInstance.setPaintProperty(
       'cb-2021-us-county-20m-2uhlw5',
-      'fill-color',
+      propertyToUpdate,
       colorExpression
     );
-    mapInstance.setPaintProperty(
-      'cb-2021-us-county-20m-2uhlw5',
-      'fill-opacity',
-      opacityExpression
-    );
-
-    // Optional: add a thin white outline to make the ghosted counties look cleaner
-    mapInstance.setPaintProperty(
-      'cb-2021-us-county-20m-2uhlw5',
-      'fill-outline-color',
-      '#ffffff'
-    );
   } catch (e) {
-    console.error('Mapbox 4-Class Symbology Error:', e);
+    console.error('Mapbox 4-Class Paint Error:', e);
   }
 }
 

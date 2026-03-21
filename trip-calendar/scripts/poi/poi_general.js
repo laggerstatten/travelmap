@@ -38,7 +38,7 @@ function downsampleCoordinates(coords, maxPoints) {
 }
 
 // Build a route LineString from drive segments
-function getFullRouteLineString(segments, maxPoints = 40) {
+function getFullRouteLineString(segments, maxPoints = 500) {
   if (!Array.isArray(segments)) return null;
 
   const ordered = segments

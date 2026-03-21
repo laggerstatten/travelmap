@@ -307,7 +307,7 @@ const CountyProvider = {
 
     const coords = line.coordinates;
     const corridorMiles = 0.1; // ← THIS IS YOUR FILTER DISTANCE
-    const sampleCount = 500; // ← YOU ALREADY USE THIS -- this seems too low, as the route has already been downsampled previously -- changing from 5 to 20
+    const sampleCount = 20; // ← YOU ALREADY USE THIS -- this seems too low, as the route has already been downsampled previously -- changing from 5 to 20
     const samples = downsampleCoordinates(coords, sampleCount);
 
     console.log('Route sample points:', samples.length);
@@ -427,44 +427,27 @@ function showReturnedCounties(returnedResults) {
   // 1. Color Logic
   const colorExpression = [
     'case',
-    ['all', isQueried, isVisited],
-    '#3498db', // Class 1
-    isQueried,
-    '#ee2727', // Class 2
-    isVisited,
-    '#44c90f', // Class 3
-    '#c7f011' // Class 4
+    ['all', isQueried, isVisited], '#3498db', // Class 1
+    isQueried, '#ee2727',                    // Class 2
+    isVisited, '#44c90f',                    // Class 3
+    '#c7f011'                                // Class 4
   ];
 
   // 2. Opacity Logic
   const opacityExpression = [
     'case',
-    isQueried,
-    0.8, // Class 1 & 2 (High visibility for search results)
-    isVisited,
-    0.4, // Class 3 (Subtle visibility for other visits)
-    0.1 // Class 4 (Ghosted background)
+    isQueried, 0.65,  // Class 1 & 2 (High visibility for search results)
+    isVisited, 0.35,  // Class 3 (Subtle visibility for other visits)
+    0.2              // Class 4 (Ghosted background)
   ];
 
   try {
     // Ensure the layer type is "fill" in Mapbox Studio for these to work
-    mapInstance.setPaintProperty(
-      'cb-2021-us-county-20m-2uhlw5',
-      'fill-color',
-      colorExpression
-    );
-    mapInstance.setPaintProperty(
-      'cb-2021-us-county-20m-2uhlw5',
-      'fill-opacity',
-      opacityExpression
-    );
-
+    mapInstance.setPaintProperty('cb-2021-us-county-20m-2uhlw5', 'fill-color', colorExpression);
+    mapInstance.setPaintProperty('cb-2021-us-county-20m-2uhlw5', 'fill-opacity', opacityExpression);
+    
     // Optional: add a thin white outline to make the ghosted counties look cleaner
-    mapInstance.setPaintProperty(
-      'cb-2021-us-county-20m-2uhlw5',
-      'fill-outline-color',
-      '#ffffff'
-    );
+    mapInstance.setPaintProperty('cb-2021-us-county-20m-2uhlw5', 'fill-outline-color', '#ffffff');
   } catch (e) {
     console.error('Mapbox 4-Class Symbology Error:', e);
   }
