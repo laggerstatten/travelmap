@@ -17,7 +17,13 @@ const GET_NEAR_AZA_URL =
   'https://czuldnytepaujjkjpwqi.functions.supabase.co/get-near-aza';
 const UPDATE_AZA_VISIT_URL =
   'https://czuldnytepaujjkjpwqi.functions.supabase.co/update-aza-visit';
-const GET_USER_VISITS_URL =
+const GET_USER_VISITS_AZA_URL =
   'https://czuldnytepaujjkjpwqi.functions.supabase.co/get-aza-visit';
+
+const GET_USER_VISITS_COUNTY_URL =
+  'https://czuldnytepaujjkjpwqi.functions.supabase.co/get-county-visit';
+
+const UPDATE_COUNTY_VISIT_URL =
+  'https://czuldnytepaujjkjpwqi.functions.supabase.co/update-county-visit';
 
 const TIMEZONE_TOKEN = '9QEU1A5823HR';
