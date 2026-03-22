@@ -17,76 +17,33 @@ function cleanID(id) {
 // ROUTE SAMPLING
 // ===========================================================
 
-function haversineMiles(a, b) {
-  const [lng1, lat1] = a;
-  const [lng2, lat2] = b;
-
-  const toRad = (d) => (d * Math.PI) / 180;
-  const R = 3958.8; // miles
-
-  const dLat = toRad(lat2 - lat1);
-  const dLng = toRad(lng2 - lng1);
-
-  const s1 = toRad(lat1);
-  const s2 = toRad(lat2);
-
-  const h =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(s1) * Math.cos(s2) * Math.sin(dLng / 2) ** 2;
-
-  return 2 * R * Math.asin(Math.sqrt(h));
-}
-
-function getLineDistanceMiles(coords) {
-  if (!Array.isArray(coords) || coords.length < 2) return 0;
-
-  let total = 0;
-  for (let i = 1; i < coords.length; i++) {
-    total += haversineMiles(coords[i - 1], coords[i]);
-  }
-  return total;
-}
-
-function getAdaptiveMaxPoints(coords, options = {}) {
-  const {
-    minPoints = 12,
-    maxPoints = 500,
-    milesPerPoint = 5, // tune this
-    endpointBonus = 0
-  } = options;
-
-  const miles = getLineDistanceMiles(coords);
-  const target = Math.ceil(miles / milesPerPoint) + endpointBonus;
-
-  return Math.max(minPoints, Math.min(maxPoints, target));
-}
-
-// Evenly samples by index count.
-// Good simple option if route geometry is already dense enough.
+// Downsample a LineString to avoid huge matrix calls
 function downsampleCoordinates(coords, maxPoints) {
   console.log(
     `Downsampling ${coords.length} coordinates to max ${maxPoints} points`
   );
+  
+  if (!coords || coords.length <= maxPoints) return coords || [];
 
-  if (!Array.isArray(coords) || coords.length === 0) return [];
-  if (coords.length <= maxPoints) return coords;
-
-  if (maxPoints <= 2) {
-    return [coords[0], coords[coords.length - 1]];
-  }
-
+  const step = Math.max(1, Math.floor(coords.length / maxPoints));
   const result = [];
-  const lastIndex = coords.length - 1;
 
-  for (let i = 0; i < maxPoints; i++) {
-    const idx = Math.round((i * lastIndex) / (maxPoints - 1));
-    result.push(coords[idx]);
+  for (let i = 0; i < coords.length; i += step) {
+    result.push(coords[i]);
   }
 
+  // Ensure last point is present
+  const last = coords[coords.length - 1];
+  const lastR = result[result.length - 1];
+  if (!lastR || lastR[0] !== last[0] || lastR[1] !== last[1]) {
+    result.push(last);
+  }
+  console.log(result);
   return result;
 }
 
-function getFullRouteLineString(segments, samplingOptions = {}) {
+// Build a route LineString from drive segments
+function getFullRouteLineString(segments, maxPoints = 500) {
   if (!Array.isArray(segments)) return null;
 
   const ordered = segments
@@ -119,16 +76,7 @@ function getFullRouteLineString(segments, samplingOptions = {}) {
 
   if (fullCoords.length < 2) return null;
 
-  const adaptiveMax = getAdaptiveMaxPoints(fullCoords, samplingOptions);
-  const downsampled = downsampleCoordinates(fullCoords, adaptiveMax);
-
-  console.log('Route sampling:', {
-    originalPoints: fullCoords.length,
-    adaptiveMax,
-    sampledPoints: downsampled.length,
-    distanceMiles: getLineDistanceMiles(fullCoords).toFixed(1)
-  });
-
+  const downsampled = downsampleCoordinates(fullCoords, maxPoints);
   return {
     type: 'LineString',
     coordinates: downsampled
@@ -283,10 +231,8 @@ async function runPOISearch() {
 }
 
 function renderPOIResults(provider, list) {
-  console.log(`Rendering ${list.length} POIs from provider:`, provider.name);
-  console.log('Sample POI:', list[0]);
   updatePOITable(provider, list);
-  //addPOIMarkers(provider, list);
+  addPOIMarkers(provider, list);
   showReturnedCounties(list);
 }
 
@@ -295,7 +241,6 @@ function renderPOIResults(provider, list) {
 // ===========================================================
 
 function updatePOITable(provider, rows) {
-  console.log('Updating POI table with rows:', rows);
   const tbody = document.querySelector('#poi-table tbody');
   const thead = document.querySelector('#poi-table thead');
 
@@ -365,9 +310,8 @@ function updatePOITable(provider, rows) {
 
       btn.onclick = async (e) => {
         e.stopPropagation();
-        await provider.updateVisited(r); //TODO: need to update map as well if this affects marker styling
+        await provider.updateVisited(r);
         if (provider.loadVisited) await provider.loadVisited();
-        showReturnedCounties(rows); // only needed for county provider, but harmless for others
         updatePOITable(provider, rows);
       };
 
