@@ -454,7 +454,16 @@
       const statusEl = document.getElementById('auth-status');
 
       loginBtn.addEventListener('click', async () => {
-        const redirectTo = window.location.origin + window.location.pathname;
+        const pathParts = window.location.pathname.split('/').filter(Boolean);
+        const repo = pathParts[0];
+
+        const isLocal =
+          location.hostname === '127.0.0.1' ||
+          location.hostname === 'localhost';
+
+        const redirectTo = isLocal
+          ? window.location.origin
+          : `${window.location.origin}/${repo}/`;
 
         const { error } = await supabase.auth.signInWithOAuth({
           provider: 'github',
