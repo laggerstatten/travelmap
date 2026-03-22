@@ -463,7 +463,8 @@
 
         const redirectTo = isLocal
           ? window.location.origin
-          : `${window.location.origin}/${repo}/`;
+          : window.location.origin +
+            window.location.pathname.replace(/index\.html$/, '');
 
         const { error } = await supabase.auth.signInWithOAuth({
           provider: 'github',
