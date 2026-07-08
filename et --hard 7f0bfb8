@@ -1,0 +1,107 @@
+[33mdb8833c[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mcounty[m[33m, [m[1;31morigin/county[m[33m)[m Revert "Update auth-callback.html"
+[33m49aab07[m Update auth-callback.html
+[33m0924e1a[m Improve auth callback error handling and markup
+[33me52f5ff[m Add auth callback page and update OAuth redirect
+[33mdbab42e[m Set explicit Supabase OAuth redirectTo URL
+[33m28aad4b[m Handle OAuth code exchange on page load
+[33m1800842[m Normalize doctype and configure Supabase auth
+[33m5529dda[m Update Supabase project URLs
+[33m4a85a04[m Switch Supabase project and fix redirect base path
+[33m7f0bfb8[m Use pathname-based URL for OAuth redirect
+[33madbe435[m Adjust OAuth redirect for local dev
+[33mb3f4d8e[m Add trip-calendar helper config
+[33m1ae4ac1[m Add county visit endpoints and rename AZA constant
+[33mb4e99a6[m Improve route sampling and add POI debug logs
+[33mb8ce8e7[m county symbology, max points
+[33mde673d9[m return counties
+[33mb6aabd2[m county pois
+[33m3d09d29[m stashed changes
+[33m0987120[m POI using tile query
+[33m5d79290[m[33m ([m[1;32mpoi-debug[m[33m)[m more POI functionality
+[33me56ce61[m POI table
+[33m84affd0[m POI function generalization
+[33mc44e58c[m[33m ([m[1;32mpoit-debug1[m[33m)[m identify places where POI update may be required
+[33ma06cfef[m prettier
+[33mc46fe1a[m file organization
+[33m0112aef[m poi markers
+[33m1e6d358[m waypoint functionality
+[33mcce97dd[m action logging
+[33mbea007d[m special cases for reordering
+[33m3c3106b[m reorder logic
+[33m87dbd4e[m reorg functions
+[33m7b5aa04[m file organization
+[33m3fde91a[m refactored some functions to not be index-based
+[33m32dc10d[m flagged functions that need refactoring to work on id rather than index
+[33m8c25d05[m reset function
+[33m751a3a6[m restored mark visited functions
+[33maa60f67[m add POI to trip
+[33mc0374a0[m poi functions
+[33mf673df7[m core pipeline fixes
+[33m279f517[m propagation fix
+[33m941d6ed[m delete functions
+[33m44bc500[m menu improvement
+[33mc155499[m function cleanup
+[33m9bf8b7f[m map fixes
+[33me089ece[m map view
+[33m00f8057[m climate charts
+[33m0103f2a[m insolation rails
+[33me20d993[m business hours editor
+[33mc0b368e[m constraint consistency and validators
+[33m87adea0[m constraint functions
+[33m6492b49[m constraint editor
+[33m53a4363[m constraint editor
+[33m31cec0c[m more overlap resolution
+[33m9ec0e5f[m overlap resolution actions
+[33m400ebe0[m overlap resolution
+[33m75e6efb[m addressed time zone conversion error
+[33m20f12fb[m overlap emitter id
+[33md9d57c9[m adding stops with date
+[33me49987b[m fixed editor logic that got removed
+[33m69fe90e[m internal lists
+[33m3aa5799[m drag & drop, menu fixes
+[33mbec6ba1[m fixed propagation logic
+[33mff8af0f[m switch to flatpickr
+[33m2ba9477[m slack / overlap handling
+[33mb62b824[m time lock / clear logic
+[33m1d2261d[m time value and lock nesting
+[33mb240559[m slack / overlap
+[33m5e25ef1[m cleanup
+[33mc1c688e[m converting time to utc
+[33m3d50736[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m overlap resolution
+[33m88f1c70[m overlap detection
+[33mc6feffb[m timeline fixes
+[33m662f8a2[m event creation
+[33mde6f475[m start / end creation
+[33m322945f[m refactor calendar tool
+[33m1ce66cb[m drive times
+[33m875bfbc[m route calculations
+[33m389626a[m timeline searchbox
+[33m66ae3df[m Update week.js
+[33m97f7ddb[m week calendar improvement
+[33mc4f65e4[m timeline improvement
+[33m098e410[m trip calendar
+[33m2b210d9[m authentication
+[33m0af4296[m file cleanup
+[33ma213da5[m AZA page
+[33m203674c[m UA search and routing
+[33m23da6e1[m Create auth_setup.md
+[33m00a6429[m Update nearest_aza.html
+[33mc4a62bc[m Update nearest_aza.html
+[33m7a8b3d5[m change mapbox tokens
+[33m667e5b3[m Update attractions.js
+[33mbc5f8ab[m Update attractions.js
+[33mccb03bf[m Update transport.html
+[33mb839579[m Update federal_parks.html
+[33md08d967[m file paths
+[33me5ede10[m file paths
+[33mec692c4[m file paths
+[33m4a5b729[m file paths
+[33m98ad979[m file paths
+[33m563d025[m file paths
+[33m6e16f5c[m file paths
+[33mf2f725f[m file paths
+[33m358a425[m base
+[33mb85311b[m file paths
+[33mc2493fa[m file paths
+[33me526ab7[m public keys
+[33md82f1f0[m web map
