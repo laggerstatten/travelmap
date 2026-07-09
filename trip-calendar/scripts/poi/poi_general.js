@@ -286,7 +286,7 @@ function renderPOIResults(provider, list) {
   console.log(`Rendering ${list.length} POIs from provider:`, provider.name);
   console.log('Sample POI:', list[0]);
   updatePOITable(provider, list);
-  //addPOIMarkers(provider, list);
+  addPOIMarkers(provider, list);
   //showReturnedCounties(list);
 }
 
