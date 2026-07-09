@@ -287,7 +287,7 @@ function renderPOIResults(provider, list) {
   console.log('Sample POI:', list[0]);
   updatePOITable(provider, list);
   //addPOIMarkers(provider, list);
-  showReturnedCounties(list);
+  //showReturnedCounties(list);
 }
 
 // ===========================================================
